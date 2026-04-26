@@ -693,7 +693,7 @@ function buildGitSurface({
       worktreeApplyLabel: "apply",
       worktreeApplyTitle: worktreeState.activeParentWorkspace?.name
         ? `Apply changes to ${worktreeState.activeParentWorkspace.name}`
-        : "Apply changes to parent workspace",
+        : "Apply changes to parent project",
       worktreeApplyLoading: worktreeState.isWorktreeWorkspace
         ? gitState.worktreeApplyLoading
         : false,

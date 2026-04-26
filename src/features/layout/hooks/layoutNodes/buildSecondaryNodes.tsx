@@ -109,13 +109,13 @@ export function buildSecondaryNodes(options: SecondaryLayoutNodesOptions): Secon
   const { debugPanelNode, debugPanelFullNode } = buildDebugPanels(options.debugPanelProps);
 
   const compactEmptyCodexNode = buildCompactEmptyNode({
-    title: "No workspace selected",
+    title: "No project selected",
     description: "Choose a project to start chatting.",
     onGoProjects: options.compactNavProps.onGoProjects,
   });
 
   const compactEmptyGitNode = buildCompactEmptyNode({
-    title: "No workspace selected",
+    title: "No project selected",
     description: "Select a project to inspect diffs.",
     onGoProjects: options.compactNavProps.onGoProjects,
   });

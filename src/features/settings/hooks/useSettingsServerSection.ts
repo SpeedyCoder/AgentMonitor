@@ -396,7 +396,7 @@ export const useSettingsServerSection = ({
 
       const workspaces = await listWorkspaces();
       const workspaceCount = workspaces.length;
-      const workspaceWord = workspaceCount === 1 ? "workspace" : "workspaces";
+      const projectWord = workspaceCount === 1 ? "project" : "projects";
       const connectedBackends = candidateBackends.map((entry) =>
         entry.id === nextId ? { ...entry, lastConnectedAtMs: Date.now() } : entry,
       );
@@ -408,7 +408,7 @@ export const useSettingsServerSection = ({
       await onUpdateAppSettings(connectedSettings);
       latestSettingsRef.current = connectedSettings;
       setRemoteStatus(
-        `Added "${nextName}" and connected. ${workspaceCount} ${workspaceWord} reachable on the remote backend.`,
+        `Added "${nextName}" and connected. ${workspaceCount} ${projectWord} reachable on the remote backend.`,
       );
       await onMobileConnectSuccess?.();
     } catch (error) {
@@ -509,14 +509,14 @@ export const useSettingsServerSection = ({
 
         const workspaces = await listWorkspaces();
         const workspaceCount = workspaces.length;
-        const workspaceWord = workspaceCount === 1 ? "workspace" : "workspaces";
+        const projectWord = workspaceCount === 1 ? "project" : "projects";
         try {
           await updateActiveRemoteBackend({ lastConnectedAtMs: Date.now() });
         } catch {
           // Keep successful connectivity outcome even if timestamp persistence fails.
         }
         setMobileConnectStatusText(
-          `Connected. ${workspaceCount} ${workspaceWord} reachable on the remote backend.`,
+          `Connected. ${workspaceCount} ${projectWord} reachable on the remote backend.`,
         );
         await onMobileConnectSuccess?.();
       } catch (error) {

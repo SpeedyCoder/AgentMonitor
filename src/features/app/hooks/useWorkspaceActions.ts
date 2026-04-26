@@ -63,7 +63,7 @@ export function useWorkspaceActions({
         label: "workspace/add error",
         payload: message,
       });
-      alert(`Failed to add workspace.\n\n${message}`);
+      alert(`Failed to add project.\n\n${message}`);
     }
   }, [addWorkspace, handleWorkspaceAdded, onDebug]);
 
@@ -83,7 +83,7 @@ export function useWorkspaceActions({
           label: "workspace/add error",
           payload: message,
         });
-        alert(`Failed to add workspaces.\n\n${message}`);
+        alert(`Failed to add projects.\n\n${message}`);
       }
     },
     [addWorkspacesFromPaths, handleWorkspaceAdded, onDebug],
@@ -105,7 +105,7 @@ export function useWorkspaceActions({
           label: "workspace/add error",
           payload: message,
         });
-        alert(`Failed to add workspace.\n\n${message}`);
+        alert(`Failed to add project.\n\n${message}`);
       }
     },
     [addWorkspaceFromPath, handleWorkspaceAdded, onDebug],

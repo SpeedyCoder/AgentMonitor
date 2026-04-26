@@ -114,7 +114,7 @@ export function WorktreePrompt({
     >
       <div className="ds-modal-title worktree-modal-title">New worktree agent</div>
       <div className="ds-modal-subtitle worktree-modal-subtitle">
-        Create a worktree under "{workspaceName}".
+        Create a worktree under project "{workspaceName}".
       </div>
       <label className="ds-modal-label worktree-modal-label" htmlFor="worktree-name">
         Name

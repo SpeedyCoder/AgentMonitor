@@ -42,7 +42,7 @@ describe("SidebarHeader", () => {
     expect(actionButtons.map((button) => button.getAttribute("aria-label"))).toEqual([
       "Add project",
       "Organize and sort threads",
-      "Refresh all workspace threads",
+      "Refresh all project threads",
     ]);
   });
 

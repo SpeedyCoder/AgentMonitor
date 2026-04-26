@@ -293,7 +293,7 @@ export const useSettingsAgentsSection = ({
       const descriptionSeed = seed.description.trim();
       const developerInstructionsSeed = seed.developerInstructions.trim();
       if (!sourceWorkspaceId || !sourceWorkspaceName) {
-        setError("Add a workspace before generating agent configuration.");
+        setError("Add a project before generating agent configuration.");
         return null;
       }
 

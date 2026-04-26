@@ -459,12 +459,12 @@ export function SettingsCodexSection({
         }
         subtitle={
           defaultModelsConnectedWorkspaceCount === 0
-            ? "Add a workspace to load available models."
+            ? "Add a project to load available models."
             : defaultModelsLoading
-              ? "Loading models from the first workspace…"
+              ? "Loading models from the first project…"
               : defaultModelsError
                 ? `Couldn’t load models: ${defaultModelsError}`
-                : "Sourced from the first workspace and used when there is no thread-specific override."
+                : "Sourced from the first project and used when there is no thread-specific override."
         }
       >
         <div className="settings-field-row">

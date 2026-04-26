@@ -104,10 +104,10 @@ export function OpenAppMenu({
       },
     });
     pushErrorToast({
-      title: "Couldn’t open workspace",
+      title: "Couldn’t open project",
       message,
     });
-    console.warn("Failed to open workspace in target app", {
+    console.warn("Failed to open project in target app", {
       message,
       path,
       targetId: target.id,

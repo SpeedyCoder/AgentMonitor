@@ -136,8 +136,8 @@ export function GitDiffModeContent({
   const gitRootTitle = gitRootNotFound
     ? "Git root folder not found."
     : missingRepo
-      ? "This workspace isn't a Git repository yet."
-      : "Choose a repo for this workspace.";
+      ? "This project isn't a Git repository yet."
+      : "Choose a repo for this project.";
   const generateCommitMessageTooltip = "Generate commit message";
   const showWorktreeApplyInUnstaged = showApplyWorktree && unstagedFiles.length > 0;
   const showWorktreeApplyInStaged =
@@ -169,7 +169,7 @@ export function GitDiffModeContent({
               onClick={onScanGitRoots}
               disabled={!onScanGitRoots || gitRootScanLoading || initGitRepoLoading}
             >
-              Scan workspace
+              Scan project
             </button>
             <label className="git-root-depth">
               <span>Depth</span>
@@ -210,7 +210,7 @@ export function GitDiffModeContent({
                 onClick={onClearGitRoot}
                 disabled={gitRootScanLoading || initGitRepoLoading}
               >
-                Use workspace root
+                Use project root
               </button>
             )}
           </div>

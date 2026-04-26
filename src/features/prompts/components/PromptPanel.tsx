@@ -302,7 +302,7 @@ export function PromptPanel({
           action: () => startEdit(prompt),
         }),
         await MenuItem.new({
-          text: `Move to ${nextScope === "workspace" ? "workspace" : "general"}`,
+          text: `Move to ${nextScope === "workspace" ? "project" : "general"}`,
           action: () => void handleMove(prompt, nextScope),
         }),
         await MenuItem.new({
@@ -453,7 +453,7 @@ export function PromptPanel({
                   }
                   disabled={editor.mode === "edit"}
                 >
-                  <option value="workspace">Workspace</option>
+                  <option value="workspace">Project</option>
                   <option value="global">General</option>
                 </select>
               </label>
@@ -513,13 +513,13 @@ export function PromptPanel({
         )}
         <div className="prompt-section">
           <div className="prompt-section-header">
-            <div className="prompt-section-title">Workspace prompts</div>
+            <div className="prompt-section-title">Project prompts</div>
             <button
               type="button"
               className="ghost icon-button prompt-section-add"
               onClick={() => startCreate("workspace")}
-              aria-label="Add workspace prompt"
-              title="Add workspace prompt"
+              aria-label="Add project prompt"
+              title="Add project prompt"
             >
               <Plus aria-hidden />
             </button>
@@ -532,7 +532,7 @@ export function PromptPanel({
             <div className="prompt-empty-card">
               <ScrollText className="prompt-empty-icon" aria-hidden />
               <div className="prompt-empty-text">
-                <div className="prompt-empty-title">No workspace prompts yet</div>
+                <div className="prompt-empty-title">No project prompts yet</div>
                 <div className="prompt-empty-subtitle">
                   Create one here or drop a .md file into the{" "}
                   {workspacePath ? (
@@ -541,11 +541,11 @@ export function PromptPanel({
                       className="prompt-empty-link"
                       onClick={() => void onRevealWorkspacePrompts()}
                     >
-                      workspace prompts folder
+                      project prompts folder
                     </button>
                   ) : (
                     <span className="prompt-empty-link is-disabled">
-                      workspace prompts folder
+                      project prompts folder
                     </span>
                   )}
                   .

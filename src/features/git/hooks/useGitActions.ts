@@ -268,7 +268,7 @@ export function useGitActions({
       branch: string,
     ): Promise<{ ok: true } | { ok: false; error: string }> => {
       if (!workspaceId) {
-        return { ok: false, error: "No active workspace." };
+        return { ok: false, error: "No active project." };
       }
 
       const actionWorkspaceId = workspaceId;
@@ -281,7 +281,7 @@ export function useGitActions({
           branch,
         );
         if (workspaceIdRef.current !== actionWorkspaceId) {
-          return { ok: false, error: "Workspace changed." };
+          return { ok: false, error: "Project changed." };
         }
 
         if (response.status === "ok") {
@@ -302,7 +302,7 @@ export function useGitActions({
         return { ok: false, error: errorMessage };
       } catch (error) {
         if (workspaceIdRef.current !== actionWorkspaceId) {
-          return { ok: false, error: "Workspace changed." };
+          return { ok: false, error: "Project changed." };
         }
         return {
           ok: false,

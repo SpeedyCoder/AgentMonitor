@@ -359,7 +359,7 @@ export function DiffSection({
                   void onApplyWorktreeChanges?.();
                 }}
                 disabled={worktreeApplyLoading || worktreeApplySuccess}
-                data-tooltip={worktreeApplyTitle ?? "Apply changes to parent workspace"}
+                data-tooltip={worktreeApplyTitle ?? "Apply changes to parent project"}
                 data-tooltip-align="end"
                 aria-label="Apply worktree changes"
               >

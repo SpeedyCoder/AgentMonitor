@@ -460,7 +460,7 @@ export function GitDiffViewer({
       }
     : {
         title: "Working tree is clean",
-        subtitle: "No local changes were detected for the current workspace.",
+        subtitle: "No local changes were detected for the current project.",
         hint: "Make an edit, stage a file, or select a commit to inspect changes here.",
       };
 

@@ -41,7 +41,7 @@ export function SettingsClaudeSection({
   return (
     <SettingsSection
       title="Claude"
-      subtitle="Configure the Claude CLI and local adapter used for Claude workspaces."
+      subtitle="Configure the Claude CLI and local adapter used for Claude projects."
     >
       <div className="settings-field">
         <label className="settings-field-label" htmlFor="claude-cli-path">

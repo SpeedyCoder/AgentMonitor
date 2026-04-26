@@ -219,11 +219,11 @@ export function useWorkspaceDialogs() {
 
       const lines: string[] = [];
       lines.push(
-        `Added ${result.added.length} workspace${result.added.length === 1 ? "" : "s"}.`,
+        `Added ${result.added.length} project${result.added.length === 1 ? "" : "s"}.`,
       );
       if (result.skippedExisting.length > 0) {
         lines.push(
-          `Skipped ${result.skippedExisting.length} already added workspace${
+          `Skipped ${result.skippedExisting.length} already added project${
             result.skippedExisting.length === 1 ? "" : "s"
           }.`,
         );
@@ -237,7 +237,7 @@ export function useWorkspaceDialogs() {
       }
       if (result.failures.length > 0) {
         lines.push(
-          `Failed to add ${result.failures.length} workspace${
+          `Failed to add ${result.failures.length} project${
             result.failures.length === 1 ? "" : "s"
           }.`,
         );
@@ -254,8 +254,8 @@ export function useWorkspaceDialogs() {
 
       const title =
         result.failures.length > 0
-          ? "Some workspaces failed to add"
-          : "Some workspaces were skipped";
+          ? "Some projects failed to add"
+          : "Some projects were skipped";
       await message(lines.join("\n"), {
         title,
         kind: result.failures.length > 0 ? "error" : "warning",
@@ -267,7 +267,7 @@ export function useWorkspaceDialogs() {
   const confirmWorkspaceRemoval = useCallback(
     async (workspaces: WorkspaceInfo[], workspaceId: string) => {
       const workspace = workspaces.find((entry) => entry.id === workspaceId);
-      const workspaceName = workspace?.name || "this workspace";
+      const workspaceName = workspace?.name || "this project";
       const worktreeCount = workspaces.filter(
         (entry) => entry.parentId === workspaceId,
       ).length;
@@ -279,9 +279,9 @@ export function useWorkspaceDialogs() {
           : "";
 
       return ask(
-        `Are you sure you want to delete "${workspaceName}"?\n\nThis will remove the workspace from Trantor.${detail}`,
+        `Are you sure you want to delete "${workspaceName}"?\n\nThis will remove the project from Trantor.${detail}`,
         {
-          title: "Delete Workspace",
+          title: "Delete Project",
           kind: "warning",
           okLabel: "Delete",
           cancelLabel: "Cancel",
@@ -311,7 +311,7 @@ export function useWorkspaceDialogs() {
   const showWorkspaceRemovalError = useCallback(async (error: unknown) => {
     const errorMessage = error instanceof Error ? error.message : String(error);
     await message(errorMessage, {
-      title: "Delete workspace failed",
+      title: "Delete project failed",
       kind: "error",
     });
   }, []);

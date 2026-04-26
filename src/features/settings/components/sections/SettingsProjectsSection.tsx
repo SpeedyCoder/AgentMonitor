@@ -60,7 +60,7 @@ export function SettingsProjectsSection({
   return (
     <SettingsSection
       title="Projects"
-      subtitle="Group related workspaces and reorder projects within each group."
+      subtitle="Group related projects and reorder them within each group."
     >
       <SettingsSubsection
         title="Groups"

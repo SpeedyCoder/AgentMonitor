@@ -18,7 +18,7 @@ const tabs: { id: TabletNavTab; label: string; icon: ReactNode }[] = [
 
 export function TabletNav({ activeTab, onSelect }: TabletNavProps) {
   return (
-    <nav className="tablet-nav" aria-label="Workspace">
+    <nav className="tablet-nav" aria-label="Project">
       <div className="tablet-nav-group">
         {tabs.map((tab) => (
           <button

@@ -104,7 +104,7 @@ export function SettingsGitSection({
           </label>
           <div className="settings-help">
             The model used when generating commit messages. Leave on default to use the
-            workspace model.
+            project model.
           </div>
           <select
             id="commit-message-model-select"

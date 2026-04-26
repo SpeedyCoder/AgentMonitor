@@ -105,8 +105,8 @@ export function useMobileServerSetup({
         setStatusError(false);
         if (options?.announceSuccess) {
           const count = entries.length;
-          const workspaceWord = count === 1 ? "workspace" : "workspaces";
-          setStatusMessage(`Connected. ${count} ${workspaceWord} available from your desktop backend.`);
+          const projectWord = count === 1 ? "project" : "projects";
+          setStatusMessage(`Connected. ${count} ${projectWord} available from your desktop backend.`);
         } else {
           setStatusMessage(null);
         }

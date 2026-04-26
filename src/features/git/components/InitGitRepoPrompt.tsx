@@ -77,7 +77,7 @@ export function InitGitRepoPrompt({
     >
       <div className="ds-modal-title git-init-modal-title">Initialize Git</div>
       <div className="ds-modal-subtitle git-init-modal-subtitle">
-        Create a new repository under "{workspaceName}" and make an initial commit.
+        Create a new repository under project "{workspaceName}" and make an initial commit.
       </div>
 
       <label className="ds-modal-label git-init-modal-label" htmlFor="git-init-branch">

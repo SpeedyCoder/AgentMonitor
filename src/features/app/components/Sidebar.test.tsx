@@ -194,7 +194,7 @@ describe("Sidebar", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Refresh all workspace threads" }));
+    fireEvent.click(screen.getByRole("button", { name: "Refresh all project threads" }));
     expect(onRefreshAllThreads).toHaveBeenCalledTimes(1);
   });
 
@@ -230,7 +230,7 @@ describe("Sidebar", () => {
       />,
     );
 
-    const refreshButton = screen.getByRole("button", { name: "Refresh all workspace threads" });
+    const refreshButton = screen.getByRole("button", { name: "Refresh all project threads" });
     expect(refreshButton.getAttribute("aria-busy")).toBe("true");
     const icon = refreshButton.querySelector("svg");
     expect(icon?.getAttribute("class") ?? "").toContain("spinning");

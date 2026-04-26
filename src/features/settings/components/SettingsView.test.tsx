@@ -2217,7 +2217,7 @@ describe("SettingsView Shortcuts", () => {
       fireEvent.change(searchInput, { target: { value: "navigation" } });
     });
     await waitFor(() => {
-      expect(screen.getByText("Next workspace")).toBeTruthy();
+      expect(screen.getByText("Next project")).toBeTruthy();
       expect(screen.queryByText("Toggle terminal panel")).toBeNull();
     });
 
@@ -2226,7 +2226,7 @@ describe("SettingsView Shortcuts", () => {
     });
     await waitFor(() => {
       expect(screen.getByText("Toggle projects sidebar")).toBeTruthy();
-      expect(screen.queryByText("Next workspace")).toBeNull();
+      expect(screen.queryByText("Next project")).toBeNull();
     });
 
     await act(async () => {

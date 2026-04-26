@@ -268,7 +268,7 @@ export const Sidebar = memo(function Sidebar({
             onShowWorktreeMenu={showWorktreeMenu}
             onToggleAddMenu={setAddMenuAnchor}
           />
-          {showEmptyState ? <div className="empty">Add a workspace to start.</div> : null}
+          {showEmptyState ? <div className="empty">Add a project to start.</div> : null}
         </div>
       </div>
       <SidebarBottomRail

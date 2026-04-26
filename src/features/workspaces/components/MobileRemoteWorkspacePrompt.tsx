@@ -37,7 +37,7 @@ export function MobileRemoteWorkspacePrompt({
 
   return (
     <ModalShell
-      ariaLabel="Add remote workspace paths"
+      ariaLabel="Add remote project paths"
       className="mobile-remote-workspace-modal"
       cardClassName="mobile-remote-workspace-modal-card"
       onBackdropClick={onCancel}

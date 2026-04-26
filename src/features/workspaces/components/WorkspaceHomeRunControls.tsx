@@ -125,7 +125,7 @@ export function WorkspaceHomeRunControls({
       >
         {models.length === 0 && (
           <div className="workspace-home-empty">
-            Connect this workspace to load available models.
+            Connect this project to load available models.
           </div>
         )}
         {models.map((model) => {

@@ -19,7 +19,7 @@ const FALLBACK_AGENT_MODELS: ModelOption[] = [
     id: "gpt-5-codex",
     model: "gpt-5-codex",
     displayName: "gpt-5-codex",
-    description: "Fallback model while workspace model list is unavailable.",
+    description: "Fallback model while project model list is unavailable.",
     supportedReasoningEfforts: [
       { reasoningEffort: "low", description: "" },
       { reasoningEffort: "medium", description: "" },
@@ -593,8 +593,8 @@ export function SettingsAgentsSection({
         {modelOptions.length === 0 && (
           <div className="settings-help">
             {modelOptionsLoading
-              ? "Loading workspace model metadata. Using fallback model defaults for now."
-              : "Using fallback model defaults until workspace model metadata is available."}
+              ? "Loading project model metadata. Using fallback model defaults for now."
+              : "Using fallback model defaults until project model metadata is available."}
           </div>
         )}
         {modelOptionsError && <div className="settings-help">{modelOptionsError}</div>}
