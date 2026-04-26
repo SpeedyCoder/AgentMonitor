@@ -226,13 +226,14 @@ export function useSettingsViewOrchestration({
       appSettings,
       onToggleAutomaticAppUpdateChecks,
     },
-    projectsSectionProps,
-    environmentsSectionProps,
+    projectsSectionProps: {
+      ...projectsSectionProps,
+      ...environmentsSectionProps,
+    },
     displaySectionProps,
     composerSectionProps: {
       appSettings,
       optionKeyLabel,
-      followUpShortcutLabel,
       composerPresetLabels: COMPOSER_PRESET_LABELS,
       onComposerPresetChange: (
         preset: AppSettings["composerEditorPreset"],
@@ -278,10 +279,14 @@ export function useSettingsViewOrchestration({
     },
     gitSectionProps,
     serverSectionProps,
-    agentsSectionProps,
-    codexSectionProps,
+    codexSectionProps: {
+      ...codexSectionProps,
+      agentsSectionProps,
+      featuresSectionProps,
+      followUpShortcutLabel,
+      optionKeyLabel,
+    },
     claudeSectionProps,
-    featuresSectionProps,
   };
 }
 

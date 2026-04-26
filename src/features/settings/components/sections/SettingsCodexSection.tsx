@@ -9,9 +9,15 @@ import type {
 } from "@/types";
 import {
   SettingsSection,
+  SettingsSubsection,
   SettingsToggleRow,
+  SettingsToggleSwitch,
 } from "@/features/design-system/components/settings/SettingsPrimitives";
 import { FileEditorCard } from "@/features/shared/components/FileEditorCard";
+import type { SettingsAgentsSectionProps } from "@settings/hooks/useSettingsAgentsSection";
+import type { SettingsFeaturesSectionProps } from "@settings/hooks/useSettingsFeaturesSection";
+import { SettingsAgentsSection } from "./SettingsAgentsSection";
+import { SettingsFeaturesSection } from "./SettingsFeaturesSection";
 
 type SettingsCodexSectionProps = {
   appSettings: AppSettings;
@@ -65,6 +71,9 @@ type SettingsCodexSectionProps = {
   onSaveGlobalAgents: () => void;
   onRefreshGlobalConfig: () => void;
   onSaveGlobalConfig: () => void;
+  agentsSectionProps: SettingsAgentsSectionProps;
+  featuresSectionProps: SettingsFeaturesSectionProps;
+  followUpShortcutLabel: string;
 };
 
 const DEFAULT_REASONING_EFFORT = "medium";
@@ -157,6 +166,9 @@ export function SettingsCodexSection({
   onSaveGlobalAgents,
   onRefreshGlobalConfig,
   onSaveGlobalConfig,
+  agentsSectionProps,
+  featuresSectionProps,
+  followUpShortcutLabel,
 }: SettingsCodexSectionProps) {
   const latestModelSlug = defaultModels[0]?.model ?? null;
   const savedModelSlug = useMemo(
@@ -242,8 +254,12 @@ export function SettingsCodexSection({
   return (
     <SettingsSection
       title="Codex"
-      subtitle="Configure the Codex CLI used by Trantor and validate the install."
+      subtitle="Configure the Codex runtime, interaction defaults, multi-agent behavior, and config files."
     >
+      <SettingsSubsection
+        title="CLI & Runtime"
+        subtitle="Configure the shared Codex CLI used by Trantor and validate the install."
+      />
       <div className="settings-usage-panel">
         <div className="settings-usage-header">
           <div className="settings-field-label">Usage</div>
@@ -342,7 +358,7 @@ export function SettingsCodexSection({
           Extra flags passed before <code>app-server</code>. Use quotes for values with spaces.
         </div>
         <div className="settings-help">
-          These settings apply to the shared Codex app-server used across all connected workspaces.
+          These settings apply to the shared Codex app-server used across all connected projects.
         </div>
         <div className="settings-help">
           Per-thread override processing ignores unsupported flags: <code>-m</code>/
@@ -447,23 +463,20 @@ export function SettingsCodexSection({
       </div>
 
       <div className="settings-divider" />
-      <div className="settings-field-label settings-field-label--section">
-        Default parameters
-      </div>
+      <SettingsSubsection
+        title="Defaults"
+        subtitle="Choose the default model, access, and review behavior when a thread does not override them."
+      />
 
       <SettingsToggleRow
-        title={
-          <label htmlFor="default-model">
-            Model
-          </label>
-        }
+        title={<label htmlFor="default-model">Model</label>}
         subtitle={
           defaultModelsConnectedWorkspaceCount === 0
             ? "Add a project to load available models."
             : defaultModelsLoading
-              ? "Loading models from the first project…"
+              ? "Loading models from the first project..."
               : defaultModelsError
-                ? `Couldn’t load models: ${defaultModelsError}`
+                ? `Couldn't load models: ${defaultModelsError}`
                 : "Sourced from the first project and used when there is no thread-specific override."
         }
       >
@@ -499,11 +512,7 @@ export function SettingsCodexSection({
       </SettingsToggleRow>
 
       <SettingsToggleRow
-        title={
-          <label htmlFor="default-effort">
-            Reasoning effort
-          </label>
-        }
+        title={<label htmlFor="default-effort">Reasoning effort</label>}
         subtitle={
           reasoningSupported
             ? "Available options depend on the selected model."
@@ -533,11 +542,7 @@ export function SettingsCodexSection({
       </SettingsToggleRow>
 
       <SettingsToggleRow
-        title={
-          <label htmlFor="default-access">
-            Access mode
-          </label>
-        }
+        title={<label htmlFor="default-access">Access mode</label>}
         subtitle="Used when there is no thread-specific override."
       >
         <select
@@ -556,6 +561,7 @@ export function SettingsCodexSection({
           <option value="full-access">Full access</option>
         </select>
       </SettingsToggleRow>
+
       <div className="settings-field">
         <label className="settings-field-label" htmlFor="review-delivery">
           Review mode
@@ -580,12 +586,133 @@ export function SettingsCodexSection({
         </div>
       </div>
 
+      <div className="settings-divider" />
+      <SettingsSubsection
+        title="Interaction"
+        subtitle="Control how follow-up messages behave while Codex is actively running."
+      />
+      <div className="settings-field">
+        <div className="settings-field-label">Follow-up behavior</div>
+        <div
+          className={`settings-segmented${appSettings.followUpMessageBehavior === "steer" ? " is-second-active" : ""}`}
+          aria-label="Follow-up behavior"
+        >
+          <label
+            className={`settings-segmented-option${
+              appSettings.followUpMessageBehavior === "queue" ? " is-active" : ""
+            }`}
+          >
+            <input
+              className="settings-segmented-input"
+              type="radio"
+              name="follow-up-behavior"
+              value="queue"
+              checked={appSettings.followUpMessageBehavior === "queue"}
+              onChange={() =>
+                void onUpdateAppSettings({
+                  ...appSettings,
+                  followUpMessageBehavior: "queue",
+                })
+              }
+            />
+            <span className="settings-segmented-option-label">Queue</span>
+          </label>
+          <label
+            className={`settings-segmented-option${
+              appSettings.followUpMessageBehavior === "steer" ? " is-active" : ""
+            }${!appSettings.steerEnabled ? " is-disabled" : ""}`}
+            title={
+              !appSettings.steerEnabled
+                ? "Steer is unavailable in the current Codex config."
+                : ""
+            }
+          >
+            <input
+              className="settings-segmented-input"
+              type="radio"
+              name="follow-up-behavior"
+              value="steer"
+              checked={appSettings.followUpMessageBehavior === "steer"}
+              disabled={!appSettings.steerEnabled}
+              onChange={() => {
+                if (!appSettings.steerEnabled) {
+                  return;
+                }
+                void onUpdateAppSettings({
+                  ...appSettings,
+                  followUpMessageBehavior: "steer",
+                });
+              }}
+            />
+            <span className="settings-segmented-option-label">Steer</span>
+          </label>
+        </div>
+        <div className="settings-help">
+          Choose the default while a run is active. Press {followUpShortcutLabel} to send the
+          opposite behavior for one message.
+        </div>
+        <SettingsToggleRow
+          title="Show follow-up hint while processing"
+          subtitle="Displays queue/steer shortcut guidance above the composer."
+        >
+          <SettingsToggleSwitch
+            pressed={appSettings.composerFollowUpHintEnabled}
+            onClick={() =>
+              void onUpdateAppSettings({
+                ...appSettings,
+                composerFollowUpHintEnabled: !appSettings.composerFollowUpHintEnabled,
+              })
+            }
+          />
+        </SettingsToggleRow>
+        <SettingsToggleRow
+          title="Pause queued messages when a response is required"
+          subtitle="Keep queued messages paused while Codex is waiting for plan accept/changes or your answers."
+        >
+          <SettingsToggleSwitch
+            pressed={appSettings.pauseQueuedMessagesWhenResponseRequired}
+            onClick={() =>
+              void onUpdateAppSettings({
+                ...appSettings,
+                pauseQueuedMessagesWhenResponseRequired:
+                  !appSettings.pauseQueuedMessagesWhenResponseRequired,
+              })
+            }
+          />
+        </SettingsToggleRow>
+        {!appSettings.steerEnabled && (
+          <div className="settings-help">
+            Steer is unavailable in the current Codex config. Follow-ups will queue.
+          </div>
+        )}
+      </div>
+
+      <div className="settings-divider" />
+      <SettingsSubsection
+        title="Multi-Agent"
+        subtitle="Configure shared multi-agent limits, custom roles, and per-agent configs."
+      />
+      <SettingsAgentsSection {...agentsSectionProps} embedded />
+
+      <div className="settings-divider" />
+      <SettingsSubsection
+        title="Config & Flags"
+        subtitle="Manage Codex personality, config access, and stable or preview feature flags."
+      />
+      <SettingsFeaturesSection {...featuresSectionProps} embedded />
+
+      <div className="settings-divider" />
+      <SettingsSubsection
+        title="Files"
+        subtitle="Edit global instructions and the Codex config file used by the shared runtime."
+      />
+
       <FileEditorCard
         title="Global AGENTS.md"
         meta={globalAgentsMeta}
         error={globalAgentsError}
         value={globalAgentsContent}
-        placeholder="Add global instructions for Codex agents…"
+        placeholder="Add global instructions for Codex agents..."
         disabled={globalAgentsLoading}
         refreshDisabled={globalAgentsRefreshDisabled}
         saveDisabled={globalAgentsSaveDisabled}
@@ -599,7 +726,7 @@ export function SettingsCodexSection({
           </>
         }
         classNames={{
-          container: "settings-field settings-agents",
+          container: "settings-field settings-agents settings-file-editor",
           header: "settings-agents-header",
           title: "settings-field-label",
           actions: "settings-agents-actions",
@@ -616,7 +743,7 @@ export function SettingsCodexSection({
         meta={globalConfigMeta}
         error={globalConfigError}
         value={globalConfigContent}
-        placeholder="Edit the global Codex config.toml…"
+        placeholder="Edit the global Codex config.toml..."
         disabled={globalConfigLoading}
         refreshDisabled={globalConfigRefreshDisabled}
         saveDisabled={globalConfigSaveDisabled}
@@ -630,7 +757,7 @@ export function SettingsCodexSection({
           </>
         }
         classNames={{
-          container: "settings-field settings-agents",
+          container: "settings-field settings-agents settings-file-editor",
           header: "settings-agents-header",
           title: "settings-field-label",
           actions: "settings-agents-actions",

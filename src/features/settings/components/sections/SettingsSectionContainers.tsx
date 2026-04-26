@@ -3,7 +3,6 @@ import { SettingsClaudeSection } from "./SettingsClaudeSection";
 import { SettingsComposerSection } from "./SettingsComposerSection";
 import { SettingsDictationSection } from "./SettingsDictationSection";
 import { SettingsDisplaySection } from "./SettingsDisplaySection";
-import { SettingsEnvironmentsSection } from "./SettingsEnvironmentsSection";
 import { SettingsGitSection } from "./SettingsGitSection";
 import { SettingsOpenAppsSection } from "./SettingsOpenAppsSection";
 import { SettingsProjectsSection } from "./SettingsProjectsSection";
@@ -24,9 +23,6 @@ export function SettingsSectionContainers({
 }: SettingsSectionContainersProps) {
   if (activeSection === "projects") {
     return <SettingsProjectsSection {...orchestration.projectsSectionProps} />;
-  }
-  if (activeSection === "environments") {
-    return <SettingsEnvironmentsSection {...orchestration.environmentsSectionProps} />;
   }
   if (activeSection === "display") {
     return <SettingsDisplaySection {...orchestration.displaySectionProps} />;

@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { AgentHarness } from "@/features/models/utils/modelRuntime";
+import {
+  providerModelIdForModelId,
+  type AgentHarness,
+} from "@/features/models/utils/modelRuntime";
 import type { AccessMode, ServiceTier } from "@/types";
 import {
   STORAGE_KEY_THREAD_CODEX_PARAMS,
@@ -92,7 +95,10 @@ function sanitizeEntry(value: unknown): ThreadCodexParams | null {
     : undefined;
   return {
     harness: coerceHarness(entry.harness),
-    modelId: typeof entry.modelId === "string" ? entry.modelId : null,
+    modelId:
+      typeof entry.modelId === "string"
+        ? providerModelIdForModelId(entry.modelId)
+        : null,
     effort: typeof entry.effort === "string" ? entry.effort : null,
     serviceTier,
     accessMode: coerceAccessMode(entry.accessMode),
@@ -140,6 +146,10 @@ export function useThreadCodexParams(): UseThreadCodexParamsResult {
       const nextEntry: ThreadCodexParams = {
         ...current,
         ...patch,
+        modelId:
+          Object.prototype.hasOwnProperty.call(patch, "modelId")
+            ? providerModelIdForModelId(patch.modelId)
+            : current.modelId,
         updatedAt: Date.now(),
       };
       const next: ThreadCodexParamsMap = { ...paramsRef.current, [key]: nextEntry };

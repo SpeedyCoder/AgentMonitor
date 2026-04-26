@@ -671,7 +671,6 @@ export const Sidebar = memo(function Sidebar({
         ref={sidebarBodyRef}
       >
         <div className="workspace-list">
-<<<<<<< Updated upstream
           {pinnedThreadRows.length > 0 && (
             <div className="pinned-section">
               <div className="sidebar-section-header">
@@ -769,29 +768,6 @@ export const Sidebar = memo(function Sidebar({
             pinnedThreadRows.length === 0 && (
               <div className="empty">No conversations yet.</div>
             )}
-=======
-          <SidebarWorkspaceGroups
-            groups={groupedWorkspacesForRender}
-            hasWorkspaceGroups={hasWorkspaceGroups}
-            collapsedGroups={collapsedGroups}
-            ungroupedCollapseId={UNGROUPED_COLLAPSE_ID}
-            toggleGroupCollapse={toggleGroupCollapse}
-            worktreesByParent={worktreesByParent}
-            deletingWorktreeIds={deletingWorktreeIds}
-            activeWorkspaceId={activeWorkspaceId}
-            addMenuAnchor={addMenuAnchor}
-            addMenuRef={addMenuRef}
-            addMenuWidth={ADD_MENU_WIDTH}
-            onSelectWorkspace={onSelectWorkspace}
-            onConnectWorkspace={onConnectWorkspace}
-            onAddWorktreeAgent={onAddWorktreeAgent}
-            onToggleWorkspaceCollapse={onToggleWorkspaceCollapse}
-            onShowWorkspaceMenu={showWorkspaceMenu}
-            onShowWorktreeMenu={showWorktreeMenu}
-            onToggleAddMenu={setAddMenuAnchor}
-          />
-          {showEmptyState ? <div className="empty">Add a project to start.</div> : null}
->>>>>>> Stashed changes
         </div>
       </div>
       <SidebarBottomRail

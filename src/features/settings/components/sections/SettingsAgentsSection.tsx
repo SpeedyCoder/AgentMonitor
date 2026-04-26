@@ -61,7 +61,8 @@ export function SettingsAgentsSection({
   modelOptions,
   modelOptionsLoading,
   modelOptionsError,
-}: SettingsAgentsSectionProps) {
+  embedded = false,
+}: SettingsAgentsSectionProps & { embedded?: boolean }) {
   const [openPathError, setOpenPathError] = useState<string | null>(null);
   const [maxThreadsDraft, setMaxThreadsDraft] = useState("6");
   const [maxDepthDraft, setMaxDepthDraft] = useState("1");
@@ -349,11 +350,8 @@ export function SettingsAgentsSection({
     }
   };
 
-  return (
-    <SettingsSection
-      title="Agents"
-      subtitle="Configure multi-agent mode, limits, and custom agent roles."
-    >
+  const content = (
+    <>
       <div className="settings-help settings-agents-builtins-help">
         Built-in roles from Codex are still available: <code>default</code>, <code>explorer</code>,
         and <code>worker</code>.
@@ -862,6 +860,19 @@ export function SettingsAgentsSection({
       {isLoading && <div className="settings-help">Loading agents settings...</div>}
       {openPathError && <div className="settings-agents-error">{openPathError}</div>}
       {error && <div className="settings-agents-error">{error}</div>}
+    </>
+  );
+
+  if (embedded) {
+    return content;
+  }
+
+  return (
+    <SettingsSection
+      title="Agents"
+      subtitle="Configure multi-agent mode, limits, and custom agent roles."
+    >
+      {content}
     </SettingsSection>
   );
 }

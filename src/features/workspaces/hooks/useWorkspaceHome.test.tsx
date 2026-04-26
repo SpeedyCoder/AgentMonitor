@@ -82,18 +82,18 @@ describe("useWorkspaceHome", () => {
 
     expect(startThreadForWorkspace).toHaveBeenCalledWith("wt-1", {
       activate: false,
-      modelId: "codex:gpt-5.1-max",
+      modelId: "gpt-5.1-max",
     });
     expect(sendUserMessageToThread).toHaveBeenCalledWith(
       worktreeWorkspace,
       "thread-1",
       "Hello worktree",
       [],
-      expect.objectContaining({ model: "codex:gpt-5.1-max" }),
+      expect.objectContaining({ model: "gpt-5.1-max" }),
     );
     expect(seedThreadCodexParams).toHaveBeenCalledWith("wt-1", "thread-1", {
       harness: "codex",
-      modelId: "codex:gpt-5.1-max",
+      modelId: "gpt-5.1-max",
       effort: null,
       serviceTier: undefined,
     });
@@ -130,18 +130,18 @@ describe("useWorkspaceHome", () => {
 
     expect(startThreadForWorkspace).toHaveBeenCalledWith("ws-1", {
       activate: false,
-      modelId: "codex:gpt-5.1-max",
+      modelId: "gpt-5.1-max",
     });
     expect(sendUserMessageToThread).toHaveBeenCalledWith(
       workspace,
       "thread-1",
       "",
       ["img-1"],
-      expect.objectContaining({ model: "codex:gpt-5.1-max" }),
+      expect.objectContaining({ model: "gpt-5.1-max" }),
     );
     expect(seedThreadCodexParams).toHaveBeenCalledWith("ws-1", "thread-1", {
       harness: "codex",
-      modelId: "codex:gpt-5.1-max",
+      modelId: "gpt-5.1-max",
       effort: null,
       serviceTier: undefined,
     });
@@ -194,18 +194,18 @@ describe("useWorkspaceHome", () => {
 
     expect(startThreadForWorkspace).toHaveBeenCalledWith("ws-1", {
       activate: false,
-      modelId: "claude:sonnet-4.5",
+      modelId: "sonnet-4.5",
     });
     expect(sendUserMessageToThread).toHaveBeenCalledWith(
       workspace,
       "thread-claude",
       "Hello Claude",
       [],
-      expect.objectContaining({ model: "claude:sonnet-4.5" }),
+      expect.objectContaining({ model: "sonnet-4.5" }),
     );
     expect(seedThreadCodexParams).toHaveBeenCalledWith("ws-1", "thread-claude", {
       harness: "claude",
-      modelId: "claude:sonnet-4.5",
+      modelId: "sonnet-4.5",
       effort: null,
       serviceTier: undefined,
     });

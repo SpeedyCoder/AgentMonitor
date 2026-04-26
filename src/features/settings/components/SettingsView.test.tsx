@@ -853,9 +853,10 @@ describe("SettingsView Environments", () => {
       onUpdateWorkspaceSettings,
     });
 
+    fireEvent.click(screen.getByRole("button", { name: "Project setup" }));
     const textarea = screen.getByPlaceholderText("pnpm install");
     fireEvent.change(textarea, { target: { value: "echo updated" } });
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Save" })[1]);
 
     await waitFor(() => {
       expect(onUpdateWorkspaceSettings).toHaveBeenCalledWith("w1", {
@@ -878,13 +879,14 @@ describe("SettingsView Environments", () => {
       onUpdateWorkspaceSettings,
     });
 
+    fireEvent.click(screen.getByRole("button", { name: "Project setup" }));
     fireEvent.change(screen.getByLabelText("Global worktrees root"), {
       target: { value: "I:/cm-worktrees" },
     });
     fireEvent.change(screen.getByPlaceholderText("pnpm install"), {
       target: { value: "echo updated" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Save" })[1]);
 
     expect(
       await screen.findByText("Failed to save workspace settings"),
@@ -892,7 +894,7 @@ describe("SettingsView Environments", () => {
     expect(onUpdateAppSettings).toHaveBeenCalledTimes(1);
     expect(onUpdateWorkspaceSettings).toHaveBeenCalledTimes(1);
 
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Save" })[1]);
 
     await waitFor(() => {
       expect(onUpdateWorkspaceSettings).toHaveBeenCalledTimes(2);
@@ -1018,11 +1020,12 @@ describe("SettingsView Environments", () => {
       onUpdateWorkspaceSettings,
     });
 
+    fireEvent.click(screen.getByRole("button", { name: "Project setup" }));
     const input = screen.getByLabelText("Global worktrees root");
     const textarea = screen.getByPlaceholderText("pnpm install");
     fireEvent.change(input, { target: { value: "I:/cm-worktrees" } });
     fireEvent.change(textarea, { target: { value: "echo updated" } });
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Save" })[1]);
 
     expect(
       await screen.findByText("Failed to save workspace settings"),
@@ -1043,7 +1046,7 @@ describe("SettingsView Environments", () => {
     expect((input as HTMLInputElement).value).toBe("I:/cm-worktrees");
 
     onUpdateWorkspaceSettings.mockResolvedValueOnce(undefined);
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Save" })[1]);
 
     await waitFor(() => {
       expect(onUpdateWorkspaceSettings).toHaveBeenCalledTimes(2);
@@ -1055,14 +1058,15 @@ describe("SettingsView Environments", () => {
     const onUpdateWorkspaceSettings = vi.fn().mockResolvedValue(undefined);
     renderEnvironmentsSection({ onUpdateWorkspaceSettings });
 
-    expect(
-      screen.getByText("Environments", { selector: ".settings-section-title" }),
-    ).toBeTruthy();
+    expect(screen.getByText("Projects", { selector: ".settings-section-title" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Project setup" }));
     const textarea = screen.getByPlaceholderText("pnpm install");
-    expect((textarea as HTMLTextAreaElement).value).toBe("echo one");
+    await waitFor(() => {
+      expect((textarea as HTMLTextAreaElement).value).toBe("echo one");
+    });
 
     fireEvent.change(textarea, { target: { value: "echo updated" } });
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Save" })[1]);
 
     await waitFor(() => {
       expect(onUpdateWorkspaceSettings).toHaveBeenCalledWith("w1", {
@@ -1076,9 +1080,10 @@ describe("SettingsView Environments", () => {
     const onUpdateWorkspaceSettings = vi.fn().mockResolvedValue(undefined);
     renderEnvironmentsSection({ onUpdateWorkspaceSettings });
 
+    fireEvent.click(screen.getByRole("button", { name: "Project setup" }));
     const textarea = screen.getByPlaceholderText("pnpm install");
     fireEvent.change(textarea, { target: { value: "   \n\t" } });
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Save" })[1]);
 
     await waitFor(() => {
       expect(onUpdateWorkspaceSettings).toHaveBeenCalledWith("w1", {
@@ -1098,6 +1103,7 @@ describe("SettingsView Environments", () => {
 
     try {
       renderEnvironmentsSection();
+      fireEvent.click(screen.getByRole("button", { name: "Project setup" }));
 
       fireEvent.click(screen.getByRole("button", { name: "Copy" }));
 
@@ -1159,6 +1165,67 @@ describe("SettingsView Codex section", () => {
     await waitFor(() => {
       expect(onUpdateAppSettings).toHaveBeenCalledWith(
         expect.objectContaining({ reviewDeliveryMode: "detached" }),
+      );
+    });
+  });
+
+  it("hosts follow-up behavior controls in the Codex section", async () => {
+    cleanup();
+    const onUpdateAppSettings = vi.fn().mockResolvedValue(undefined);
+    render(
+      <SettingsView
+        workspaceGroups={[]}
+        groupedWorkspaces={[]}
+        ungroupedLabel="Ungrouped"
+        onClose={vi.fn()}
+        onMoveWorkspace={vi.fn()}
+        onDeleteWorkspace={vi.fn()}
+        onCreateWorkspaceGroup={vi.fn().mockResolvedValue(null)}
+        onRenameWorkspaceGroup={vi.fn().mockResolvedValue(null)}
+        onMoveWorkspaceGroup={vi.fn().mockResolvedValue(null)}
+        onDeleteWorkspaceGroup={vi.fn().mockResolvedValue(null)}
+        onAssignWorkspaceGroup={vi.fn().mockResolvedValue(null)}
+        appSettings={{
+          ...baseSettings,
+          steerEnabled: true,
+          followUpMessageBehavior: "queue",
+          composerFollowUpHintEnabled: true,
+        }}
+        openAppIconById={{}}
+        onUpdateAppSettings={onUpdateAppSettings}
+        onRunDoctor={vi.fn().mockResolvedValue(createDoctorResult())}
+        onRunCodexUpdate={vi.fn().mockResolvedValue(createUpdateResult())}
+        onUpdateWorkspaceSettings={vi.fn().mockResolvedValue(undefined)}
+        scaleShortcutTitle="Scale shortcut"
+        scaleShortcutText="Use Command +/-"
+        onTestNotificationSound={vi.fn()}
+        onTestSystemNotification={vi.fn()}
+        dictationModelStatus={null}
+        onDownloadDictationModel={vi.fn()}
+        onCancelDictationDownload={vi.fn()}
+        onRemoveDictationModel={vi.fn()}
+        accountRateLimits={null}
+        usageShowRemaining={false}
+        initialSection="codex"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("radio", { name: "Steer" }));
+
+    await waitFor(() => {
+      expect(onUpdateAppSettings).toHaveBeenCalledWith(
+        expect.objectContaining({ followUpMessageBehavior: "steer" }),
+      );
+    });
+
+    const hintTitle = screen.getByText("Show follow-up hint while processing");
+    const hintRow = hintTitle.closest(".settings-toggle-row");
+    expect(hintRow).not.toBeNull();
+    fireEvent.click(within(hintRow as HTMLElement).getByRole("button"));
+
+    await waitFor(() => {
+      expect(onUpdateAppSettings).toHaveBeenCalledWith(
+        expect.objectContaining({ composerFollowUpHintEnabled: false }),
       );
     });
   });
@@ -1728,6 +1795,15 @@ describe("SettingsView Codex defaults", () => {
 });
 
 describe("SettingsView Features", () => {
+  it("routes legacy features section opens to Codex", async () => {
+    renderFeaturesSection();
+
+    await screen.findByText("Config & Flags", {
+      selector: ".settings-subsection-title",
+    });
+    expect(screen.getByText("Codex", { selector: ".settings-section-title" })).toBeTruthy();
+  });
+
   it("updates personality selection", async () => {
     const onUpdateAppSettings = vi.fn().mockResolvedValue(undefined);
     renderFeaturesSection({ onUpdateAppSettings });
@@ -1832,68 +1908,57 @@ describe("SettingsView Features", () => {
 });
 
 describe("SettingsView Composer", () => {
-  it("toggles follow-up hint visibility", async () => {
-    const onUpdateAppSettings = vi.fn().mockResolvedValue(undefined);
-    renderComposerSection({
-      onUpdateAppSettings,
-      appSettings: {
-        composerFollowUpHintEnabled: true,
-      },
-    });
+  it("keeps Composer focused on editor-only controls", async () => {
+    renderComposerSection();
 
-    const hintTitle = await screen.findByText("Show follow-up hint while processing");
-    const hintRow = hintTitle.closest(".settings-toggle-row");
-    expect(hintRow).not.toBeNull();
-    fireEvent.click(within(hintRow as HTMLElement).getByRole("button"));
-
-    await waitFor(() => {
-      expect(onUpdateAppSettings).toHaveBeenCalledWith(
-        expect.objectContaining({ composerFollowUpHintEnabled: false }),
-      );
-    });
+    expect(await screen.findByText("Presets")).toBeTruthy();
+    expect(screen.queryByText("Follow-up behavior")).toBeNull();
+    expect(screen.queryByText("Show follow-up hint while processing")).toBeNull();
+    expect(screen.queryByText("Pause queued messages when a response is required")).toBeNull();
   });
+});
 
-  it("updates follow-up behavior from queue to steer", async () => {
-    const onUpdateAppSettings = vi.fn().mockResolvedValue(undefined);
-    renderComposerSection({
-      onUpdateAppSettings,
-      appSettings: {
-        steerEnabled: true,
-        followUpMessageBehavior: "queue",
-      },
-    });
+describe("SettingsView Navigation", () => {
+  it("renders grouped sidebar navigation without Agents or Features top-level tabs", () => {
+    cleanup();
+    render(
+      <SettingsView
+        workspaceGroups={[]}
+        groupedWorkspaces={[]}
+        ungroupedLabel="Ungrouped"
+        onClose={vi.fn()}
+        onMoveWorkspace={vi.fn()}
+        onDeleteWorkspace={vi.fn()}
+        onCreateWorkspaceGroup={vi.fn().mockResolvedValue(null)}
+        onRenameWorkspaceGroup={vi.fn().mockResolvedValue(null)}
+        onMoveWorkspaceGroup={vi.fn().mockResolvedValue(null)}
+        onDeleteWorkspaceGroup={vi.fn().mockResolvedValue(null)}
+        onAssignWorkspaceGroup={vi.fn().mockResolvedValue(null)}
+        appSettings={baseSettings}
+        openAppIconById={{}}
+        onUpdateAppSettings={vi.fn().mockResolvedValue(undefined)}
+        onRunDoctor={vi.fn().mockResolvedValue(createDoctorResult())}
+        onRunCodexUpdate={vi.fn().mockResolvedValue(createUpdateResult())}
+        onUpdateWorkspaceSettings={vi.fn().mockResolvedValue(undefined)}
+        scaleShortcutTitle="Scale shortcut"
+        scaleShortcutText="Use Command +/-"
+        onTestNotificationSound={vi.fn()}
+        onTestSystemNotification={vi.fn()}
+        dictationModelStatus={null}
+        onDownloadDictationModel={vi.fn()}
+        onCancelDictationDownload={vi.fn()}
+        onRemoveDictationModel={vi.fn()}
+        accountRateLimits={null}
+        usageShowRemaining={false}
+      />,
+    );
 
-    fireEvent.click(screen.getByRole("radio", { name: "Steer" }));
-
-    await waitFor(() => {
-      expect(onUpdateAppSettings).toHaveBeenCalledWith(
-        expect.objectContaining({ followUpMessageBehavior: "steer" }),
-      );
-    });
-  });
-
-  it("disables steer follow-up behavior when steer is unavailable", async () => {
-    const onUpdateAppSettings = vi.fn().mockResolvedValue(undefined);
-    renderComposerSection({
-      onUpdateAppSettings,
-      appSettings: {
-        steerEnabled: false,
-        followUpMessageBehavior: "queue",
-      },
-    });
-
-    const steerOption = screen.getByRole("radio", { name: "Steer" });
-    expect(steerOption.hasAttribute("disabled")).toBe(true);
-    expect(
-      screen.getByText(
-        "Steer is unavailable in the current Codex config. Follow-ups will queue.",
-      ),
-    ).not.toBeNull();
-
-    fireEvent.click(steerOption);
-    await waitFor(() => {
-      expect(onUpdateAppSettings).not.toHaveBeenCalled();
-    });
+    expect(screen.getByText("Workspace")).toBeTruthy();
+    expect(screen.getByText("Editor")).toBeTruthy();
+    expect(screen.getByText("Application")).toBeTruthy();
+    expect(screen.getByText("Harnesses")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Agents" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Features" })).toBeNull();
   });
 });
 

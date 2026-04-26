@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import type { AgentHarness } from "@/features/models/utils/modelRuntime";
-import { harnessForModelId } from "@/features/models/utils/modelRuntime";
+import {
+  harnessForModelId,
+  providerModelIdForModelId,
+} from "@/features/models/utils/modelRuntime";
 import { pushErrorToast } from "@/services/toasts";
 import type {
   AccessMode,
@@ -303,20 +306,21 @@ export function useThreadSelectionHandlersOrchestration({
   const handleSelectModel = useCallback(
     (id: string | null) => {
       const nextHarness = harnessForModelId(id) ?? "codex";
+      const providerModelId = providerModelIdForModelId(id);
       setSelectedHarness?.(nextHarness);
       setSelectedModelId(id);
       const hasActiveThread = Boolean(activeThreadIdRef.current);
       if (!appSettingsLoading && !hasActiveThread) {
         setAppSettings((current) => {
-          if (current.lastComposerModelId === id) {
+          if (current.lastComposerModelId === providerModelId) {
             return current;
           }
-          const nextSettings = { ...current, lastComposerModelId: id };
+          const nextSettings = { ...current, lastComposerModelId: providerModelId };
           void queueSaveSettings(nextSettings);
           return nextSettings;
         });
       }
-      persistThreadCodexParams({ harness: nextHarness, modelId: id });
+      persistThreadCodexParams({ harness: nextHarness, modelId: providerModelId });
     },
     [
       activeThreadIdRef,

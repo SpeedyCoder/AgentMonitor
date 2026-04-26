@@ -92,12 +92,10 @@ export function SettingsFeaturesSection({
   onOpenConfig,
   onToggleCodexFeature,
   onUpdateAppSettings,
-}: SettingsFeaturesSectionProps) {
-  return (
-    <SettingsSection
-      title="Features"
-      subtitle="Manage stable and experimental Codex features."
-    >
+  embedded = false,
+}: SettingsFeaturesSectionProps & { embedded?: boolean }) {
+  const content = (
+    <>
       <SettingsToggleRow
         title="Config file"
         subtitle={`Open the Codex config in ${fileManagerName()}.`}
@@ -205,6 +203,19 @@ export function SettingsFeaturesSection({
         </div>
       )}
       {featureError && <div className="settings-help">{featureError}</div>}
+    </>
+  );
+
+  if (embedded) {
+    return content;
+  }
+
+  return (
+    <SettingsSection
+      title="Features"
+      subtitle="Manage stable and experimental Codex features."
+    >
+      {content}
     </SettingsSection>
   );
 }

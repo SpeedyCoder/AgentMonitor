@@ -40,6 +40,56 @@ describe("useThreadCodexParams", () => {
     expect(persisted["ws-1:thread-1"]).toBeTruthy();
   });
 
+  it("stores provider model IDs without harness prefixes", () => {
+    const { result } = renderHook(() => useThreadCodexParams());
+
+    act(() => {
+      result.current.patchThreadCodexParams("ws-1", "thread-prefixed", {
+        harness: "codex",
+        modelId: "codex:gpt-5.4",
+      });
+    });
+
+    expect(result.current.getThreadCodexParams("ws-1", "thread-prefixed")).toEqual(
+      expect.objectContaining({
+        harness: "codex",
+        modelId: "gpt-5.4",
+      }),
+    );
+
+    const persisted = JSON.parse(
+      window.localStorage.getItem(STORAGE_KEY_THREAD_CODEX_PARAMS) ?? "{}",
+    ) as Record<string, { modelId?: string }>;
+    expect(persisted["ws-1:thread-prefixed"].modelId).toBe("gpt-5.4");
+  });
+
+  it("normalizes legacy prefixed persisted model IDs on read", () => {
+    window.localStorage.setItem(
+      STORAGE_KEY_THREAD_CODEX_PARAMS,
+      JSON.stringify({
+        "ws-1:thread-legacy-prefix": {
+          harness: "codex",
+          modelId: "codex:gpt-5.4",
+          effort: null,
+          serviceTier: null,
+          accessMode: null,
+          collaborationModeId: null,
+          codexArgsOverride: null,
+          updatedAt: 123,
+        },
+      }),
+    );
+
+    const { result } = renderHook(() => useThreadCodexParams());
+
+    expect(result.current.getThreadCodexParams("ws-1", "thread-legacy-prefix")).toEqual(
+      expect.objectContaining({
+        harness: "codex",
+        modelId: "gpt-5.4",
+      }),
+    );
+  });
+
   it("sanitizes malformed persisted entries", () => {
     window.localStorage.setItem(
       STORAGE_KEY_THREAD_CODEX_PARAMS,

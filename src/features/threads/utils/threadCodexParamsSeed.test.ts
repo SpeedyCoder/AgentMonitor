@@ -483,7 +483,7 @@ describe("threadCodexParamsSeed", () => {
     expect(
       buildThreadCodexSeedPatch({
         workspaceId: "ws-1",
-        selectedModelId: "gpt-5",
+        selectedModelId: "codex:gpt-5",
         resolvedEffort: "high",
         accessMode: "current",
         selectedCollaborationModeId: "default",

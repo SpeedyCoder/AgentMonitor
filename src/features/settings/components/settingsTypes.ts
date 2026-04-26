@@ -2,7 +2,6 @@ import type { OpenAppTarget } from "@/types";
 
 export const SETTINGS_SECTION_IDS = [
   "projects",
-  "environments",
   "display",
   "about",
   "composer",
@@ -14,7 +13,11 @@ export const SETTINGS_SECTION_IDS = [
 ] as const;
 
 export const SETTINGS_EXTRA_SECTION_IDS = ["codex", "claude"] as const;
-export const SETTINGS_LEGACY_ROUTE_SECTION_IDS = ["agents", "features"] as const;
+export const SETTINGS_LEGACY_ROUTE_SECTION_IDS = [
+  "agents",
+  "features",
+  "environments",
+] as const;
 
 export const SETTINGS_ROUTE_SECTION_IDS = [
   ...SETTINGS_SECTION_IDS,
@@ -38,6 +41,9 @@ export function normalizeSettingsRouteSection(
 ): CodexSection | undefined {
   if (section === "agents" || section === "features") {
     return "codex";
+  }
+  if (section === "environments") {
+    return "projects";
   }
   return section;
 }

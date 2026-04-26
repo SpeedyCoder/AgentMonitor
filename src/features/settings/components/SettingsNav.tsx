@@ -1,3 +1,4 @@
+import type { ReactElement } from "react";
 import LayoutGrid from "lucide-react/dist/esm/icons/layout-grid";
 import SlidersHorizontal from "lucide-react/dist/esm/icons/sliders-horizontal";
 import Mic from "lucide-react/dist/esm/icons/mic";
@@ -5,7 +6,6 @@ import Keyboard from "lucide-react/dist/esm/icons/keyboard";
 import GitBranch from "lucide-react/dist/esm/icons/git-branch";
 import TerminalSquare from "lucide-react/dist/esm/icons/terminal-square";
 import ExternalLink from "lucide-react/dist/esm/icons/external-link";
-import Layers from "lucide-react/dist/esm/icons/layers";
 import ServerCog from "lucide-react/dist/esm/icons/server-cog";
 import Sparkles from "lucide-react/dist/esm/icons/sparkles";
 import Info from "lucide-react/dist/esm/icons/info";
@@ -23,14 +23,13 @@ const SETTINGS_NAV_GROUPS: Array<{
   items: Array<{
     section: CodexSection;
     label: string;
-    icon: JSX.Element;
+    icon: ReactElement;
   }>;
 }> = [
   {
     label: "Workspace",
     items: [
       { section: "projects", label: "Projects", icon: <LayoutGrid aria-hidden /> },
-      { section: "environments", label: "Environments", icon: <Layers aria-hidden /> },
     ],
   },
   {

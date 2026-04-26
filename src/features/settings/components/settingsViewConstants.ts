@@ -75,7 +75,6 @@ export const DEFAULT_REMOTE_HOST = "127.0.0.1:4732";
 
 export const SETTINGS_SECTION_LABELS: Record<CodexSection, string> = {
   projects: "Projects",
-  environments: "Environments",
   display: "Display & Sound",
   about: "About",
   composer: "Composer",

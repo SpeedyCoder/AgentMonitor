@@ -148,6 +148,21 @@ describe("useThreadSelectionHandlersOrchestration codex args selection", () => {
     });
   });
 
+  it("persists the harness separately from prefixed model IDs", () => {
+    const params = makeSelectionParams();
+    const { result } = renderHook(() => useThreadSelectionHandlersOrchestration(params));
+
+    act(() => {
+      result.current.handleSelectModel("codex:gpt-5.4");
+    });
+
+    expect(params.setSelectedModelId).toHaveBeenCalledWith("codex:gpt-5.4");
+    expect(params.persistThreadCodexParams).toHaveBeenCalledWith({
+      harness: "codex",
+      modelId: "gpt-5.4",
+    });
+  });
+
   it("normalizes smart quotes/dashes before persisting selected override", () => {
     const params = makeSelectionParams();
     const { result } = renderHook(() => useThreadSelectionHandlersOrchestration(params));

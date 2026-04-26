@@ -1,5 +1,8 @@
 import type { AgentHarness } from "@/features/models/utils/modelRuntime";
-import { harnessForModelId } from "@/features/models/utils/modelRuntime";
+import {
+  harnessForModelId,
+  providerModelIdForModelId,
+} from "@/features/models/utils/modelRuntime";
 import type { AccessMode, ServiceTier } from "@/types";
 import {
   buildEffectiveCodexArgsBadgeLabel,
@@ -155,7 +158,7 @@ export function resolveThreadCodexState(
       scopeKey: `${workspaceId}:${NO_THREAD_SCOPE_SUFFIX}`,
       preferredHarness,
       accessMode: stored?.accessMode ?? defaultAccessMode,
-      preferredModelId: stored?.modelId ?? lastComposerModelId ?? null,
+      preferredModelId: providerModelIdForModelId(stored?.modelId ?? lastComposerModelId),
       preferredEffort: stored?.effort ?? lastComposerReasoningEffort ?? null,
       preferredServiceTier: stored?.serviceTier,
       preferredCollabModeId: stored?.collaborationModeId ?? null,
@@ -176,7 +179,9 @@ export function resolveThreadCodexState(
     preferredHarness,
     accessMode: stored?.accessMode ?? pendingForWorkspace?.accessMode ?? defaultAccessMode,
     preferredModelId:
-      stored?.modelId ?? noThreadStored?.modelId ?? lastComposerModelId ?? null,
+      providerModelIdForModelId(
+        stored?.modelId ?? noThreadStored?.modelId ?? lastComposerModelId,
+      ),
     preferredEffort:
       stored?.effort ?? noThreadStored?.effort ?? lastComposerReasoningEffort ?? null,
     preferredServiceTier:
@@ -223,7 +228,7 @@ export function buildThreadCodexSeedPatch(options: {
 
   return {
     harness: pendingForWorkspace?.harness ?? selectedHarness,
-    modelId: selectedModelId,
+    modelId: providerModelIdForModelId(selectedModelId),
     effort: resolvedEffort,
     serviceTier: pendingForWorkspace ? pendingForWorkspace.serviceTier : undefined,
     accessMode: pendingForWorkspace?.accessMode ?? accessMode,
