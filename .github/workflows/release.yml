@@ -44,6 +44,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Bundle ACP adapters
+        run: ./scripts/bundle_acp_agents.sh || echo "ACP adapter bundling skipped (may be pre-bundled)"
+
       - name: Import signing certificate
         env:
           APPLE_CERTIFICATE_P12: ${{ secrets.APPLE_CERTIFICATE_P12 }}

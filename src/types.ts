@@ -1,3 +1,5 @@
+export type AgentRuntime = "codex" | "claude";
+
 export type WorkspaceSettings = {
   sidebarCollapsed: boolean;
   sortOrder?: number | null;
@@ -7,6 +9,7 @@ export type WorkspaceSettings = {
   launchScripts?: LaunchScriptEntry[] | null;
   worktreeSetupScript?: string | null;
   worktreesFolder?: string | null;
+  agentRuntime?: AgentRuntime | null;
 };
 
 export type LaunchScriptIconId =
@@ -312,6 +315,8 @@ export type AppSettings = {
   defaultWorktreeBranchFormat: string;
   openAppTargets: OpenAppTarget[];
   selectedOpenAppId: string;
+  codexApiKey?: string | null;
+  claudeApiKey?: string | null;
 };
 
 export type CodexFeatureStage =

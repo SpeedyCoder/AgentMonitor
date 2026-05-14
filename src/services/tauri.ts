@@ -40,45 +40,47 @@ function isMissingTauriInvokeError(error: unknown) {
   );
 }
 
-function providerModelIdForRpc(modelId: string | null | undefined): string | null {
-  if (typeof modelId !== "string") {
-    return null;
-  }
-  const trimmed = modelId.trim();
-  if (!trimmed) {
-    return null;
-  }
-  return (
-    trimmed.startsWith("codex:")
-      ? trimmed.slice("codex:".length)
-      : trimmed.startsWith("claude:")
-        ? trimmed.slice("claude:".length)
-        : trimmed
-  ).trim();
-}
+// ACP mode does not use provider model ID normalization
+// function providerModelIdForRpc(modelId: string | null | undefined): string | null {
+//   if (typeof modelId !== "string") {
+//     return null;
+//   }
+//   const trimmed = modelId.trim();
+//   if (!trimmed) {
+//     return null;
+//   }
+//   return (
+//     trimmed.startsWith("codex:")
+//       ? trimmed.slice("codex:".length)
+//       : trimmed.startsWith("claude:")
+//         ? trimmed.slice("claude:".length)
+//         : trimmed
+//   ).trim();
+// }
 
-function normalizeCollaborationModeForRpc(
-  collaborationMode: Record<string, unknown> | null | undefined,
-): Record<string, unknown> | null | undefined {
-  if (!collaborationMode) {
-    return collaborationMode;
-  }
-  const settings = collaborationMode.settings;
-  if (!settings || typeof settings !== "object") {
-    return collaborationMode;
-  }
-  const settingsRecord = settings as Record<string, unknown>;
-  if (typeof settingsRecord.model !== "string") {
-    return collaborationMode;
-  }
-  return {
-    ...collaborationMode,
-    settings: {
-      ...settingsRecord,
-      model: providerModelIdForRpc(settingsRecord.model),
-    },
-  };
-}
+// ACP mode does not use collaboration mode normalization
+// function normalizeCollaborationModeForRpc(
+//   collaborationMode: Record<string, unknown> | null | undefined,
+// ): Record<string, unknown> | null | undefined {
+//   if (!collaborationMode) {
+//     return collaborationMode;
+//   }
+//   const settings = collaborationMode.settings;
+//   if (!settings || typeof settings !== "object") {
+//     return collaborationMode;
+//   }
+//   const settingsRecord = settings as Record<string, unknown>;
+//   if (typeof settingsRecord.model !== "string") {
+//     return collaborationMode;
+//   }
+//   return {
+//     ...collaborationMode,
+//     settings: {
+//       ...settingsRecord,
+//       model: providerModelIdForRpc(settingsRecord.model),
+//     },
+//   };
+// }
 
 export async function pickWorkspacePath(): Promise<string | null> {
   const selection = await open({ directory: true, multiple: false });
@@ -422,10 +424,10 @@ export async function setWorkspaceRuntimeCodexArgs(
   });
 }
 
-export async function startThread(workspaceId: string, modelId?: string | null) {
-  return invoke<any>("start_thread", {
+export async function startThread(workspaceId: string, _modelId?: string | null) {
+  // ACP uses workspace settings for agent runtime, modelId is ignored for now
+  return invoke<any>("acp_start_thread", {
     workspaceId,
-    modelId: providerModelIdForRpc(modelId),
   });
 }
 
@@ -434,7 +436,7 @@ export async function forkThread(workspaceId: string, threadId: string) {
 }
 
 export async function compactThread(workspaceId: string, threadId: string) {
-  return invoke<any>("compact_thread", { workspaceId, threadId });
+  return invoke<any>("acp_compact_thread", { workspaceId, threadId });
 }
 
 function isInlineImageUrl(image: string) {
@@ -497,27 +499,16 @@ export async function sendUserMessage(
     appMentions?: AppMention[];
   },
 ) {
+  // ACP uses simplified message format - only text and images for now
+  // Model, effort, etc. are configured per-workspace in ACP mode
   const images = await normalizeImagesForRpc(options?.images);
-  const payload: Record<string, unknown> = {
+  const payload = {
     workspaceId,
     threadId,
     text,
-    model: providerModelIdForRpc(options?.model),
-    effort: options?.effort ?? null,
-    accessMode: options?.accessMode ?? null,
     images,
   };
-  if (options?.serviceTier !== undefined) {
-    payload.serviceTier = options.serviceTier;
-  }
-  const collaborationMode = normalizeCollaborationModeForRpc(options?.collaborationMode);
-  if (collaborationMode) {
-    payload.collaborationMode = collaborationMode;
-  }
-  if (options?.appMentions && options.appMentions.length > 0) {
-    payload.appMentions = options.appMentions;
-  }
-  return invoke("send_user_message", payload);
+  return invoke("acp_send_user_message", payload);
 }
 
 export async function interruptTurn(
@@ -525,7 +516,7 @@ export async function interruptTurn(
   threadId: string,
   turnId: string,
 ) {
-  return invoke("turn_interrupt", { workspaceId, threadId, turnId });
+  return invoke("acp_turn_interrupt", { workspaceId, threadId, turnId });
 }
 
 export async function steerTurn(
@@ -533,21 +524,16 @@ export async function steerTurn(
   threadId: string,
   turnId: string,
   text: string,
-  images?: string[],
-  appMentions?: AppMention[],
+  _images?: string[],
+  _appMentions?: AppMention[],
 ) {
-  const normalizedImages = await normalizeImagesForRpc(images);
-  const payload: Record<string, unknown> = {
+  // ACP uses simplified steering - text only for now
+  return invoke("acp_turn_steer", {
     workspaceId,
     threadId,
     turnId,
     text,
-    images: normalizedImages,
-  };
-  if (appMentions && appMentions.length > 0) {
-    payload.appMentions = appMentions;
-  }
-  return invoke("turn_steer", payload);
+  });
 }
 
 export async function startReview(
@@ -1141,11 +1127,12 @@ export async function closeTerminalSession(
 
 export async function listThreads(
   workspaceId: string,
-  cursor?: string | null,
-  limit?: number | null,
-  sortKey?: "created_at" | "updated_at" | null,
+  _cursor?: string | null,
+  _limit?: number | null,
+  _sortKey?: "created_at" | "updated_at" | null,
 ) {
-  return invoke<any>("list_threads", { workspaceId, cursor, limit, sortKey });
+  // ACP uses simplified listing - sortKey, cursor, limit not yet supported
+  return invoke<any>("acp_list_threads", { workspaceId });
 }
 
 export async function listMcpServerStatus(
@@ -1173,7 +1160,7 @@ export async function threadLiveUnsubscribe(workspaceId: string, threadId: strin
 }
 
 export async function archiveThread(workspaceId: string, threadId: string) {
-  return invoke<any>("archive_thread", { workspaceId, threadId });
+  return invoke<any>("acp_archive_thread", { workspaceId, threadId });
 }
 
 export async function setThreadName(
@@ -1181,7 +1168,7 @@ export async function setThreadName(
   threadId: string,
   name: string,
 ) {
-  return invoke<any>("set_thread_name", { workspaceId, threadId, name });
+  return invoke<any>("acp_set_thread_name", { workspaceId, threadId, name });
 }
 
 export async function setTrayRecentThreads(entries: TrayRecentThreadEntry[]) {

@@ -394,6 +394,8 @@ pub(crate) struct WorkspaceSettings {
     pub(crate) worktree_setup_script: Option<String>,
     #[serde(default, rename = "worktreesFolder")]
     pub(crate) worktrees_folder: Option<String>,
+    #[serde(default, rename = "agentRuntime")]
+    pub(crate) agent_runtime: Option<AgentRuntime>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -740,6 +742,10 @@ pub(crate) struct AppSettings {
     pub(crate) open_app_targets: Vec<OpenAppTarget>,
     #[serde(default = "default_selected_open_app_id", rename = "selectedOpenAppId")]
     pub(crate) selected_open_app_id: String,
+    #[serde(default, rename = "codexApiKey")]
+    pub(crate) codex_api_key: Option<String>,
+    #[serde(default, rename = "claudeApiKey")]
+    pub(crate) claude_api_key: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -1284,6 +1290,8 @@ impl Default for AppSettings {
             default_worktree_branch_format: default_worktree_branch_format(),
             open_app_targets: default_open_app_targets(),
             selected_open_app_id: default_selected_open_app_id(),
+            codex_api_key: None,
+            claude_api_key: None,
         }
     }
 }

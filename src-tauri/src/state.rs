@@ -5,6 +5,7 @@ use tauri::{AppHandle, Manager};
 use tokio::process::Child;
 use tokio::sync::Mutex;
 
+use crate::acp::SessionManager;
 use crate::dictation::DictationState;
 use crate::shared::codex_core::CodexLoginCancelState;
 use crate::storage::{read_settings, read_workspaces};
@@ -33,6 +34,7 @@ impl Default for TcpDaemonRuntime {
 pub(crate) struct AppState {
     pub(crate) workspaces: Mutex<HashMap<String, WorkspaceEntry>>,
     pub(crate) sessions: Mutex<HashMap<String, Arc<crate::codex::WorkspaceSession>>>,
+    pub(crate) acp_sessions: SessionManager,
     pub(crate) terminal_sessions: Mutex<HashMap<String, Arc<crate::terminal::TerminalSession>>>,
     pub(crate) remote_backend: Mutex<Option<crate::remote_backend::RemoteBackend>>,
     pub(crate) storage_path: PathBuf,
@@ -56,6 +58,7 @@ impl AppState {
         Self {
             workspaces: Mutex::new(workspaces),
             sessions: Mutex::new(HashMap::new()),
+            acp_sessions: SessionManager::new(),
             terminal_sessions: Mutex::new(HashMap::new()),
             remote_backend: Mutex::new(None),
             storage_path,

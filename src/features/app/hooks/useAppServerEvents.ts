@@ -111,8 +111,13 @@ export const METHODS_ROUTED_IN_USE_APP_SERVER_EVENTS = [
   "account/login/completed",
   "account/rateLimits/updated",
   "account/updated",
+  "agent_message_chunk",
+  "agent_thought_chunk",
+  "available_commands_update",
   "codex/backgroundThread",
   "codex/connected",
+  "config_option_update",
+  "current_mode_update",
   "error",
   "hook/completed",
   "hook/started",
@@ -127,6 +132,8 @@ export const METHODS_ROUTED_IN_USE_APP_SERVER_EVENTS = [
   "item/reasoning/textDelta",
   "item/started",
   "item/tool/requestUserInput",
+  "plan",
+  "session_info_update",
   "thread/archived",
   "thread/closed",
   "thread/name/updated",
@@ -134,10 +141,13 @@ export const METHODS_ROUTED_IN_USE_APP_SERVER_EVENTS = [
   "thread/started",
   "thread/tokenUsage/updated",
   "thread/unarchived",
+  "tool_call",
+  "tool_call_update",
   "turn/completed",
   "turn/diff/updated",
   "turn/plan/updated",
   "turn/started",
+  "user_message_chunk",
 ] as const satisfies readonly SupportedAppServerMethod[];
 
 function parseHookEvent(
@@ -560,6 +570,115 @@ export function useAppServerEvents(handlers: AppServerEventHandlers) {
         if (threadId && itemId && delta) {
           currentHandlers.onFileChangeOutputDelta?.(workspace_id, threadId, itemId, delta);
         }
+        return;
+      }
+
+      // ACP notification handlers
+      if (method === "agent_message_chunk") {
+        // ACP sends message chunks as assistant messages
+        const threadId = String(params.threadId ?? params.thread_id ?? "");
+        const content = params.content as Record<string, unknown> | null;
+        const text = String(content?.text ?? content ?? "");
+        if (text) {
+          currentHandlers.onAgentMessageDelta?.({
+            workspaceId: workspace_id,
+            threadId,
+            itemId: "",
+            delta: text,
+          });
+        }
+        return;
+      }
+
+      if (method === "agent_thought_chunk") {
+        // ACP thought chunks map to reasoning deltas
+        const threadId = String(params.threadId ?? params.thread_id ?? "");
+        const content = params.content as Record<string, unknown> | null;
+        const thoughtText = String(content?.text ?? content ?? "");
+        if (threadId && thoughtText) {
+          currentHandlers.onReasoningTextDelta?.(workspace_id, threadId, "", thoughtText);
+        }
+        return;
+      }
+
+      if (method === "tool_call") {
+        // ACP tool call notification
+        const toolCall = params.toolCall as Record<string, unknown> | null;
+        if (toolCall) {
+          const threadId = String(params.threadId ?? params.thread_id ?? "");
+          currentHandlers.onItemStarted?.(workspace_id, threadId, {
+            ...toolCall,
+            type: "toolCall",
+          });
+        }
+        return;
+      }
+
+      if (method === "tool_call_update") {
+        // ACP tool call update notification
+        const update = params.update as Record<string, unknown> | null;
+        if (update) {
+          const threadId = String(params.threadId ?? params.thread_id ?? "");
+          const itemId = String(params.itemId ?? params.item_id ?? "");
+          const delta = String(update.delta ?? "");
+          if (threadId && itemId && delta) {
+            currentHandlers.onCommandOutputDelta?.(workspace_id, threadId, itemId, delta);
+          }
+        }
+        return;
+      }
+
+      if (method === "plan") {
+        // ACP plan notification
+        const plan = params.plan as Record<string, unknown> | null;
+        if (plan) {
+          const threadId = String(params.threadId ?? params.thread_id ?? "");
+          currentHandlers.onTurnPlanUpdated?.(workspace_id, threadId, "", {
+            explanation: plan.explanation,
+            plan: plan.plan,
+          });
+        }
+        return;
+      }
+
+      if (method === "session_info_update") {
+        // ACP session info update (thread name/title)
+        const title = params.title as string | null | undefined;
+        const threadId = String(params.threadId ?? params.thread_id ?? "");
+        if (threadId) {
+          currentHandlers.onThreadNameUpdated?.(workspace_id, {
+            threadId,
+            threadName: title ?? null,
+          });
+        }
+        return;
+      }
+
+      if (method === "user_message_chunk") {
+        // ACP user message echo - typically echoed back, can be ignored
+        // const content = params.content as Record<string, unknown> | null;
+        // const _text = String(content?.text ?? content ?? "");
+        return;
+      }
+
+      if (method === "available_commands_update") {
+        // ACP available commands update
+        // const availableCommands = params.availableCommands as Record<string, unknown>[] | null;
+        // This could trigger a capabilities update
+        return;
+      }
+
+      if (method === "current_mode_update") {
+        // ACP current mode update
+        // const currentModeId = params.currentModeId as string | null | undefined;
+        // This could trigger a mode change notification
+        return;
+      }
+
+      if (method === "config_option_update") {
+        // ACP config option update
+        // const configOptions = params.configOptions as Record<string, unknown> | null;
+        // This could trigger a config update
         return;
       }
     });

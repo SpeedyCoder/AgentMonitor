@@ -6,6 +6,7 @@ use tauri::RunEvent;
 #[cfg(target_os = "macos")]
 use tauri::WindowEvent;
 
+mod acp;
 mod backend;
 mod claude;
 mod codex;
@@ -210,13 +211,17 @@ pub fn run() {
             workspaces::apply_worktree_changes,
             workspaces::update_workspace_settings,
             workspaces::set_workspace_runtime_codex_args,
-            codex::start_thread,
-            codex::send_user_message,
-            codex::turn_steer,
-            codex::turn_interrupt,
+            acp::acp_start_thread,
+            acp::acp_send_user_message,
+            acp::acp_turn_steer,
+            acp::acp_turn_interrupt,
             codex::start_review,
             codex::respond_to_server_request,
             codex::remember_approval_rule,
+            acp::acp_list_threads,
+            acp::acp_archive_thread,
+            acp::acp_set_thread_name,
+            acp::acp_compact_thread,
             codex::generate_commit_message,
             codex::generate_run_metadata,
             codex::generate_agent_description,
@@ -225,11 +230,7 @@ pub fn run() {
             codex::thread_live_subscribe,
             codex::thread_live_unsubscribe,
             codex::fork_thread,
-            codex::list_threads,
             codex::list_mcp_server_status,
-            codex::archive_thread,
-            codex::compact_thread,
-            codex::set_thread_name,
             codex::collaboration_mode_list,
             workspaces::connect_workspace,
             git::get_git_status,
