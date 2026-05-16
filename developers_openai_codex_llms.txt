@@ -1,0 +1,1063 @@
+### Windows Sandbox Setup Start
+
+Source: https://developers.openai.com/codex/app-server
+
+Initiates the Windows sandbox setup process asynchronously.
+
+```APIDOC
+## windowsSandbox/setupStart
+
+### Description
+Custom Windows clients can trigger sandbox setup asynchronously instead of blocking on startup checks. This method starts the setup process in the background.
+
+### Method
+POST
+
+### Endpoint
+/windowsSandbox/setupStart
+
+### Parameters
+#### Request Body
+- **mode** (string) - Required - The sandbox setup mode. Can be `elevated` or `unelevated`.
+
+### Request Example
+```json
+{
+  "method": "windowsSandbox/setupStart",
+  "id": 53,
+  "params": { "mode": "elevated" }
+}
+```
+
+### Response
+#### Success Response (200)
+- **started** (boolean) - Indicates whether the setup process was successfully started.
+
+#### Response Example
+```json
+{
+  "id": 53,
+  "result": { "started": true }
+}
+```
+```
+
+--------------------------------
+
+### Install Tools and Dependencies with Setup Scripts
+
+Source: https://developers.openai.com/codex/cloud/environments
+
+Use setup scripts to install custom tools like type checkers and manage project dependencies with package managers like Poetry and pnpm. Commands like `export` in setup scripts do not persist to the agent phase.
+
+```bash
+# Install type checker
+pip install pyright
+
+# Install dependencies
+poetry install --with test
+pnpm install
+```
+
+--------------------------------
+
+### Install Curated Skill using Skill Installer
+
+Source: https://developers.openai.com/codex/skills/create-skill
+
+Install a curated skill for local use with the `$skill-installer` command. This is useful for local setup and experimentation. For example, to install the `$linear` skill.
+
+```bash
+$skill-installer linear
+
+```
+
+--------------------------------
+
+### Start Windows Sandbox Setup
+
+Source: https://developers.openai.com/codex/app-server
+
+Initiates the Windows sandbox setup process in either `elevated` or `unelevated` mode. This operation returns quickly and later emits a completion event.
+
+```APIDOC
+## windowsSandbox/setupStart
+
+### Description
+Starts Windows sandbox setup for `elevated` or `unelevated` mode; returns quickly and later emits `windowsSandbox/setupCompleted`.
+
+### Method
+POST
+
+### Endpoint
+/windowsSandbox/setupStart
+
+### Request Body
+- **mode** (string) - Required - The setup mode. Allowed values: `"elevated"`, `"unelevated"`.
+```
+
+--------------------------------
+
+### Install Default Linux Distribution and Start WSL Shell
+
+Source: https://developers.openai.com/codex/windows
+
+Install the default Linux distribution (e.g., Ubuntu) and then start a shell within the Windows Subsystem for Linux. These commands are run from an elevated PowerShell or Windows Terminal.
+
+```powershell
+# Install default Linux distribution (like Ubuntu)
+wsl --install
+
+# Start a shell inside Windows Subsystem for Linux
+wsl
+```
+
+--------------------------------
+
+### Start Windows Sandbox Setup
+
+Source: https://developers.openai.com/codex/app-server
+
+Initiates the Windows sandbox setup process asynchronously. Supports 'elevated' or 'unelevated' modes. A 'windowsSandbox/setupCompleted' notification is emitted upon completion.
+
+```json
+{ "method": "windowsSandbox/setupStart", "id": 53, "params": { "mode": "elevated" } }
+```
+
+```json
+{ "id": 53, "result": { "started": true } }
+```
+
+```json
+{ "method": "windowsSandbox/setupCompleted", "params": { "mode": "elevated", "success": true, "error": null } }
+```
+
+--------------------------------
+
+### Install Dependencies and Build TypeScript Project
+
+Source: https://developers.openai.com/codex/app/local-environments
+
+Use this setup script for TypeScript projects to install dependencies and perform an initial build. It ensures the project is ready when a new worktree is created.
+
+```bash
+npm install
+npm run build
+```
+
+--------------------------------
+
+### Complete Plugin Manifest Example
+
+Source: https://developers.openai.com/codex/plugins/build
+
+This is a comprehensive example of a `plugin.json` manifest file. It includes fields for package metadata, pointers to bundled components like skills, apps, and MCP servers, and detailed interface configurations for install surfaces.
+
+```json
+{
+  "name": "my-plugin",
+  "version": "0.1.0",
+  "description": "Bundle reusable skills and app integrations.",
+  "author": {
+    "name": "Your team",
+    "email": "team@example.com",
+    "url": "https://example.com"
+  },
+  "homepage": "https://example.com/plugins/my-plugin",
+  "repository": "https://github.com/example/my-plugin",
+  "license": "MIT",
+  "keywords": ["research", "crm"],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "apps": "./.app.json",
+  "interface": {
+    "displayName": "My Plugin",
+    "shortDescription": "Reusable skills and apps",
+    "longDescription": "Distribute skills and app integrations together.",
+    "developerName": "Your team",
+    "category": "Productivity",
+    "capabilities": ["Read", "Write"],
+    "websiteURL": "https://example.com",
+    "privacyPolicyURL": "https://example.com/privacy",
+    "termsOfServiceURL": "https://example.com/terms",
+    "defaultPrompt": [
+      "Use My Plugin to summarize new CRM notes.",
+      "Use My Plugin to triage new customer follow-ups."
+    ],
+    "brandColor": "#10A37F",
+    "composerIcon": "./assets/icon.png",
+    "logo": "./assets/logo.png",
+    "screenshots": ["./assets/screenshot-1.png"]
+  }
+}
+```
+
+--------------------------------
+
+### TypeScript SDK - Start Thread and Run Prompt
+
+Source: https://developers.openai.com/codex/sdk
+
+Demonstrates how to initialize the Codex SDK, start a new thread, and run an initial prompt to get a result.
+
+```APIDOC
+## TypeScript SDK Usage
+
+### Description
+Start a thread with Codex and run it with your prompt.
+
+### Method
+```ts
+const codex = new Codex();
+const thread = codex.startThread();
+const result = await thread.run(
+  "Make a plan to diagnose and fix the CI failures"
+);
+
+console.log(result);
+```
+```
+
+--------------------------------
+
+### Add Context7 MCP Server via CLI
+
+Source: https://developers.openai.com/codex/mcp
+
+Example of adding the Context7 MCP server using the CLI. This command installs and runs the server using npx.
+
+```bash
+codex mcp add context7 -- npx -y @upstash/context7-mcp
+```
+
+--------------------------------
+
+### Example Codex Configuration (config.toml)
+
+Source: https://developers.openai.com/codex/config-sample
+
+This TOML file lists the main keys Codex reads from `config.toml`. Adjust values for your specific setup. Root keys must appear before tables.
+
+```toml
+# Codex example configuration (config.toml)
+#
+# This file lists the main keys Codex reads from config.toml, along with default
+# behaviors, recommended examples, and concise explanations. Adjust as needed.
+#
+# Notes
+# - Root keys must appear before tables in TOML.
+# - Optional keys that default to "unset" are shown commented out with notes.
+# - MCP servers, profiles, and model providers are examples; remove or edit.
+
+################################################################################
+# Core Model Selection
+################################################################################
+
+# Primary model used by Codex. Recommended example for most users: "gpt-5.5".
+model = "gpt-5.5"
+
+# Communication style for supported models. Allowed values: none | friendly | pragmatic
+# personality = "pragmatic"
+
+# Optional model override for /review. Default: unset (uses current session model).
+# review_model = "gpt-5.5"
+
+# Provider id selected from [model_providers]. Default: "openai".
+model_provider = "openai"
+
+# Default OSS provider for --oss sessions. When unset, Codex prompts. Default: unset.
+# oss_provider = "ollama"
+
+# Preferred service tier. `fast` is honored only when enabled in [features].
+# service_tier = "flex"  # fast | flex
+
+# Optional manual model metadata. When unset, Codex uses model or preset defaults.
+# model_context_window = 128000       # tokens; default: auto for model
+# model_auto_compact_token_limit = 64000  # tokens; unset uses model defaults
+# tool_output_token_limit = 12000     # tokens stored per tool output
+# model_catalog_json = "/absolute/path/to/models.json" # optional startup-only model catalog override
+# background_terminal_max_timeout = 300000 # ms; max empty write_stdin poll window (default 5m)
+# log_dir = "/absolute/path/to/codex-logs" # directory for Codex logs; default: "$CODEX_HOME/log"
+# sqlite_home = "/absolute/path/to/codex-state" # optional SQLite-backed runtime state directory
+
+################################################################################
+# Reasoning & Verbosity (Responses API capable models)
+################################################################################
+
+# Reasoning effort: minimal | low | medium | high | xhigh
+# model_reasoning_effort = "medium"
+
+# Optional override used when Codex runs in plan mode: none | minimal | low | medium | high | xhigh
+# plan_mode_reasoning_effort = "high"
+
+# Reasoning summary: auto | concise | detailed | none
+# model_reasoning_summary = "auto"
+
+# Text verbosity for GPT-5 family (Responses API): low | medium | high
+# model_verbosity = "medium"
+
+# Force enable or disable reasoning summaries for current model.
+# model_supports_reasoning_summaries = true
+
+################################################################################
+# Instruction Overrides
+################################################################################
+
+# Additional user instructions are injected before AGENTS.md. Default: unset.
+# developer_instructions = ""
+
+# Inline override for the history compaction prompt. Default: unset.
+# compact_prompt = ""
+
+# Override the default commit co-author trailer. Set to "" to disable it.
+# commit_attribution = "Jane Doe <jane@example.com>"
+
+# Override built-in base instructions with a file path. Default: unset.
+# model_instructions_file = "/absolute/or/relative/path/to/instructions.txt"
+
+# Load the compact prompt override from a file. Default: unset.
+# experimental_compact_prompt_file = "/absolute/or/relative/path/to/compact_prompt.txt"
+
+################################################################################
+# Notifications
+################################################################################
+
+# External notifier program (argv array). When unset: disabled.
+# notify = ["notify-send", "Codex"]
+
+################################################################################
+# Approval & Sandbox
+################################################################################
+
+# When to ask for command approval:
+# - untrusted: only known-safe read-only commands auto-run; others prompt
+
+```
+
+--------------------------------
+
+### Example JSON-RPC Request
+
+Source: https://developers.openai.com/codex/app-server
+
+This is an example of a JSON-RPC 2.0 request message for starting a thread.
+
+```json
+{ "method": "thread/start", "id": 10, "params": { "model": "gpt-5.4" } }
+```
+
+--------------------------------
+
+### Configure Remote Codex Server with Capability Token
+
+Source: https://developers.openai.com/codex/cli/features
+
+Start the Codex app server with a capability token for authentication. This example assumes the token file is located at `$HOME/.codex/codex-app-server-token` and the server is accessible via TLS.
+
+```bash
+# Remote host
+TOKEN_FILE="$HOME/.codex/codex-app-server-token"
+codex app-server \
+  --listen ws://0.0.0.0:4500 \
+  --ws-auth capability-token \
+  --ws-token-file "$TOKEN_FILE"
+```
+
+--------------------------------
+
+### Install a Skill with Skill Installer
+
+Source: https://developers.openai.com/codex/skills
+
+Use the `$skill-installer` command to add curated skills for local use. Restart Codex if a newly installed skill doesn't appear.
+
+```bash
+$skill-installer linear
+```
+
+--------------------------------
+
+### Set up Project Directory and API Key
+
+Source: https://developers.openai.com/codex/guides/agents-sdk
+
+Create a working directory for the project and store your OpenAI API key in a .env file.
+
+```bash
+mkdir codex-workflows
+cd codex-workflows
+printf "OPENAI_API_KEY=sk-...
+" > .env
+```
+
+--------------------------------
+
+### Invoke App (turn/start)
+
+Source: https://developers.openai.com/codex/app-server
+
+Invoke an app by mentioning it in the text input and providing its path in a `mention` input item. This is the recommended way to interact with apps.
+
+```json
+{
+  "method": "turn/start",
+  "id": 51,
+  "params": {
+    "threadId": "thread-1",
+    "input": [
+      {
+        "type": "text",
+        "text": "$demo-app Pull the latest updates from the team."
+      },
+      {
+        "type": "mention",
+        "name": "Demo App",
+        "path": "app://demo-app"
+      }
+    ]
+  }
+}
+```
+
+--------------------------------
+
+### Integrate Codex with SDK in TypeScript
+
+Source: https://developers.openai.com/codex/changelog
+
+Use the Codex SDK in TypeScript to integrate the agent into your tools and workflows. This example demonstrates starting a thread and running commands.
+
+```typescript
+import { Codex } from "@openai/codex-sdk";
+
+const agent = new Codex();
+const thread = await agent.startThread();
+
+const result = await thread.run("Explore this repo");
+console.log(result);
+
+const result2 = await thread.run("Propose changes");
+console.log(result2);
+
+```
+
+--------------------------------
+
+### Start Dev Container from CLI
+
+Source: https://developers.openai.com/codex/agent-approvals-security
+
+Use this command to start a Dev Container with a specific configuration from the command line. Ensure the workspace folder and config path are correct.
+
+```bash
+devcontainer up --workspace-folder . --config .devcontainer/devcontainer.secure.json
+```
+
+--------------------------------
+
+### Get Codex CLI Version
+
+Source: https://developers.openai.com/codex/app/troubleshooting
+
+Use this command to check the version of the Codex CLI installed on your system. This is useful for diagnosing issues where features work in the CLI but not the app.
+
+```bash
+codex --version
+```
+
+--------------------------------
+
+### Launch Codex MCP Server with Inspector
+
+Source: https://developers.openai.com/codex/guides/agents-sdk
+
+An alternative method to start a Codex MCP server using the Model Context Protocol Inspector. Ensure you have Node.js and npm installed.
+
+```bash
+npx @modelcontextprotocol/inspector codex mcp-server
+```
+
+--------------------------------
+
+### Initialize with Experimental API Enabled
+
+Source: https://developers.openai.com/codex/app-server
+
+Include `"experimentalApi": true` in the `capabilities` object to enable experimental features. Omitting `capabilities` or setting `experimentalApi` to `false` will keep you on the stable API surface.
+
+```json
+{
+  "method": "initialize",
+  "id": 1,
+  "params": {
+    "clientInfo": {
+      "name": "my_client",
+      "title": "My Client",
+      "version": "0.1.0"
+    },
+    "capabilities": {
+      "experimentalApi": true
+    }
+  }
+}
+```
+
+--------------------------------
+
+### Plugin Structure Example
+
+Source: https://developers.openai.com/codex/changelog
+
+Illustrates the directory structure for a Codex plugin, including the required manifest and optional supporting files.
+
+```bash
+my-plugin/
+  .codex-plugin/
+    plugin.json   # Required: plugin manifest
+  skills/         # Optional: packaged skills
+  .app.json       # Optional: app or connector mappings
+  .mcp.json       # Optional: MCP server configuration
+  assets/         # Optional: icons, logos, screenshots
+
+```
+
+--------------------------------
+
+### Example Prompt: Fix Bugs
+
+Source: https://developers.openai.com/codex/quickstart
+
+This prompt guides Codex to find and fix bugs in a codebase with minimal, high-confidence changes. It outlines a disciplined method including reproduction, localization, fixing, and proving the fix.
+
+```text
+Find and fix bugs in my codebase with minimal, high-confidence changes.
+
+Method (grounded + disciplined):
+1) Reproduce: run tests/lint/build (or follow the existing repo scripts). If I provided an error, reproduce that exact failure.
+2) Localize: identify the smallest set of files/lines involved (stack traces, failing tests, logs).
+3) Fix: implement the minimal change that resolves the issue without refactors or unrelated cleanup.
+4) Prove: add/update a focused test (or a tight repro) that fails before and passes after.
+
+Constraints:
+
+```
+
+--------------------------------
+
+### Start a turn (invoke a skill)
+
+Source: https://developers.openai.com/codex/app-server
+
+Explicitly invokes a skill by including `$<skill-name>` in the text input and adding a `skill` input item. The `skill-creator` example shows how to add a new skill for triaging flaky CI.
+
+```json
+{ "method": "turn/start", "id": 33, "params": {
+  "threadId": "thr_123",
+  "input": [
+    { "type": "text", "text": "$skill-creator Add a new skill for triaging flaky CI and include step-by-step usage." },
+    { "type": "skill", "name": "skill-creator", "path": "/Users/me/.codex/skills/skill-creator/SKILL.md" }
+  ]
+} }
+```
+
+```json
+{ "id": 33, "result": { "turn": { "id": "turn_457", "status": "inProgress", "items": [], "error": null } } }
+```
+
+--------------------------------
+
+### Start and Run Thread (Async Python)
+
+Source: https://developers.openai.com/codex/sdk
+
+Start a thread and run a prompt using the asynchronous Python SDK. Suitable for applications that are already using asyncio.
+
+```python
+import asyncio
+
+from codex_app_server import AsyncCodex
+
+
+async def main() -> None:
+    async with AsyncCodex() as codex:
+        thread = await codex.thread_start(model="gpt-5.4")
+        result = await thread.run("Implement the plan")
+        print(result.final_response)
+
+
+asyncio.run(main())
+```
+
+--------------------------------
+
+### Example Prompt for Multi-Agent Review
+
+Source: https://developers.openai.com/codex/subagents
+
+An example prompt demonstrating how to orchestrate multiple agents for a comprehensive code review, including mapping code paths, identifying risks, and verifying framework APIs.
+
+```text
+Review this branch against main. Have pr_explorer map the affected code paths, reviewer find real risks, and docs_researcher verify the framework APIs that the patch relies on.
+
+```
+
+--------------------------------
+
+### Node.js Client for Codex App Server
+
+Source: https://developers.openai.com/codex/app-server
+
+Example of a Node.js client connecting to the Codex app server via stdio. It demonstrates sending 'initialize', 'initialized', and 'thread/start' requests, and handling server responses to start a turn.
+
+```typescript
+const proc = spawn("codex", ["app-server"], {
+  stdio: ["pipe", "pipe", "inherit"],
+});
+const rl = readline.createInterface({ input: proc.stdout });
+
+const send = (message: unknown) => {
+  proc.stdin.write(`${JSON.stringify(message)}\n`);
+};
+
+let threadId: string | null = null;
+
+rl.on("line", (line) => {
+  const msg = JSON.parse(line) as any;
+  console.log("server:", msg);
+
+  if (msg.id === 1 && msg.result?.thread?.id && !threadId) {
+    threadId = msg.result.thread.id;
+    send({
+      method: "turn/start",
+      id: 2,
+      params: {
+        threadId,
+        input: [{ type: "text", text: "Summarize this repo." }],
+      },
+    });
+  }
+});
+
+send({
+  method: "initialize",
+  id: 0,
+  params: {
+    clientInfo: {
+      name: "my_product",
+      title: "My Product",
+      version: "0.1.0",
+    },
+  },
+});
+send({ method: "initialized", params: {} });
+send({ method: "thread/start", id: 1, params: { model: "gpt-5.4" } });
+```
+
+--------------------------------
+
+### Autofix CI Failures with GitHub Actions
+
+Source: https://developers.openai.com/codex/noninteractive
+
+Automate the process of fixing CI workflow failures by triggering a follow-up workflow that uses Codex to propose and apply fixes. This example demonstrates the core steps for checkout, dependency installation, Codex execution, and pull request creation.
+
+```yaml
+name: Codex auto-fix on CI failure
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-fix:
+    if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+    runs-on: ubuntu-latest
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      FAILED_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+      FAILED_HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.FAILED_HEAD_SHA }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: |
+          if [ -f package-lock.json ]; then npm ci; else npm i; fi
+
+      - name: Install Codex
+        run: npm i -g @openai/codex
+
+      - name: Authenticate Codex
+        run: codex login --api-key "$OPENAI_API_KEY"
+
+      - name: Run Codex
+        run: |
+          codex exec --full-auto --sandbox workspace-write \
+            "Read the repository, run the test suite, identify the minimal change needed to make all tests pass, implement only that change, and stop. Do not refactor unrelated files."
+
+      - name: Verify tests
+        run: npm test --silent
+
+      - name: Create pull request
+        if: success()
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: codex/auto-fix-${{ github.event.workflow_run.run_id }}
+          base: ${{ env.FAILED_HEAD_BRANCH }}
+          title: "Auto-fix failing CI via Codex"
+```
+
+--------------------------------
+
+### Example Prompt: Build Snake Game
+
+Source: https://developers.openai.com/codex/quickstart
+
+Use this prompt to instruct Codex to build a classic Snake game within the current project. It includes specific scope, constraints, an implementation plan, and deliverables.
+
+```text
+Build a classic Snake game in this repo.
+
+Scope & constraints:
+- Implement ONLY the classic Snake loop: grid movement, growing snake, food spawn, score, game-over, restart.
+- Reuse existing project tooling/frameworks; do NOT add new dependencies unless truly required.
+- Keep UI minimal and consistent with the repo’s existing styles (no new design systems, no extra animations).
+
+Implementation plan:
+1) Inspect the repo to find the right place to add a small interactive game (existing pages/routes/components).
+2) Implement game state (snake positions, direction, food, score, tick timer) with deterministic, testable logic.
+3) Render: simple grid + snake + food; support keyboard controls (arrow keys/WASD) and on-screen controls if mobile is present in the repo.
+4) Add basic tests for the core game logic (movement, collisions, growth, food placement) if the repo has a test runner.
+
+Deliverables:
+- A small set of files/changes with clear names.
+- Short run instructions (how to start dev server + where to navigate).
+- A brief checklist of what to manually verify (controls, pause/restart, boundaries).
+
+```
+
+--------------------------------
+
+### Install Node.js and Codex in WSL
+
+Source: https://developers.openai.com/codex/windows
+
+Install Node.js using nvm and then install and run Codex globally within your WSL shell. Ensure Node.js is installed in a new shell session after running the nvm install script.
+
+```bash
+# https://learn.microsoft.com/en-us/windows/dev-environment/javascript/nodejs-on-wsl
+# Install Node.js in WSL (via nvm)
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/master/install.sh | bash
+
+# In a new tab or after exiting and running `wsl` again to install Node.js
+nvm install 22
+
+# Install and run Codex in WSL
+npm i -g @openai/codex
+codex
+```
+
+--------------------------------
+
+### Install Codex CLI
+
+Source: https://developers.openai.com/codex/changelog
+
+Installs a specific version of the Codex CLI globally using npm. Ensure Node.js and npm are installed.
+
+```bash
+$ npm install -g @openai/codex@0.123.0
+
+```
+
+--------------------------------
+
+### Explain Service Protocol with CLI
+
+Source: https://developers.openai.com/codex/workflows
+
+Use this prompt in the CLI to understand a service's protocol, focusing on schema, request/response flow, required/optional fields, and backward compatibility.
+
+```text
+I need to understand the protocol used by this service. Read @foo.ts @schema.ts and explain the schema and request/response flow. Focus on required vs optional fields and backward compatibility rules.
+```
+
+--------------------------------
+
+### Install Codex CLI 0.122.0
+
+Source: https://developers.openai.com/codex/changelog
+
+Installs the specified version of the Codex CLI globally using npm. Ensure Node.js and npm are installed.
+
+```bash
+$ npm install -g @openai/codex@0.122.0
+
+```
+
+--------------------------------
+
+### CLI Workflow: Iterate on UI with Live Updates
+
+Source: https://developers.openai.com/codex/workflows
+
+This workflow is for a rapid design-tweak-refresh loop. Start the dev server and use focused prompts to iterate on UI elements.
+
+```bash
+codex
+```
+
+```bash
+npm run dev
+```
+
+```text
+Propose 2-3 styling improvements for the landing page.
+```
+
+```text
+Go with option 2.
+
+Change only the header:
+- make the typography more editorial
+- increase whitespace
+- ensure it still looks good on mobile
+```
+
+```text
+Next iteration: reduce visual noise.
+Keep the layout, but simplify colors and remove any redundant borders.
+```
+
+--------------------------------
+
+### Install Codex CLI Version 0.124.0
+
+Source: https://developers.openai.com/codex/changelog
+
+Install a specific version of the Codex CLI using npm. Ensure you have Node.js and npm installed.
+
+```bash
+$ npm install -g @openai/codex@0.124.0
+```
+
+--------------------------------
+
+### Start Node.js Development Server
+
+Source: https://developers.openai.com/codex/app/local-environments
+
+Define this action for Node.js projects to quickly start the development server. It can be accessed from the Codex app top bar.
+
+```bash
+npm start
+```
+
+--------------------------------
+
+### Account Login Start
+
+Source: https://developers.openai.com/codex/app-server
+
+Initiates a login process using various authentication modes.
+
+```APIDOC
+## account/login/start
+
+### Description
+Begins the login process for different authentication modes.
+
+### Method
+POST (assumed, based on JSON-RPC structure)
+
+### Endpoint
+/rpc
+
+### Parameters
+#### Request Body
+- **method** (string) - Required - The method name, should be "account/login/start".
+- **id** (number) - Required - A unique identifier for the request.
+- **params** (object) - Required - Parameters for starting the login.
+  - **type** (string) - Required - The authentication mode to use (`apiKey`, `chatgpt`, `chatgptDeviceCode`, or `chatgptAuthTokens`).
+  - **apiKey** (string, optional) - The API key to use if `type` is "apiKey".
+  - **chatgpt** (object, optional) - Parameters for ChatGPT browser flow if `type` is "chatgpt".
+  - **chatgptDeviceCode** (object, optional) - Parameters for ChatGPT device-code flow if `type` is "chatgptDeviceCode".
+  - **chatgptAuthTokens** (object, optional) - Parameters for experimental external tokens if `type` is "chatgptAuthTokens".
+    - **accessToken** (string) - Required - The access token.
+    - **chatgptAccountId** (string) - Required - The ChatGPT account ID.
+    - **chatgptPlanType** (string, optional) - The ChatGPT plan type.
+
+### Request Example
+```json
+{
+  "method": "account/login/start",
+  "id": 2,
+  "params": {
+    "type": "apiKey",
+    "apiKey": "sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+  }
+}
+```
+
+### Response
+#### Success Response (200)
+- **id** (number) - The identifier for the request.
+- **result** (object) - Details about the login process (e.g., `loginId` for cancellation, or device code information).
+```
+
+--------------------------------
+
+### Install Codex CLI 0.119.0
+
+Source: https://developers.openai.com/codex/changelog
+
+Installs version 0.119.0 of the OpenAI Codex CLI globally using npm. Ensure Node.js and npm are installed.
+
+```bash
+$ npm install -g @openai/codex@0.119.0
+
+```
+
+--------------------------------
+
+### CLI Workflow: Generate UI from Image
+
+Source: https://developers.openai.com/codex/workflows
+
+Use this workflow to generate UI components based on a screenshot. Provide the image and detailed constraints for implementation.
+
+```bash
+codex
+```
+
+```text
+Create a new dashboard based on this image.
+
+Constraints:
+- Use react, vite, and tailwind. Write the code in typescript.
+- Match spacing, typography, and layout as closely as possible.
+
+Deliverables:
+- A new route/page that renders the UI
+- Any small components needed
+- README.md with instructions to run it locally
+```
+
+```text
+Start the dev server and tell me the local URL/route to view the prototype.
+```
+
+--------------------------------
+
+### Install Codex CLI 0.120.0
+
+Source: https://developers.openai.com/codex/changelog
+
+Installs version 0.120.0 of the OpenAI Codex CLI globally using npm. Ensure Node.js and npm are installed.
+
+```bash
+$ npm install -g @openai/codex@0.120.0
+
+```
+
+--------------------------------
+
+### Install Git using winget
+
+Source: https://developers.openai.com/codex/app/windows
+
+Install Git on Windows using the winget package manager from PowerShell or cmd.exe. This is required for certain app features.
+
+```powershell
+winget install Git.Git
+```
+
+--------------------------------
+
+### Install Codex CLI 0.118.0
+
+Source: https://developers.openai.com/codex/changelog
+
+Installs version 0.118.0 of the Codex CLI using npm. This command is used to update or install a specific version of the Codex command-line interface.
+
+```bash
+$ npm install -g @openai/codex@0.118.0
+
+```
+
+--------------------------------
+
+### Install Shell Completions
+
+Source: https://developers.openai.com/codex/cli/features
+
+Speed up everyday usage by installing generated completion scripts for your shell. Add the script to your shell configuration file for new sessions.
+
+```bash
+codex completion bash
+```
+
+```bash
+codex completion zsh
+```
+
+```bash
+codex completion fish
+```
+
+--------------------------------
+
+### Start Codex MCP Server
+
+Source: https://developers.openai.com/codex/guides/agents-sdk
+
+Command to start the Codex MCP server.
+
+```APIDOC
+## Start Codex MCP Server
+
+### Description
+Starts the Codex MCP server.
+
+### Command
+```bash
+codex mcp-server
+```
+```
+
+--------------------------------
+
+### Initialize Request with Notification Opt-out (JSON)
+
+Source: https://developers.openai.com/codex/app-server
+
+Example of an initialize request that also specifies capabilities, including opting out of certain notifications.
+
+```json
+{
+  "method": "initialize",
+  "id": 1,
+  "params": {
+    "clientInfo": {
+      "name": "my_client",
+      "title": "My Client",
+      "version": "0.1.0"
+    },
+    "capabilities": {
+      "experimentalApi": true,
+      "optOutNotificationMethods": ["thread/started", "item/agentMessage/delta"]
+    }
+  }
+}
+```
