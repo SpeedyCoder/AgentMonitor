@@ -8,29 +8,29 @@ import type {
   ComposerSendIntent,
   ServiceTier,
 } from "@/types";
-import { normalizeCodexArgsInput } from "@/utils/codexArgsInput";
-import { useThreadCodexParams } from "@threads/hooks/useThreadCodexParams";
-import { getIgnoredCodexArgsFlagsMetadata } from "@threads/utils/codexArgsProfiles";
+import { normalizeOpenCodeArgsInput } from "@/utils/opencodeArgsInput";
+import { useThreadOpenCodeParams } from "@threads/hooks/useThreadOpenCodeParams";
+import { getIgnoredCodexArgsFlagsMetadata } from "@threads/utils/opencodeArgsProfiles";
 import {
-  buildThreadCodexSeedPatch,
+  buildThreadOpenCodeSeedPatch,
   createPendingThreadSeed,
   NO_THREAD_SCOPE_SUFFIX,
   resolveThreadCodexState,
   type PendingNewThreadSeed,
-} from "@threads/utils/threadCodexParamsSeed";
-import { makeThreadCodexParamsKey } from "@threads/utils/threadStorage";
-import { useThreadCodexOrchestration } from "./useThreadCodexOrchestration";
+} from "@threads/utils/threadOpenCodeParamsSeed";
+import { makeThreadOpenCodeParamsKey } from "@threads/utils/threadStorage";
+import { useThreadOpenCodeOrchestration } from "./useThreadOpenCodeOrchestration";
 
 type SetState<T> = Dispatch<SetStateAction<T>>;
 
-type PersistThreadCodexParams = (
+type PersistThreadOpenCodeParams = (
   patch: {
     modelId?: string | null;
     effort?: string | null;
     serviceTier?: ServiceTier | null | undefined;
     accessMode?: AccessMode | null;
     collaborationModeId?: string | null;
-    codexArgsOverride?: string | null;
+    opencodeArgsOverride?: string | null;
   },
 ) => void;
 
@@ -45,7 +45,7 @@ type UseThreadSelectionHandlersOrchestrationParams = {
   setSelectedCollaborationModeId: (id: string | null) => void;
   setAccessMode: SetState<AccessMode>;
   setSelectedCodexArgsOverride?: (value: string | null) => void;
-  persistThreadCodexParams: PersistThreadCodexParams;
+  persistThreadOpenCodeParams: PersistThreadOpenCodeParams;
 };
 
 type UseThreadCodexBootstrapOrchestrationParams = {
@@ -60,8 +60,8 @@ type UseThreadCodexSyncOrchestrationParams = {
     "defaultAccessMode" | "lastComposerModelId" | "lastComposerReasoningEffort"
   >;
   threadCodexParamsVersion: number;
-  getThreadCodexParams: ReturnType<typeof useThreadCodexParams>["getThreadCodexParams"];
-  patchThreadCodexParams: ReturnType<typeof useThreadCodexParams>["patchThreadCodexParams"];
+  getThreadOpenCodeParams: ReturnType<typeof useThreadOpenCodeParams>["getThreadOpenCodeParams"];
+  patchThreadOpenCodeParams: ReturnType<typeof useThreadOpenCodeParams>["patchThreadOpenCodeParams"];
   setThreadCodexSelectionKey: SetState<string | null>;
   setAccessMode: SetState<AccessMode>;
   setPreferredModelId: SetState<string | null>;
@@ -76,10 +76,10 @@ type UseThreadCodexSyncOrchestrationParams = {
   selectedServiceTier: ServiceTier | null | undefined;
   accessMode: AccessMode;
   selectedCollaborationModeId: string | null;
-  selectedCodexArgsOverride?: string | null;
+  selectedOpenCodeArgsOverride?: string | null;
 };
 
-type MainTab = "home" | "projects" | "codex" | "git" | "log";
+type MainTab = "home" | "projects" | "opencode" | "git" | "log";
 
 type SendOrQueueHandler = (
   text: string,
@@ -94,7 +94,7 @@ type UseThreadUiOrchestrationParams = {
   accessMode: AccessMode;
   selectedServiceTier: ServiceTier | null | undefined;
   selectedCollaborationModeId: string | null;
-  selectedCodexArgsOverride?: string | null;
+  selectedOpenCodeArgsOverride?: string | null;
   pendingNewThreadSeedRef: MutableRefObject<PendingNewThreadSeed | null>;
   runWithDraftStart: (runner: () => Promise<void>) => Promise<void>;
   handleComposerSend: SendOrQueueHandler;
@@ -119,7 +119,7 @@ export function useThreadCodexBootstrapOrchestration({
     activeWorkspaceIdForParamsRef.current = activeWorkspaceId ?? null;
   }, [activeWorkspaceId]);
 
-  return useThreadCodexOrchestration({ activeWorkspaceIdForParamsRef });
+  return useThreadOpenCodeOrchestration({ activeWorkspaceIdForParamsRef });
 }
 
 export function useThreadCodexSyncOrchestration({
@@ -127,8 +127,8 @@ export function useThreadCodexSyncOrchestration({
   activeThreadId,
   appSettings,
   threadCodexParamsVersion,
-  getThreadCodexParams,
-  patchThreadCodexParams,
+  getThreadOpenCodeParams,
+  patchThreadOpenCodeParams,
   setThreadCodexSelectionKey,
   setAccessMode,
   setPreferredModelId,
@@ -143,7 +143,7 @@ export function useThreadCodexSyncOrchestration({
   selectedServiceTier,
   accessMode,
   selectedCollaborationModeId,
-  selectedCodexArgsOverride,
+  selectedOpenCodeArgsOverride,
 }: UseThreadCodexSyncOrchestrationParams) {
   useLayoutEffect(() => {
     const workspaceId = activeWorkspaceId ?? null;
@@ -154,11 +154,11 @@ export function useThreadCodexSyncOrchestration({
       return;
     }
 
-    const stored = getThreadCodexParams(
+    const stored = getThreadOpenCodeParams(
       workspaceId,
       threadId ?? NO_THREAD_SCOPE_SUFFIX,
     );
-    const noThreadStored = getThreadCodexParams(workspaceId, NO_THREAD_SCOPE_SUFFIX);
+    const noThreadStored = getThreadOpenCodeParams(workspaceId, NO_THREAD_SCOPE_SUFFIX);
     const resolved = resolveThreadCodexState({
       workspaceId,
       threadId,
@@ -176,14 +176,14 @@ export function useThreadCodexSyncOrchestration({
     setPreferredEffort(resolved.preferredEffort);
     setPreferredServiceTier(resolved.preferredServiceTier);
     setPreferredCollabModeId(resolved.preferredCollabModeId);
-    setPreferredCodexArgsOverride?.(resolved.preferredCodexArgsOverride);
+    setPreferredCodexArgsOverride?.(resolved.preferredOpenCodeArgsOverride);
   }, [
     activeThreadId,
     activeWorkspaceId,
     appSettings.defaultAccessMode,
     appSettings.lastComposerModelId,
     appSettings.lastComposerReasoningEffort,
-    getThreadCodexParams,
+    getThreadOpenCodeParams,
     setPreferredCollabModeId,
     setPreferredCodexArgsOverride,
     setPreferredEffort,
@@ -204,12 +204,12 @@ export function useThreadCodexSyncOrchestration({
       return;
     }
 
-    const key = makeThreadCodexParamsKey(workspaceId, threadId);
+    const key = makeThreadOpenCodeParamsKey(workspaceId, threadId);
     if (seededThreadParamsRef.current.has(key)) {
       return;
     }
 
-    const stored = getThreadCodexParams(workspaceId, threadId);
+    const stored = getThreadOpenCodeParams(workspaceId, threadId);
     if (stored) {
       seededThreadParamsRef.current.add(key);
       return;
@@ -217,19 +217,19 @@ export function useThreadCodexSyncOrchestration({
 
     seededThreadParamsRef.current.add(key);
     const pendingSeed = pendingNewThreadSeedRef.current;
-    patchThreadCodexParams(
+    patchThreadOpenCodeParams(
       workspaceId,
       threadId,
-      buildThreadCodexSeedPatch({
+      buildThreadOpenCodeSeedPatch({
         workspaceId,
         selectedModelId,
         resolvedEffort,
         accessMode,
         selectedCollaborationModeId,
-        codexArgsOverride:
-          selectedCodexArgsOverride === undefined
+        opencodeArgsOverride:
+          selectedOpenCodeArgsOverride === undefined
             ? undefined
-            : selectedCodexArgsOverride,
+            : selectedOpenCodeArgsOverride,
         pendingSeed,
       }),
     );
@@ -240,11 +240,11 @@ export function useThreadCodexSyncOrchestration({
     activeThreadId,
     activeWorkspaceId,
     accessMode,
-    getThreadCodexParams,
-    patchThreadCodexParams,
+    getThreadOpenCodeParams,
+    patchThreadOpenCodeParams,
     resolvedEffort,
     selectedCollaborationModeId,
-    selectedCodexArgsOverride,
+    selectedOpenCodeArgsOverride,
     selectedModelId,
     pendingNewThreadSeedRef,
   ]);
@@ -256,19 +256,19 @@ export function useThreadCodexSyncOrchestration({
       return;
     }
 
-    const noThreadStored = getThreadCodexParams(workspaceId, NO_THREAD_SCOPE_SUFFIX);
+    const noThreadStored = getThreadOpenCodeParams(workspaceId, NO_THREAD_SCOPE_SUFFIX);
     if (noThreadStored?.serviceTier !== undefined) {
       return;
     }
 
-    patchThreadCodexParams(workspaceId, NO_THREAD_SCOPE_SUFFIX, {
+    patchThreadOpenCodeParams(workspaceId, NO_THREAD_SCOPE_SUFFIX, {
       serviceTier: selectedServiceTier,
     });
   }, [
     activeThreadId,
     activeWorkspaceId,
-    getThreadCodexParams,
-    patchThreadCodexParams,
+    getThreadOpenCodeParams,
+    patchThreadOpenCodeParams,
     selectedServiceTier,
   ]);
 }
@@ -284,7 +284,7 @@ export function useThreadSelectionHandlersOrchestration({
   setSelectedCollaborationModeId,
   setAccessMode,
   setSelectedCodexArgsOverride,
-  persistThreadCodexParams,
+  persistThreadOpenCodeParams,
 }: UseThreadSelectionHandlersOrchestrationParams) {
   const handleSelectModel = useCallback(
     (id: string | null) => {
@@ -300,12 +300,12 @@ export function useThreadSelectionHandlersOrchestration({
           return nextSettings;
         });
       }
-      persistThreadCodexParams({ modelId: id });
+      persistThreadOpenCodeParams({ modelId: id });
     },
     [
       activeThreadIdRef,
       appSettingsLoading,
-      persistThreadCodexParams,
+      persistThreadOpenCodeParams,
       queueSaveSettings,
       setAppSettings,
       setSelectedModelId,
@@ -327,12 +327,12 @@ export function useThreadSelectionHandlersOrchestration({
           return nextSettings;
         });
       }
-      persistThreadCodexParams({ effort: next });
+      persistThreadOpenCodeParams({ effort: next });
     },
     [
       activeThreadIdRef,
       appSettingsLoading,
-      persistThreadCodexParams,
+      persistThreadOpenCodeParams,
       queueSaveSettings,
       setAppSettings,
       setSelectedEffort,
@@ -342,30 +342,30 @@ export function useThreadSelectionHandlersOrchestration({
   const handleSelectServiceTier = useCallback(
     (tier: ServiceTier | null | undefined) => {
       setSelectedServiceTier(tier);
-      persistThreadCodexParams({ serviceTier: tier });
+      persistThreadOpenCodeParams({ serviceTier: tier });
     },
-    [persistThreadCodexParams, setSelectedServiceTier],
+    [persistThreadOpenCodeParams, setSelectedServiceTier],
   );
 
   const handleSelectCollaborationMode = useCallback(
     (id: string | null) => {
       setSelectedCollaborationModeId(id);
-      persistThreadCodexParams({ collaborationModeId: id });
+      persistThreadOpenCodeParams({ collaborationModeId: id });
     },
-    [persistThreadCodexParams, setSelectedCollaborationModeId],
+    [persistThreadOpenCodeParams, setSelectedCollaborationModeId],
   );
 
   const handleSelectAccessMode = useCallback(
     (mode: AccessMode) => {
       setAccessMode(mode);
-      persistThreadCodexParams({ accessMode: mode });
+      persistThreadOpenCodeParams({ accessMode: mode });
     },
-    [persistThreadCodexParams, setAccessMode],
+    [persistThreadOpenCodeParams, setAccessMode],
   );
 
   const handleSelectCodexArgsOverride = useCallback(
     (value: string | null) => {
-      const next = normalizeCodexArgsInput(value);
+      const next = normalizeOpenCodeArgsInput(value);
       if (next && getIgnoredCodexArgsFlagsMetadata(next).hasIgnoredFlags) {
         pushErrorToast({
           title: "Some codex args are ignored",
@@ -373,9 +373,9 @@ export function useThreadSelectionHandlersOrchestration({
         });
       }
       setSelectedCodexArgsOverride?.(next);
-      persistThreadCodexParams({ codexArgsOverride: next });
+      persistThreadOpenCodeParams({ opencodeArgsOverride: next });
     },
-    [persistThreadCodexParams, setSelectedCodexArgsOverride],
+    [persistThreadOpenCodeParams, setSelectedCodexArgsOverride],
   );
 
   return {
@@ -394,7 +394,7 @@ export function useThreadUiOrchestration({
   accessMode,
   selectedServiceTier,
   selectedCollaborationModeId,
-  selectedCodexArgsOverride,
+  selectedOpenCodeArgsOverride,
   pendingNewThreadSeedRef,
   runWithDraftStart,
   handleComposerSend,
@@ -416,7 +416,7 @@ export function useThreadUiOrchestration({
       selectedServiceTier,
       selectedCollaborationModeId,
       accessMode,
-      codexArgsOverride: selectedCodexArgsOverride ?? null,
+      opencodeArgsOverride: selectedOpenCodeArgsOverride ?? null,
     });
   }, [
     accessMode,
@@ -425,7 +425,7 @@ export function useThreadUiOrchestration({
     pendingNewThreadSeedRef,
     selectedServiceTier,
     selectedCollaborationModeId,
-    selectedCodexArgsOverride,
+    selectedOpenCodeArgsOverride,
   ]);
 
   const handleComposerSendWithDraftStart = useCallback(
@@ -453,7 +453,7 @@ export function useThreadUiOrchestration({
       selectWorkspace(workspaceId);
       setActiveThreadId(threadId, workspaceId);
       if (isCompact) {
-        setActiveTab("codex");
+        setActiveTab("opencode");
       }
     },
     [

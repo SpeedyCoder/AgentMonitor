@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Codex Monitor",
+  "productName": "OpenCode Monitor",
   "version": "0.7.68",
-  "identifier": "com.dimillian.codexmonitor",
+  "identifier": "com.dimillian.opencodemonitor",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -13,7 +13,7 @@
     "macOSPrivateApi": true,
     "windows": [
       {
-        "title": "Codex Monitor",
+        "title": "OpenCode Monitor",
         "width": 1200,
         "height": 700,
         "minWidth": 360,

@@ -3,7 +3,7 @@ use super::rpc_client::{
 };
 use super::*;
 
-const EXPECTED_DAEMON_NAME: &str = "codex-monitor-daemon";
+const EXPECTED_DAEMON_NAME: &str = "opencode-monitor-daemon";
 const EXPECTED_DAEMON_MODE: &str = "tcp";
 const CURRENT_APP_VERSION: &str = env!("CARGO_PKG_VERSION");
 

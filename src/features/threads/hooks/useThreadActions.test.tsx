@@ -46,7 +46,7 @@ vi.mock("@threads/utils/threadStorage", () => ({
 describe("useThreadActions", () => {
   const workspace: WorkspaceInfo = {
     id: "ws-1",
-    name: "CodexMonitor",
+    name: "OpenCodeMonitor",
     path: "/tmp/codex",
     connected: true,
     settings: { sidebarCollapsed: false },
@@ -1745,14 +1745,14 @@ describe("useThreadActions", () => {
       return value ?? 0;
     });
 
-    const onThreadCodexMetadataDetected = vi.fn();
-    const { result } = renderActions({ onThreadCodexMetadataDetected });
+    const onThreadOpenCodeMetadataDetected = vi.fn();
+    const { result } = renderActions({ onThreadOpenCodeMetadataDetected });
 
     await act(async () => {
       await result.current.listThreadsForWorkspace(workspace);
     });
 
-    expect(onThreadCodexMetadataDetected).toHaveBeenCalledWith(
+    expect(onThreadOpenCodeMetadataDetected).toHaveBeenCalledWith(
       "ws-1",
       "thread-model-1",
       { modelId: "gpt-5-codex", effort: "high" },
@@ -1788,14 +1788,14 @@ describe("useThreadActions", () => {
     vi.mocked(isReviewingFromThread).mockReturnValue(false);
     vi.mocked(getThreadTimestamp).mockReturnValue(1200);
 
-    const onThreadCodexMetadataDetected = vi.fn();
-    const { result } = renderActions({ onThreadCodexMetadataDetected });
+    const onThreadOpenCodeMetadataDetected = vi.fn();
+    const { result } = renderActions({ onThreadOpenCodeMetadataDetected });
 
     await act(async () => {
       await result.current.resumeThreadForWorkspace("ws-1", "thread-resume-model");
     });
 
-    expect(onThreadCodexMetadataDetected).toHaveBeenCalledWith(
+    expect(onThreadOpenCodeMetadataDetected).toHaveBeenCalledWith(
       "ws-1",
       "thread-resume-model",
       { modelId: "gpt-5.3-codex", effort: "medium" },

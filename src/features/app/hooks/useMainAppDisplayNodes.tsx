@@ -4,7 +4,7 @@ import { MainHeaderActions } from "@app/components/MainHeaderActions";
 import { WorkspaceHome } from "@/features/workspaces/components/WorkspaceHome";
 
 type UseMainAppDisplayNodesArgs = {
-  showCompactCodexThreadActions: boolean;
+  showCompactOpenCodeThreadActions: boolean;
   handleMobileThreadRefresh: () => void;
   mobileThreadRefreshLoading: boolean;
   centerMode: "chat" | "diff";
@@ -17,7 +17,7 @@ type UseMainAppDisplayNodesArgs = {
 };
 
 export function useMainAppDisplayNodes({
-  showCompactCodexThreadActions,
+  showCompactOpenCodeThreadActions,
   handleMobileThreadRefresh,
   mobileThreadRefreshLoading,
   centerMode,
@@ -30,7 +30,7 @@ export function useMainAppDisplayNodes({
 }: UseMainAppDisplayNodesArgs) {
   const mainHeaderActionsNode = (
     <>
-      {showCompactCodexThreadActions ? (
+      {showCompactOpenCodeThreadActions ? (
         <button
           type="button"
           className="ghost main-header-action ds-tooltip-trigger"

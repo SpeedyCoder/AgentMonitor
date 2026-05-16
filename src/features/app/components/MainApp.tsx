@@ -45,7 +45,7 @@ import { useMainAppPromptActions } from "@app/hooks/useMainAppPromptActions";
 import { useMainAppShellProps } from "@app/hooks/useMainAppShellProps";
 import { useMainAppSidebarMenuOrchestration } from "@app/hooks/useMainAppSidebarMenuOrchestration";
 import { useMainAppSettingsActions } from "@app/hooks/useMainAppSettingsActions";
-import { useMainAppThreadCodexState } from "@app/hooks/useMainAppThreadCodexState";
+import { useMainAppThreadOpenCodeState } from "@app/hooks/useMainAppThreadOpenCodeState";
 import { useMainAppWorktreeState } from "@app/hooks/useMainAppWorktreeState";
 import { useMainAppWorkspaceActions } from "@app/hooks/useMainAppWorkspaceActions";
 import { useMainAppWorkspaceLifecycle } from "@app/hooks/useMainAppWorkspaceLifecycle";
@@ -78,7 +78,7 @@ import {
   useWorkspaceOrderingOrchestration,
 } from "@app/orchestration/useWorkspaceOrchestration";
 import { useAppShellOrchestration } from "@app/orchestration/useLayoutOrchestration";
-import { normalizeCodexArgsInput } from "@/utils/codexArgsInput";
+import { normalizeOpenCodeArgsInput } from "@/utils/opencodeArgsInput";
 import { subscribeTrayOpenThread } from "@services/events";
 
 const SettingsView = lazy(() =>
@@ -127,10 +127,10 @@ export default function MainApp() {
     setThreadListOrganizeMode,
   } = useThreadListSortKey();
   const [activeTab, setActiveTab] = useState<
-    "home" | "projects" | "codex" | "git" | "log"
-  >("codex");
+    "home" | "projects" | "opencode" | "git" | "log"
+  >("opencode");
   const tabletTab =
-    activeTab === "projects" || activeTab === "home" ? "codex" : activeTab;
+    activeTab === "projects" || activeTab === "home" ? "opencode" : activeTab;
   const {
     workspaces,
     workspaceGroups,
@@ -190,8 +190,8 @@ export default function MainApp() {
   );
   const {
     threadCodexParamsVersion,
-    getThreadCodexParams,
-    patchThreadCodexParams,
+    getThreadOpenCodeParams,
+    patchThreadOpenCodeParams,
     accessMode,
     setAccessMode,
     preferredModelId,
@@ -202,13 +202,13 @@ export default function MainApp() {
     setPreferredServiceTier,
     preferredCollabModeId,
     setPreferredCollabModeId,
-    preferredCodexArgsOverride,
+    preferredOpenCodeArgsOverride,
     setPreferredCodexArgsOverride,
     threadCodexSelectionKey,
     setThreadCodexSelectionKey,
     activeThreadIdRef,
     pendingNewThreadSeedRef,
-    persistThreadCodexParams,
+    persistThreadOpenCodeParams,
   } = useThreadCodexBootstrapOrchestration({
     activeWorkspaceId,
   });
@@ -307,15 +307,15 @@ export default function MainApp() {
     onDebug: addDebugEntry,
   });
 
-  const [selectedCodexArgsOverride, setSelectedCodexArgsOverride] = useState<string | null>(
+  const [selectedOpenCodeArgsOverride, setSelectedCodexArgsOverride] = useState<string | null>(
     null,
   );
   const [selectedServiceTier, setSelectedServiceTier] = useState<
     ServiceTier | null | undefined
   >(undefined);
   useEffect(() => {
-    setSelectedCodexArgsOverride(normalizeCodexArgsInput(preferredCodexArgsOverride));
-  }, [preferredCodexArgsOverride, threadCodexSelectionKey]);
+    setSelectedCodexArgsOverride(normalizeOpenCodeArgsInput(preferredOpenCodeArgsOverride));
+  }, [preferredOpenCodeArgsOverride, threadCodexSelectionKey]);
   useEffect(() => {
     setSelectedServiceTier(preferredServiceTier);
   }, [preferredServiceTier, threadCodexSelectionKey]);
@@ -338,7 +338,7 @@ export default function MainApp() {
     setSelectedCollaborationModeId,
     setAccessMode,
     setSelectedCodexArgsOverride,
-    persistThreadCodexParams,
+    persistThreadOpenCodeParams,
   });
   const commitMessageModelId = useMemo(
     () => effectiveCommitMessageModelId(models, appSettings.commitMessageModelId),
@@ -406,15 +406,15 @@ export default function MainApp() {
   const resolvedEffort = reasoningSupported ? selectedEffort : null;
 
   const {
-    handleThreadCodexMetadataDetected,
-    codexArgsOptions,
-    ensureWorkspaceRuntimeCodexArgs,
+    handleThreadOpenCodeMetadataDetected,
+    opencodeArgsOptions,
+    ensureWorkspaceRuntimeOpenCodeArgs,
     getThreadArgsBadge,
-  } = useMainAppThreadCodexState({
-    appCodexArgs: appSettings.codexArgs,
-    selectedCodexArgsOverride,
-    getThreadCodexParams,
-    patchThreadCodexParams,
+  } = useMainAppThreadOpenCodeState({
+    appCodexArgs: appSettings.opencodeArgs,
+    selectedOpenCodeArgsOverride,
+    getThreadOpenCodeParams,
+    patchThreadOpenCodeParams,
   });
 
   const { collaborationModePayload } = useCollaborationModeSelection({
@@ -504,7 +504,7 @@ export default function MainApp() {
     collaborationMode: collaborationModePayload,
     onSelectServiceTier: handleSelectServiceTier,
     accessMode,
-    ensureWorkspaceRuntimeCodexArgs,
+    ensureWorkspaceRuntimeOpenCodeArgs,
     reviewDeliveryMode: appSettings.reviewDeliveryMode,
     steerEnabled: appSettings.steerEnabled,
     threadTitleAutogenerationEnabled: appSettings.threadTitleAutogenerationEnabled,
@@ -514,7 +514,7 @@ export default function MainApp() {
     customPrompts: prompts,
     onMessageActivity: handleThreadMessageActivity,
     threadSortKey: threadListSortKey,
-    onThreadCodexMetadataDetected: handleThreadCodexMetadataDetected,
+    onThreadOpenCodeMetadataDetected: handleThreadOpenCodeMetadataDetected,
   });
   const { connectionState: remoteThreadConnectionState, reconnectLive } =
     useRemoteThreadLiveConnection({
@@ -672,8 +672,8 @@ export default function MainApp() {
       lastComposerReasoningEffort: appSettings.lastComposerReasoningEffort,
     },
     threadCodexParamsVersion,
-    getThreadCodexParams,
-    patchThreadCodexParams,
+    getThreadOpenCodeParams,
+    patchThreadOpenCodeParams,
     setThreadCodexSelectionKey,
     setAccessMode,
     setPreferredModelId,
@@ -688,7 +688,7 @@ export default function MainApp() {
     selectedServiceTier,
     accessMode,
     selectedCollaborationModeId,
-    selectedCodexArgsOverride,
+    selectedOpenCodeArgsOverride,
   });
 
   const { handleSetThreadListSortKey, handleRefreshAllWorkspaceThreads } =
@@ -969,7 +969,7 @@ export default function MainApp() {
       handleWorktreeCreated,
       resolveCloneProjectContext,
       persistProjectCopiesFolder,
-      onCompactActivate: isCompact ? () => setActiveTab("codex") : undefined,
+      onCompactActivate: isCompact ? () => setActiveTab("opencode") : undefined,
       onWorkspacePromptError: (message, kind) => {
         addDebugEntry({
           id: `${Date.now()}-client-add-${kind}-error`,
@@ -1140,7 +1140,7 @@ export default function MainApp() {
       startThreadForWorkspace,
       sendUserMessage,
       sendUserMessageToThread,
-      seedThreadCodexParams: patchThreadCodexParams,
+      seedThreadOpenCodeParams: patchThreadOpenCodeParams,
       startFork,
       startReview,
       startResume,
@@ -1329,7 +1329,7 @@ export default function MainApp() {
     accessMode,
     selectedServiceTier,
     selectedCollaborationModeId,
-    selectedCodexArgsOverride,
+    selectedOpenCodeArgsOverride,
     pendingNewThreadSeedRef,
     runWithDraftStart,
     handleComposerSend,
@@ -1347,7 +1347,7 @@ export default function MainApp() {
 
   const handleOpenThreadLinkFromExternal = useCallback(
     (workspaceId: string, threadId: string) => {
-      setActiveTab("codex");
+      setActiveTab("opencode");
       handleOpenThreadLink(threadId, workspaceId);
     },
     [handleOpenThreadLink, setActiveTab],
@@ -1385,7 +1385,7 @@ export default function MainApp() {
     connectWorkspace,
     sendUserMessageToThread,
     setSelectedCollaborationModeId,
-    persistThreadCodexParams,
+    persistThreadOpenCodeParams,
   });
 
   const {
@@ -1480,12 +1480,12 @@ export default function MainApp() {
     shortcut: appSettings.archiveThreadShortcut,
     onTrigger: handleArchiveActiveThread,
   });
-  const showCompactCodexThreadActions =
+  const showCompactOpenCodeThreadActions =
     Boolean(activeWorkspace) &&
     isCompact &&
-    ((isPhone && activeTab === "codex") || (isTablet && tabletTab === "codex"));
+    ((isPhone && activeTab === "opencode") || (isTablet && tabletTab === "opencode"));
   const showMobilePollingFetchStatus =
-    showCompactCodexThreadActions &&
+    showCompactOpenCodeThreadActions &&
     Boolean(activeWorkspace?.connected) &&
     appSettings.backendMode === "remote" &&
     remoteThreadConnectionState === "polling";
@@ -1495,7 +1495,7 @@ export default function MainApp() {
   const showGitInitBanner =
     Boolean(activeWorkspace) && !hasGitRootOverride && isMissingRepo(gitStatus.error);
   const displayNodes = useMainAppDisplayNodes({
-    showCompactCodexThreadActions,
+    showCompactOpenCodeThreadActions,
     handleMobileThreadRefresh,
     mobileThreadRefreshLoading,
     centerMode,
@@ -1707,9 +1707,9 @@ export default function MainApp() {
     selectedEffort,
     onSelectEffort: handleSelectEffort,
     reasoningSupported,
-    codexArgsOptions,
-    selectedCodexArgsOverride,
-    onSelectCodexArgsOverride: handleSelectCodexArgsOverride,
+    opencodeArgsOptions,
+    selectedOpenCodeArgsOverride,
+    onSelectOpenCodeArgsOverride: handleSelectCodexArgsOverride,
     accessMode,
     onSelectAccessMode: handleSelectAccessMode,
     skills,
@@ -1799,7 +1799,7 @@ export default function MainApp() {
     debugPanelNode,
     debugPanelFullNode,
     terminalDockNode,
-    compactEmptyCodexNode,
+    compactEmptyOpenCodeNode,
     compactEmptyGitNode,
     compactGitBackNode,
   } = useMainAppLayoutNodes(layoutSurfaces);
@@ -1860,7 +1860,7 @@ export default function MainApp() {
       debugPanelNode,
       debugPanelFullNode,
       terminalDockNode,
-      compactEmptyCodexNode,
+      compactEmptyOpenCodeNode,
       compactEmptyGitNode,
       compactGitBackNode,
       onSidebarResizeStart,

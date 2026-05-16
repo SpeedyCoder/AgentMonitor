@@ -2,8 +2,8 @@ import ChevronLeft from "lucide-react/dist/esm/icons/chevron-left";
 import X from "lucide-react/dist/esm/icons/x";
 import type {
   AppSettings,
-  CodexDoctorResult,
-  CodexUpdateResult,
+  OpenCodeDoctorResult,
+  OpenCodeUpdateResult,
   DictationModelStatus,
   WorkspaceSettings,
   WorkspaceGroup,
@@ -14,7 +14,7 @@ import { useSettingsViewNavigation } from "@settings/hooks/useSettingsViewNaviga
 import { useSettingsViewOrchestration } from "@settings/hooks/useSettingsViewOrchestration";
 import { ModalShell } from "@/features/design-system/components/modal/ModalShell";
 import { SettingsNav } from "./SettingsNav";
-import type { CodexSection } from "./settingsTypes";
+import type { OpenCodeSection } from "./settingsTypes";
 import { SETTINGS_SECTION_LABELS } from "./settingsViewConstants";
 import { SettingsSectionContainers } from "./sections/SettingsSectionContainers";
 
@@ -44,13 +44,13 @@ export type SettingsViewProps = {
   onUpdateAppSettings: (next: AppSettings) => Promise<void>;
   onToggleAutomaticAppUpdateChecks?: () => void;
   onRunDoctor: (
-    codexBin: string | null,
-    codexArgs: string | null,
-  ) => Promise<CodexDoctorResult>;
+    opencodeBin: string | null,
+    opencodeArgs: string | null,
+  ) => Promise<OpenCodeDoctorResult>;
   onRunCodexUpdate?: (
-    codexBin: string | null,
-    codexArgs: string | null,
-  ) => Promise<CodexUpdateResult>;
+    opencodeBin: string | null,
+    opencodeArgs: string | null,
+  ) => Promise<OpenCodeUpdateResult>;
   onUpdateWorkspaceSettings: (
     id: string,
     settings: Partial<WorkspaceSettings>,
@@ -64,7 +64,7 @@ export type SettingsViewProps = {
   onDownloadDictationModel?: () => void;
   onCancelDictationDownload?: () => void;
   onRemoveDictationModel?: () => void;
-  initialSection?: CodexSection;
+  initialSection?: OpenCodeSection;
 };
 
 export function SettingsView({

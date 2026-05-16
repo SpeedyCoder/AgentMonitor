@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 import type {
   AppSettings,
-  CodexDoctorResult,
-  CodexUpdateResult,
+  OpenCodeDoctorResult,
+  OpenCodeUpdateResult,
   DictationModelStatus,
   WorkspaceGroup,
   WorkspaceSettings,
@@ -10,7 +10,7 @@ import type {
 import { isMacPlatform, isWindowsPlatform } from "@utils/platformPaths";
 import { useSettingsOpenAppDrafts } from "./useSettingsOpenAppDrafts";
 import { useSettingsShortcutDrafts } from "./useSettingsShortcutDrafts";
-import { useSettingsCodexSection } from "./useSettingsCodexSection";
+import { useSettingsOpenCodeSection } from "./useSettingsOpenCodeSection";
 import { useSettingsDisplaySection } from "./useSettingsDisplaySection";
 import { useSettingsEnvironmentsSection } from "./useSettingsEnvironmentsSection";
 import { useSettingsFeaturesSection } from "./useSettingsFeaturesSection";
@@ -36,13 +36,13 @@ type UseSettingsViewOrchestrationArgs = {
   onUpdateAppSettings: (next: AppSettings) => Promise<void>;
   onToggleAutomaticAppUpdateChecks?: () => void;
   onRunDoctor: (
-    codexBin: string | null,
-    codexArgs: string | null,
-  ) => Promise<CodexDoctorResult>;
+    opencodeBin: string | null,
+    opencodeArgs: string | null,
+  ) => Promise<OpenCodeDoctorResult>;
   onRunCodexUpdate?: (
-    codexBin: string | null,
-    codexArgs: string | null,
-  ) => Promise<CodexUpdateResult>;
+    opencodeBin: string | null,
+    opencodeArgs: string | null,
+  ) => Promise<OpenCodeUpdateResult>;
   onUpdateWorkspaceSettings: (
     id: string,
     settings: Partial<WorkspaceSettings>,
@@ -192,7 +192,7 @@ export function useSettingsViewOrchestration({
     onMobileConnectSuccess,
   });
 
-  const codexSectionProps = useSettingsCodexSection({
+  const opencodeSectionProps = useSettingsOpenCodeSection({
     appSettings,
     projects,
     onUpdateAppSettings,
@@ -203,7 +203,7 @@ export function useSettingsViewOrchestration({
   const gitSectionProps = useSettingsGitSection({
     appSettings,
     onUpdateAppSettings,
-    models: codexSectionProps.defaultModels,
+    models: opencodeSectionProps.defaultModels,
   });
 
   const featuresSectionProps = useSettingsFeaturesSection({
@@ -272,7 +272,7 @@ export function useSettingsViewOrchestration({
     gitSectionProps,
     serverSectionProps,
     agentsSectionProps,
-    codexSectionProps,
+    opencodeSectionProps,
     featuresSectionProps,
   };
 }

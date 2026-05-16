@@ -62,7 +62,7 @@ describe("useSkills", () => {
       listener?.({
         workspace_id: "workspace-1",
         message: {
-          method: "codex/event/skills_update_available",
+          method: "opencode/event/skills_update_available",
         },
       });
     });
@@ -111,7 +111,7 @@ describe("useSkills", () => {
       listener?.({
         workspace_id: "workspace-2",
         message: {
-          method: "codex/event/skills_update_available",
+          method: "opencode/event/skills_update_available",
         },
       });
     });

@@ -7,7 +7,7 @@ use tauri::RunEvent;
 use tauri::WindowEvent;
 
 mod backend;
-mod codex;
+mod opencode;
 mod daemon_binary;
 mod dictation;
 mod event_sink;
@@ -182,7 +182,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             settings::get_app_settings,
             settings::update_app_settings,
-            settings::get_codex_config_path,
+            settings::get_opencode_config_path,
             files::file_read,
             files::file_write,
             files::read_image_as_data_url,
@@ -191,8 +191,8 @@ pub fn run() {
             menu::menu_set_accelerators,
             tray::set_tray_recent_threads,
             tray::set_tray_session_usage,
-            codex::codex_doctor,
-            codex::codex_update,
+            codex::opencode_doctor,
+            codex::opencode_update,
             workspaces::list_workspaces,
             workspaces::is_workspace_path_dir,
             workspaces::add_workspace,
@@ -207,7 +207,7 @@ pub fn run() {
             workspaces::rename_worktree_upstream,
             workspaces::apply_worktree_changes,
             workspaces::update_workspace_settings,
-            workspaces::set_workspace_runtime_codex_args,
+            workspaces::set_workspace_runtime_opencode_args,
             codex::start_thread,
             codex::send_user_message,
             codex::turn_steer,
@@ -262,7 +262,7 @@ pub fn run() {
             git::create_git_branch,
             codex::model_list,
             codex::experimental_feature_list,
-            codex::set_codex_feature_flag,
+            codex::set_opencode_feature_flag,
             codex::get_agents_settings,
             codex::set_agents_core_settings,
             codex::create_agent,
@@ -272,8 +272,8 @@ pub fn run() {
             codex::write_agent_config_toml,
             codex::account_rate_limits,
             codex::account_read,
-            codex::codex_login,
-            codex::codex_login_cancel,
+            codex::opencode_login,
+            codex::opencode_login_cancel,
             codex::skills_list,
             codex::apps_list,
             prompts::prompts_list,

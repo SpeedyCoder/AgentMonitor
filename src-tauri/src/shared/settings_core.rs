@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use tokio::sync::Mutex;
 
-use crate::codex::config as codex_config;
+use crate::opencode::config as codex_config;
 use crate::storage::write_settings;
 use crate::types::AppSettings;
 use crate::utils::normalize_windows_namespace_path;
@@ -59,12 +59,12 @@ pub(crate) async fn update_app_settings_core(
     Ok(settings)
 }
 
-pub(crate) fn get_codex_config_path_core() -> Result<String, String> {
+pub(crate) fn get_opencode_config_path_core() -> Result<String, String> {
     codex_config::config_toml_path()
-        .ok_or_else(|| "Unable to resolve CODEX_HOME".to_string())
+        .ok_or_else(|| "Unable to resolve OPENCODE_CONFIG_DIR".to_string())
         .and_then(|path| {
             path.to_str()
                 .map(|value| value.to_string())
-                .ok_or_else(|| "Unable to resolve CODEX_HOME".to_string())
+                .ok_or_else(|| "Unable to resolve OPENCODE_CONFIG_DIR".to_string())
         })
 }

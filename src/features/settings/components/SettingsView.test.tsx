@@ -68,8 +68,8 @@ getAgentsSettingsMock.mockResolvedValue({
 });
 
 const baseSettings: AppSettings = {
-  codexBin: null,
-  codexArgs: null,
+  opencodeBin: null,
+  opencodeArgs: null,
   backendMode: "local",
   remoteBackendProvider: "tcp",
   remoteBackendHost: "127.0.0.1:4732",
@@ -165,7 +165,7 @@ const baseSettings: AppSettings = {
 
 const createDoctorResult = () => ({
   ok: true,
-  codexBin: null,
+  opencodeBin: null,
   version: null,
   appServerOk: true,
   details: null,
@@ -178,7 +178,7 @@ const createDoctorResult = () => ({
 const createUpdateResult = () => ({
   ok: true,
   method: "brew_formula" as const,
-  package: "codex",
+  package: "opencode",
   beforeVersion: "codex 0.0.0",
   afterVersion: "codex 0.0.1",
   upgraded: true,
@@ -1111,7 +1111,7 @@ describe("SettingsView Codex section", () => {
         onDownloadDictationModel={vi.fn()}
         onCancelDictationDownload={vi.fn()}
         onRemoveDictationModel={vi.fn()}
-        initialSection="codex"
+        initialSection="opencode"
       />,
     );
 
@@ -1556,7 +1556,7 @@ describe("SettingsView Codex defaults", () => {
         onDownloadDictationModel={vi.fn()}
         onCancelDictationDownload={vi.fn()}
         onRemoveDictationModel={vi.fn()}
-        initialSection="codex"
+        initialSection="opencode"
       />,
     );
 
@@ -1653,7 +1653,7 @@ describe("SettingsView Codex defaults", () => {
         onDownloadDictationModel={vi.fn()}
         onCancelDictationDownload={vi.fn()}
         onRemoveDictationModel={vi.fn()}
-        initialSection="codex"
+        initialSection="opencode"
       />,
     );
 

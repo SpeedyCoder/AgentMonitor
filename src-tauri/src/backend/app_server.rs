@@ -13,7 +13,7 @@ use tokio::sync::{mpsc, oneshot, Mutex};
 use tokio::time::timeout;
 
 use crate::backend::events::{AppServerEvent, EventSink};
-use crate::codex::args::parse_codex_args;
+use crate::opencode::args::parse_opencode_args;
 use crate::shared::process_core::{kill_child_process_tree, tokio_command};
 use crate::types::WorkspaceEntry;
 
@@ -389,7 +389,7 @@ fn should_suppress_hidden_thread_event(
     !has_result_or_error
         && !matches!(
             method_name,
-            Some("thread/archived") | Some("codex/backgroundThread")
+            Some("thread/archived") | Some("opencode/backgroundThread")
         )
 }
 
@@ -432,7 +432,7 @@ fn build_initialize_params(client_version: &str) -> Value {
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(300);
 
 pub(crate) struct WorkspaceSession {
-    pub(crate) codex_args: Option<String>,
+    pub(crate) opencode_args: Option<String>,
     pub(crate) child: Mutex<Child>,
     pub(crate) stdin: Mutex<ChildStdin>,
     pub(crate) pending: Mutex<HashMap<u64, oneshot::Sender<Value>>>,
@@ -560,7 +560,7 @@ impl WorkspaceSession {
     }
 }
 
-pub(crate) fn build_codex_path_env(codex_bin: Option<&str>) -> Option<String> {
+pub(crate) fn build_codex_path_env(opencode_bin: Option<&str>) -> Option<String> {
     let mut paths: Vec<PathBuf> = env::var_os("PATH")
         .map(|value| env::split_paths(&value).collect())
         .unwrap_or_default();
@@ -622,7 +622,7 @@ pub(crate) fn build_codex_path_env(codex_bin: Option<&str>) -> Option<String> {
         }
     }
 
-    if let Some(bin_path) = codex_bin.filter(|value| !value.trim().is_empty()) {
+    if let Some(bin_path) = opencode_bin.filter(|value| !value.trim().is_empty()) {
         if let Some(parent) = Path::new(bin_path).parent() {
             extras.push(parent.to_path_buf());
         }
@@ -644,17 +644,17 @@ pub(crate) fn build_codex_path_env(codex_bin: Option<&str>) -> Option<String> {
 }
 
 pub(crate) fn build_codex_command_with_bin(
-    codex_bin: Option<String>,
-    codex_args: Option<&str>,
+    opencode_bin: Option<String>,
+    opencode_args: Option<&str>,
     args: Vec<String>,
 ) -> Result<Command, String> {
-    let bin = codex_bin
+    let bin = opencode_bin
         .clone()
         .filter(|value| !value.trim().is_empty())
-        .unwrap_or_else(|| "codex".into());
+        .unwrap_or_else(|| "opencode".into());
 
-    let path_env = build_codex_path_env(codex_bin.as_deref());
-    let mut command_args = parse_codex_args(codex_args)?;
+    let path_env = build_codex_path_env(opencode_bin.as_deref());
+    let mut command_args = parse_opencode_args(opencode_args)?;
     command_args.extend(args);
 
     #[cfg(target_os = "windows")]
@@ -698,9 +698,9 @@ pub(crate) fn build_codex_command_with_bin(
 }
 
 pub(crate) async fn check_codex_installation(
-    codex_bin: Option<String>,
+    opencode_bin: Option<String>,
 ) -> Result<Option<String>, String> {
-    let mut command = build_codex_command_with_bin(codex_bin, None, vec!["--version".to_string()])?;
+    let mut command = build_codex_command_with_bin(opencode_bin, None, vec!["--version".to_string()])?;
     command.stdout(std::process::Stdio::piped());
     command.stderr(std::process::Stdio::piped());
 
@@ -748,23 +748,23 @@ pub(crate) async fn check_codex_installation(
 
 pub(crate) async fn spawn_workspace_session<E: EventSink>(
     entry: WorkspaceEntry,
-    default_codex_bin: Option<String>,
-    codex_args: Option<String>,
-    codex_home: Option<PathBuf>,
+    default_opencode_bin: Option<String>,
+    opencode_args: Option<String>,
+    opencode_home: Option<PathBuf>,
     client_version: String,
     event_sink: E,
 ) -> Result<Arc<WorkspaceSession>, String> {
-    let codex_bin = default_codex_bin;
-    let _ = check_codex_installation(codex_bin.clone()).await?;
+    let opencode_bin = default_opencode_bin;
+    let _ = check_codex_installation(opencode_bin.clone()).await?;
 
     let mut command = build_codex_command_with_bin(
-        codex_bin,
-        codex_args.as_deref(),
+        opencode_bin,
+        opencode_args.as_deref(),
         vec!["app-server".to_string()],
     )?;
     command.current_dir(&entry.path);
-    if let Some(path) = codex_home.as_ref() {
-        command.env("CODEX_HOME", path);
+    if let Some(path) = opencode_home.as_ref() {
+        command.env("OPENCODE_CONFIG_DIR", path);
     }
     command.stdin(std::process::Stdio::piped());
     command.stdout(std::process::Stdio::piped());
@@ -776,7 +776,7 @@ pub(crate) async fn spawn_workspace_session<E: EventSink>(
     let stderr = child.stderr.take().ok_or("missing stderr")?;
 
     let session = Arc::new(WorkspaceSession {
-        codex_args,
+        opencode_args,
         child: Mutex::new(child),
         stdin: Mutex::new(stdin),
         pending: Mutex::new(HashMap::new()),
@@ -896,7 +896,7 @@ pub(crate) async fn spawn_workspace_session<E: EventSink>(
                 .unwrap_or_else(|| fallback_workspace_id.clone());
 
             if let Some(ref tid) = thread_id {
-                if method_name == Some("codex/backgroundThread") {
+                if method_name == Some("opencode/backgroundThread") {
                     let action = value
                         .get("params")
                         .and_then(|params| params.get("action"))
@@ -912,7 +912,7 @@ pub(crate) async fn spawn_workspace_session<E: EventSink>(
                     let payload = AppServerEvent {
                         workspace_id: routed_workspace_id.clone(),
                         message: json!({
-                            "method": "codex/backgroundThread",
+                            "method": "opencode/backgroundThread",
                             "params": {
                                 "threadId": tid,
                                 "action": "hide"
@@ -1062,7 +1062,7 @@ pub(crate) async fn spawn_workspace_session<E: EventSink>(
             let payload = AppServerEvent {
                 workspace_id: workspace_id.clone(),
                 message: json!({
-                    "method": "codex/stderr",
+                    "method": "opencode/stderr",
                     "params": { "message": line },
                 }),
             };
@@ -1093,7 +1093,7 @@ pub(crate) async fn spawn_workspace_session<E: EventSink>(
     let payload = AppServerEvent {
         workspace_id: entry.id.clone(),
         message: json!({
-            "method": "codex/connected",
+            "method": "opencode/connected",
             "params": { "workspaceId": entry.id.clone() }
         }),
     };
@@ -1381,7 +1381,7 @@ mod tests {
             false
         ));
         assert!(!should_suppress_hidden_thread_event(
-            Some("codex/backgroundThread"),
+            Some("opencode/backgroundThread"),
             false
         ));
     }

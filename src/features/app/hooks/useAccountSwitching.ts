@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { cancelCodexLogin, runCodexLogin } from "../../../services/tauri";
+import { cancelOpenCodeLogin, runOpenCodeLogin } from "../../../services/tauri";
 import { subscribeAppServerEvents } from "../../../services/events";
 import type { AccountSnapshot } from "../../../types";
 import { getAppServerParams, getAppServerRawMethod } from "../../../utils/appServerEvents";
@@ -152,12 +152,12 @@ export function useAccountSwitching({
     loginIdRef.current = null;
     loginWorkspaceIdRef.current = workspaceId;
     try {
-      const { loginId, authUrl } = await runCodexLogin(workspaceId);
+      const { loginId, authUrl } = await runOpenCodeLogin(workspaceId);
 
       if (accountSwitchCanceledRef.current) {
         loginIdRef.current = loginId;
         try {
-          await cancelCodexLogin(workspaceId);
+          await cancelOpenCodeLogin(workspaceId);
         } catch {
           // Best effort: the user already canceled.
         }
@@ -181,7 +181,7 @@ export function useAccountSwitching({
       alertError(error);
       if (loginIdRef.current) {
         try {
-          await cancelCodexLogin(workspaceId);
+          await cancelOpenCodeLogin(workspaceId);
         } catch {
           // Ignore cancel errors here; we already surfaced the primary failure.
         }
@@ -207,7 +207,7 @@ export function useAccountSwitching({
     }
     accountSwitchCanceledRef.current = true;
     try {
-      await cancelCodexLogin(targetWorkspaceId);
+      await cancelOpenCodeLogin(targetWorkspaceId);
     } catch (error) {
       alertError(error);
     } finally {

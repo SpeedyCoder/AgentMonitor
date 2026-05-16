@@ -1,4 +1,4 @@
-import type { CodexFeature } from "@/types";
+import type { OpenCodeFeature } from "@/types";
 import {
   SettingsSection,
   SettingsSubsection,
@@ -47,7 +47,7 @@ const FEATURE_DESCRIPTION_FALLBACKS: Record<string, string> = {
   responses_websockets_v2: "Enable Responses API WebSocket v2 mode.",
 };
 
-function formatFeatureLabel(feature: CodexFeature): string {
+function formatFeatureLabel(feature: OpenCodeFeature): string {
   const displayName = feature.displayName?.trim();
   if (displayName) {
     return displayName;
@@ -59,7 +59,7 @@ function formatFeatureLabel(feature: CodexFeature): string {
     .join(" ");
 }
 
-function featureSubtitle(feature: CodexFeature): string {
+function featureSubtitle(feature: OpenCodeFeature): string {
   if (feature.description?.trim()) {
     return feature.description;
   }
@@ -90,7 +90,7 @@ export function SettingsFeaturesSection({
   experimentalFeatures,
   hasDynamicFeatureRows,
   onOpenConfig,
-  onToggleCodexFeature,
+  onToggleOpenCodeFeature,
   onUpdateAppSettings,
 }: SettingsFeaturesSectionProps) {
   return (
@@ -159,7 +159,7 @@ export function SettingsFeaturesSection({
         >
           <SettingsToggleSwitch
             pressed={feature.enabled}
-            onClick={() => onToggleCodexFeature(feature)}
+            onClick={() => onToggleOpenCodeFeature(feature)}
             disabled={featureUpdatingKey === feature.name}
           />
         </SettingsToggleRow>
@@ -182,7 +182,7 @@ export function SettingsFeaturesSection({
         >
           <SettingsToggleSwitch
             pressed={feature.enabled}
-            onClick={() => onToggleCodexFeature(feature)}
+            onClick={() => onToggleOpenCodeFeature(feature)}
             disabled={featureUpdatingKey === feature.name}
           />
         </SettingsToggleRow>
