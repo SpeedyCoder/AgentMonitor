@@ -21,7 +21,7 @@ type UseSettingsOpenCodeSectionArgs = {
     opencodeBin: string | null,
     opencodeArgs: string | null,
   ) => Promise<OpenCodeDoctorResult>;
-  onRunCodexUpdate?: (
+  onRunOpenCodeUpdate?: (
     opencodeBin: string | null,
     opencodeArgs: string | null,
   ) => Promise<OpenCodeUpdateResult>;
@@ -35,15 +35,15 @@ export type SettingsOpenCodeSectionProps = {
   defaultModelsError: string | null;
   defaultModelsConnectedWorkspaceCount: number;
   onRefreshDefaultModels: () => void;
-  codexPathDraft: string;
+  opencodePathDraft: string;
   opencodeArgsDraft: string;
-  codexDirty: boolean;
+  opencodeDirty: boolean;
   isSavingSettings: boolean;
   doctorState: {
     status: "idle" | "running" | "done";
     result: OpenCodeDoctorResult | null;
   };
-  codexUpdateState: {
+  opencodeUpdateState: {
     status: "idle" | "running" | "done";
     result: OpenCodeUpdateResult | null;
   };
@@ -61,14 +61,14 @@ export type SettingsOpenCodeSectionProps = {
   globalConfigRefreshDisabled: boolean;
   globalConfigSaveDisabled: boolean;
   globalConfigSaveLabel: string;
-  onSetCodexPathDraft: Dispatch<SetStateAction<string>>;
-  onSetCodexArgsDraft: Dispatch<SetStateAction<string>>;
+  onSetOpenCodePathDraft: Dispatch<SetStateAction<string>>;
+  onSetOpenCodeArgsDraft: Dispatch<SetStateAction<string>>;
   onSetGlobalAgentsContent: (value: string) => void;
   onSetGlobalConfigContent: (value: string) => void;
-  onBrowseCodex: () => Promise<void>;
-  onSaveCodexSettings: () => Promise<void>;
+  onBrowseOpenCode: () => Promise<void>;
+  onSaveOpenCodeSettings: () => Promise<void>;
   onRunDoctor: () => Promise<void>;
-  onRunCodexUpdate: () => Promise<void>;
+  onRunOpenCodeUpdate: () => Promise<void>;
   onRefreshGlobalAgents: () => void;
   onSaveGlobalAgents: () => void;
   onRefreshGlobalConfig: () => void;
@@ -80,16 +80,16 @@ export const useSettingsOpenCodeSection = ({
   projects,
   onUpdateAppSettings,
   onRunDoctor,
-  onRunCodexUpdate,
+  onRunOpenCodeUpdate,
 }: UseSettingsOpenCodeSectionArgs): SettingsOpenCodeSectionProps => {
-  const [codexPathDraft, setCodexPathDraft] = useState(appSettings.opencodeBin ?? "");
-  const [opencodeArgsDraft, setCodexArgsDraft] = useState(appSettings.opencodeArgs ?? "");
+  const [opencodePathDraft, setOpenCodePathDraft] = useState(appSettings.opencodeBin ?? "");
+  const [opencodeArgsDraft, setOpenCodeArgsDraft] = useState(appSettings.opencodeArgs ?? "");
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [doctorState, setDoctorState] = useState<{
     status: "idle" | "running" | "done";
     result: OpenCodeDoctorResult | null;
   }>({ status: "idle", result: null });
-  const [codexUpdateState, setCodexUpdateState] = useState<{
+  const [opencodeUpdateState, setOpenCodeUpdateState] = useState<{
     status: "idle" | "running" | "done";
     result: OpenCodeUpdateResult | null;
   }>({ status: "idle", result: null });
@@ -145,34 +145,34 @@ export const useSettingsOpenCodeSection = ({
   });
 
   useEffect(() => {
-    setCodexPathDraft(appSettings.opencodeBin ?? "");
+    setOpenCodePathDraft(appSettings.opencodeBin ?? "");
   }, [appSettings.opencodeBin]);
 
   useEffect(() => {
-    setCodexArgsDraft(appSettings.opencodeArgs ?? "");
+    setOpenCodeArgsDraft(appSettings.opencodeArgs ?? "");
   }, [appSettings.opencodeArgs]);
 
-  const nextCodexBin = codexPathDraft.trim() ? codexPathDraft.trim() : null;
-  const nextCodexArgs = normalizeOpenCodeArgsInput(opencodeArgsDraft);
-  const codexDirty =
-    nextCodexBin !== (appSettings.opencodeBin ?? null) ||
-    nextCodexArgs !== (appSettings.opencodeArgs ?? null);
+  const nextOpenCodeBin = opencodePathDraft.trim() ? opencodePathDraft.trim() : null;
+  const nextOpenCodeArgs = normalizeOpenCodeArgsInput(opencodeArgsDraft);
+  const opencodeDirty =
+    nextOpenCodeBin !== (appSettings.opencodeBin ?? null) ||
+    nextOpenCodeArgs !== (appSettings.opencodeArgs ?? null);
 
-  const handleBrowseCodex = async () => {
+  const handleBrowseOpenCode = async () => {
     const selection = await open({ multiple: false, directory: false });
     if (!selection || Array.isArray(selection)) {
       return;
     }
-    setCodexPathDraft(selection);
+    setOpenCodePathDraft(selection);
   };
 
-  const handleSaveCodexSettings = async () => {
+  const handleSaveOpenCodeSettings = async () => {
     setIsSavingSettings(true);
     try {
       await onUpdateAppSettings({
         ...appSettings,
-        opencodeBin: nextCodexBin,
-        opencodeArgs: nextCodexArgs,
+        opencodeBin: nextOpenCodeBin,
+        opencodeArgs: nextOpenCodeArgs,
       });
     } finally {
       setIsSavingSettings(false);
@@ -182,14 +182,14 @@ export const useSettingsOpenCodeSection = ({
   const handleRunDoctor = async () => {
     setDoctorState({ status: "running", result: null });
     try {
-      const result = await onRunDoctor(nextCodexBin, nextCodexArgs);
+      const result = await onRunDoctor(nextOpenCodeBin, nextOpenCodeArgs);
       setDoctorState({ status: "done", result });
     } catch (error) {
       setDoctorState({
         status: "done",
         result: {
           ok: false,
-          opencodeBin: nextCodexBin,
+          opencodeBin: nextOpenCodeBin,
           version: null,
           appServerOk: false,
           details: error instanceof Error ? error.message : String(error),
@@ -202,11 +202,11 @@ export const useSettingsOpenCodeSection = ({
     }
   };
 
-  const handleRunCodexUpdate = async () => {
-    setCodexUpdateState({ status: "running", result: null });
+  const handleRunOpenCodeUpdate = async () => {
+    setOpenCodeUpdateState({ status: "running", result: null });
     try {
-      if (!onRunCodexUpdate) {
-        setCodexUpdateState({
+      if (!onRunOpenCodeUpdate) {
+        setOpenCodeUpdateState({
           status: "done",
           result: {
             ok: false,
@@ -216,16 +216,16 @@ export const useSettingsOpenCodeSection = ({
             afterVersion: null,
             upgraded: false,
             output: null,
-            details: "Codex updates are not available in this build.",
+            details: "OpenCode updates are not available in this build.",
           },
         });
         return;
       }
 
-      const result = await onRunCodexUpdate(nextCodexBin, nextCodexArgs);
-      setCodexUpdateState({ status: "done", result });
+      const result = await onRunOpenCodeUpdate(nextOpenCodeBin, nextOpenCodeArgs);
+      setOpenCodeUpdateState({ status: "done", result });
     } catch (error) {
-      setCodexUpdateState({
+      setOpenCodeUpdateState({
         status: "done",
         result: {
           ok: false,
@@ -251,12 +251,12 @@ export const useSettingsOpenCodeSection = ({
     onRefreshDefaultModels: () => {
       void refreshDefaultModels();
     },
-    codexPathDraft,
+    opencodePathDraft,
     opencodeArgsDraft,
-    codexDirty,
+    opencodeDirty,
     isSavingSettings,
     doctorState,
-    codexUpdateState,
+    opencodeUpdateState,
     globalAgentsMeta: globalAgentsEditorMeta.meta,
     globalAgentsError,
     globalAgentsContent,
@@ -271,14 +271,14 @@ export const useSettingsOpenCodeSection = ({
     globalConfigRefreshDisabled: globalConfigEditorMeta.refreshDisabled,
     globalConfigSaveDisabled: globalConfigEditorMeta.saveDisabled,
     globalConfigSaveLabel: globalConfigEditorMeta.saveLabel,
-    onSetCodexPathDraft: setCodexPathDraft,
-    onSetCodexArgsDraft: setCodexArgsDraft,
+    onSetOpenCodePathDraft: setOpenCodePathDraft,
+    onSetOpenCodeArgsDraft: setOpenCodeArgsDraft,
     onSetGlobalAgentsContent: setGlobalAgentsContent,
     onSetGlobalConfigContent: setGlobalConfigContent,
-    onBrowseCodex: handleBrowseCodex,
-    onSaveCodexSettings: handleSaveCodexSettings,
+    onBrowseOpenCode: handleBrowseOpenCode,
+    onSaveOpenCodeSettings: handleSaveOpenCodeSettings,
     onRunDoctor: handleRunDoctor,
-    onRunCodexUpdate: handleRunCodexUpdate,
+    onRunOpenCodeUpdate: handleRunOpenCodeUpdate,
     onRefreshGlobalAgents: () => {
       void refreshGlobalAgents();
     },

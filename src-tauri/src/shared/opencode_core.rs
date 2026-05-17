@@ -12,7 +12,7 @@ use tokio::time::timeout;
 use tokio::time::Instant;
 
 use crate::backend::app_server::WorkspaceSession;
-use crate::opencode::config as codex_config;
+use crate::opencode::config;
 use crate::opencode::home::{resolve_default_opencode_home, resolve_workspace_opencode_home};
 use crate::rules;
 use crate::shared::account::{build_account_response, read_auth_account};
@@ -54,7 +54,7 @@ fn image_mime_type_for_path(path: &str) -> Option<&'static str> {
 }
 
 #[allow(dead_code)]
-fn should_inline_image_path_for_codex(path: &str) -> bool {
+fn should_inline_image_path_for_opencode(path: &str) -> bool {
     matches!(
         image_extension_for_path(path).as_deref(),
         Some("heic") | Some("heif")
@@ -75,7 +75,7 @@ fn temp_converted_image_path(path: &str, extension: &str) -> PathBuf {
         .duration_since(UNIX_EPOCH)
         .map(|value| value.as_millis())
         .unwrap_or_default();
-    std::env::temp_dir().join(format!("codex-monitor-image-{safe_stem}-{ts}.{extension}"))
+    std::env::temp_dir().join(format!("opencode-monitor-image-{safe_stem}-{ts}.{extension}"))
 }
 
 #[cfg(target_os = "macos")]
@@ -156,7 +156,7 @@ pub(crate) fn read_image_as_data_url_core(path: &str) -> Result<String, String> 
     if trimmed_path.is_empty() {
         return Err("Image path is required".to_string());
     }
-    if should_inline_image_path_for_codex(&trimmed_path) {
+    if should_inline_image_path_for_opencode(&trimmed_path) {
         #[cfg(target_os = "macos")]
         {
             let encoded = STANDARD.encode(convert_heif_image_to_jpeg_bytes(&trimmed_path)?);
@@ -418,7 +418,7 @@ fn build_turn_input_items(
                 || trimmed.starts_with("https://")
             {
                 input.push(json!({ "type": "image", "url": trimmed }));
-            } else if should_inline_image_path_for_codex(trimmed) {
+            } else if should_inline_image_path_for_opencode(trimmed) {
                 input.push(json!({
                     "type": "image",
                     "url": read_image_as_data_url_core(trimmed)?,
@@ -884,7 +884,7 @@ pub(crate) async fn get_config_model_core(
     workspace_id: String,
 ) -> Result<Value, String> {
     let opencode_home = resolve_opencode_home_for_workspace_core(workspaces, &workspace_id).await?;
-    let model = codex_config::read_config_model(Some(opencode_home))?;
+    let model = config::read_config_model(Some(opencode_home))?;
     Ok(json!({ "model": model }))
 }
 
@@ -952,7 +952,7 @@ mod tests {
 
     #[test]
     fn read_image_data_url_core_succeeds_with_file_uri_for_real_file() {
-        let dir = std::env::temp_dir().join("codex_monitor_test");
+        let dir = std::env::temp_dir().join("opencode_monitor_test");
         std::fs::create_dir_all(&dir).unwrap();
         let img_path = dir.join("test_photo.png");
         let png_bytes: &[u8] = &[
@@ -1003,7 +1003,7 @@ mod tests {
     }
 
     #[test]
-    fn heif_paths_are_inlined_for_codex() {
+    fn heif_paths_are_inlined_for_opencode() {
         assert!(should_inline_image_path_for_codex("/tmp/photo.heic"));
         assert!(should_inline_image_path_for_codex("/tmp/photo.HEIF"));
         assert!(!should_inline_image_path_for_codex("/tmp/photo.png"));

@@ -1,6 +1,6 @@
 use super::*;
 
-#[path = "rpc/codex.rs"]
+#[path = "rpc/opencode.rs"]
 mod opencode;
 #[path = "rpc/daemon.rs"]
 mod daemon;

@@ -68,8 +68,8 @@ import { useTraySessionUsage } from "@app/hooks/useTraySessionUsage";
 import { useTauriEvent } from "@app/hooks/useTauriEvent";
 import { useAppBootstrapOrchestration } from "@app/bootstrap/useAppBootstrapOrchestration";
 import {
-  useThreadCodexBootstrapOrchestration,
-  useThreadCodexSyncOrchestration,
+  useThreadOpenCodeBootstrapOrchestration,
+  useThreadOpenCodeSyncOrchestration,
   useThreadSelectionHandlersOrchestration,
   useThreadUiOrchestration,
 } from "@app/orchestration/useThreadOrchestration";
@@ -92,7 +92,7 @@ export default function MainApp() {
     appSettings,
     setAppSettings,
     doctor,
-    codexUpdate,
+    opencodeUpdate,
     appSettingsLoading,
     reduceTransparency,
     setReduceTransparency,
@@ -189,7 +189,7 @@ export default function MainApp() {
     [workspaces],
   );
   const {
-    threadCodexParamsVersion,
+    threadOpenCodeParamsVersion,
     getThreadOpenCodeParams,
     patchThreadOpenCodeParams,
     accessMode,
@@ -203,13 +203,13 @@ export default function MainApp() {
     preferredCollabModeId,
     setPreferredCollabModeId,
     preferredOpenCodeArgsOverride,
-    setPreferredCodexArgsOverride,
-    threadCodexSelectionKey,
-    setThreadCodexSelectionKey,
+    setPreferredOpenCodeArgsOverride,
+    threadOpenCodeSelectionKey,
+    setThreadOpenCodeSelectionKey,
     activeThreadIdRef,
     pendingNewThreadSeedRef,
     persistThreadOpenCodeParams,
-  } = useThreadCodexBootstrapOrchestration({
+  } = useThreadOpenCodeBootstrapOrchestration({
     activeWorkspaceId,
   });
   const {
@@ -291,7 +291,7 @@ export default function MainApp() {
     onDebug: addDebugEntry,
     preferredModelId,
     preferredEffort,
-    selectionKey: threadCodexSelectionKey,
+    selectionKey: threadOpenCodeSelectionKey,
   });
 
   const {
@@ -303,22 +303,22 @@ export default function MainApp() {
     activeWorkspace,
     enabled: appSettings.collaborationModesEnabled,
     preferredModeId: preferredCollabModeId,
-    selectionKey: threadCodexSelectionKey,
+    selectionKey: threadOpenCodeSelectionKey,
     onDebug: addDebugEntry,
   });
 
-  const [selectedOpenCodeArgsOverride, setSelectedCodexArgsOverride] = useState<string | null>(
+  const [selectedOpenCodeArgsOverride, setSelectedOpenCodeArgsOverride] = useState<string | null>(
     null,
   );
   const [selectedServiceTier, setSelectedServiceTier] = useState<
     ServiceTier | null | undefined
   >(undefined);
   useEffect(() => {
-    setSelectedCodexArgsOverride(normalizeOpenCodeArgsInput(preferredOpenCodeArgsOverride));
-  }, [preferredOpenCodeArgsOverride, threadCodexSelectionKey]);
+    setSelectedOpenCodeArgsOverride(normalizeOpenCodeArgsInput(preferredOpenCodeArgsOverride));
+  }, [preferredOpenCodeArgsOverride, threadOpenCodeSelectionKey]);
   useEffect(() => {
     setSelectedServiceTier(preferredServiceTier);
-  }, [preferredServiceTier, threadCodexSelectionKey]);
+  }, [preferredServiceTier, threadOpenCodeSelectionKey]);
 
   const {
     handleSelectModel,
@@ -326,7 +326,7 @@ export default function MainApp() {
     handleSelectServiceTier,
     handleSelectCollaborationMode,
     handleSelectAccessMode,
-    handleSelectCodexArgsOverride,
+    handleSelectOpenCodeArgsOverride,
   } = useThreadSelectionHandlersOrchestration({
     appSettingsLoading,
     setAppSettings,
@@ -337,7 +337,7 @@ export default function MainApp() {
     setSelectedServiceTier,
     setSelectedCollaborationModeId,
     setAccessMode,
-    setSelectedCodexArgsOverride,
+    setSelectedOpenCodeArgsOverride,
     persistThreadOpenCodeParams,
   });
   const commitMessageModelId = useMemo(
@@ -411,7 +411,7 @@ export default function MainApp() {
     ensureWorkspaceRuntimeOpenCodeArgs,
     getThreadArgsBadge,
   } = useMainAppThreadOpenCodeState({
-    appCodexArgs: appSettings.opencodeArgs,
+    appOpenCodeArgs: appSettings.opencodeArgs,
     selectedOpenCodeArgsOverride,
     getThreadOpenCodeParams,
     patchThreadOpenCodeParams,
@@ -663,7 +663,7 @@ export default function MainApp() {
     onDebug: addDebugEntry,
   });
 
-  useThreadCodexSyncOrchestration({
+  useThreadOpenCodeSyncOrchestration({
     activeWorkspaceId,
     activeThreadId,
     appSettings: {
@@ -671,16 +671,16 @@ export default function MainApp() {
       lastComposerModelId: appSettings.lastComposerModelId,
       lastComposerReasoningEffort: appSettings.lastComposerReasoningEffort,
     },
-    threadCodexParamsVersion,
+    threadOpenCodeParamsVersion,
     getThreadOpenCodeParams,
     patchThreadOpenCodeParams,
-    setThreadCodexSelectionKey,
+    setThreadOpenCodeSelectionKey,
     setAccessMode,
     setPreferredModelId,
     setPreferredEffort,
     setPreferredServiceTier,
     setPreferredCollabModeId,
-    setPreferredCodexArgsOverride,
+    setPreferredOpenCodeArgsOverride,
     activeThreadIdRef,
     pendingNewThreadSeedRef,
     selectedModelId,
@@ -1014,7 +1014,7 @@ export default function MainApp() {
       queueSaveSettings,
       handleToggleAutomaticAppUpdateChecks,
       doctor,
-      codexUpdate,
+      opencodeUpdate,
       updateWorkspaceSettings,
       scaleShortcutTitle,
       scaleShortcutText,
@@ -1709,7 +1709,7 @@ export default function MainApp() {
     reasoningSupported,
     opencodeArgsOptions,
     selectedOpenCodeArgsOverride,
-    onSelectOpenCodeArgsOverride: handleSelectCodexArgsOverride,
+    onSelectOpenCodeArgsOverride: handleSelectOpenCodeArgsOverride,
     accessMode,
     onSelectAccessMode: handleSelectAccessMode,
     skills,

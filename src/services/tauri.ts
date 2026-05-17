@@ -126,7 +126,7 @@ export type TextFileResponse = {
 };
 
 export type GlobalAgentsResponse = TextFileResponse;
-export type GlobalCodexConfigResponse = TextFileResponse;
+export type GlobalOpenCodeConfigResponse = TextFileResponse;
 export type AgentMdResponse = TextFileResponse;
 export type AgentSummary = {
   name: string;
@@ -206,7 +206,7 @@ export async function writeGlobalAgentsMd(content: string): Promise<void> {
   return fileWrite("global", "agents", content);
 }
 
-export async function readGlobalOpenCodeConfigJson(): Promise<GlobalCodexConfigResponse> {
+export async function readGlobalOpenCodeConfigJson(): Promise<GlobalOpenCodeConfigResponse> {
   return fileRead("global", "config");
 }
 
@@ -380,7 +380,7 @@ export async function connectWorkspace(id: string): Promise<void> {
 export async function setWorkspaceRuntimeOpenCodeArgs(
   workspaceId: string,
   opencodeArgs: string | null,
-): Promise<{ appliedCodexArgs: string | null; respawned: boolean }> {
+): Promise<{ appliedOpenCodeArgs: string | null; respawned: boolean }> {
   return invoke("set_workspace_runtime_opencode_args", {
     workspaceId,
     opencodeArgs,

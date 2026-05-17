@@ -112,7 +112,7 @@ type UseMainAppModalsArgs = {
       opencodeBin: string | null,
       opencodeArgs: string | null,
     ) => Promise<OpenCodeDoctorResult>;
-    codexUpdate?: (
+    opencodeUpdate?: (
       opencodeBin: string | null,
       opencodeArgs: string | null,
     ) => Promise<OpenCodeUpdateResult>;
@@ -185,7 +185,7 @@ function buildSettingsViewProps({
     onToggleAutomaticAppUpdateChecks:
       settings.handleToggleAutomaticAppUpdateChecks,
     onRunDoctor: settings.doctor,
-    onRunCodexUpdate: settings.codexUpdate,
+    onRunOpenCodeUpdate: settings.opencodeUpdate,
     onUpdateWorkspaceSettings: async (id, nextSettings) => {
       await settings.updateWorkspaceSettings(id, nextSettings);
     },

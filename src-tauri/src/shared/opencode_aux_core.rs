@@ -8,7 +8,7 @@ use tokio::sync::{mpsc, Mutex};
 use tokio::time::timeout;
 
 use crate::backend::app_server::{
-    build_codex_command_with_bin, build_codex_path_env, check_codex_installation, WorkspaceSession,
+    build_opencode_command_with_bin, build_opencode_path_env, check_opencode_installation, WorkspaceSession,
 };
 use crate::shared::process_core::tokio_command;
 use crate::types::{AppSettings, WorkspaceEntry};
@@ -303,9 +303,9 @@ pub(crate) async fn opencode_doctor_core(
         .clone()
         .filter(|value| !value.trim().is_empty())
         .or(default_args);
-    let path_env = build_codex_path_env(resolved.as_deref());
-    let version = check_codex_installation(resolved.clone()).await?;
-    let mut command = build_codex_command_with_bin(
+    let path_env = build_opencode_path_env(resolved.as_deref());
+    let version = check_opencode_installation(resolved.clone()).await?;
+    let mut command = build_opencode_command_with_bin(
         resolved.clone(),
         resolved_args.as_deref(),
         vec!["app-server".to_string(), "--help".to_string()],
@@ -377,7 +377,7 @@ pub(crate) async fn opencode_doctor_core(
     let details = if app_server_ok {
         None
     } else {
-        Some("Failed to run `codex app-server --help`.".to_string())
+        Some("Failed to run `opencode serve --help`.".to_string())
     };
     Ok(json!({
         "ok": version.is_some() && app_server_ok,

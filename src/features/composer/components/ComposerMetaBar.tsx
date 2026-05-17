@@ -224,7 +224,7 @@ export function ComposerMetaBar({
             </span>
             <select
               className="composer-select composer-select--approval"
-              aria-label="Codex args profile"
+              aria-label="OpenCode args profile"
               disabled={disabled}
               value={selectedOpenCodeArgsOverride ?? ""}
               onChange={(event) =>

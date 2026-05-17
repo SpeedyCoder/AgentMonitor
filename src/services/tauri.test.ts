@@ -390,13 +390,13 @@ describe("tauri invoke wrappers", () => {
     });
   });
 
-  it("maps feature key and enabled for set_codex_feature_flag", async () => {
+  it("maps feature key and enabled for set_opencode_feature_flag", async () => {
     const invokeMock = vi.mocked(invoke);
     invokeMock.mockResolvedValueOnce(undefined);
 
     await setOpenCodeFeatureFlag("apps", true);
 
-    expect(invokeMock).toHaveBeenCalledWith("set_codex_feature_flag", {
+    expect(invokeMock).toHaveBeenCalledWith("set_opencode_feature_flag", {
       featureKey: "apps",
       enabled: true,
     });
@@ -576,7 +576,7 @@ describe("tauri invoke wrappers", () => {
   it("reads agents settings", async () => {
     const invokeMock = vi.mocked(invoke);
     invokeMock.mockResolvedValueOnce({
-      configPath: "/Users/me/.codex/config.toml",
+      configPath: "/Users/me/.config/opencode/config.toml",
       multiAgentEnabled: true,
       maxThreads: 6,
       maxDepth: 1,
@@ -591,7 +591,7 @@ describe("tauri invoke wrappers", () => {
   it("updates core agents settings", async () => {
     const invokeMock = vi.mocked(invoke);
     invokeMock.mockResolvedValueOnce({
-      configPath: "/Users/me/.codex/config.toml",
+      configPath: "/Users/me/.config/opencode/config.toml",
       multiAgentEnabled: false,
       maxThreads: 4,
       maxDepth: 3,

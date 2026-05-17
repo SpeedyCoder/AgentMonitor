@@ -1,7 +1,7 @@
 import type { AccessMode, ServiceTier } from "@/types";
 import {
-  buildEffectiveCodexArgsBadgeLabel,
-  sanitizeRuntimeCodexArgs,
+  buildEffectiveOpenCodeArgsBadgeLabel,
+  sanitizeRuntimeOpenCodeArgs,
 } from "./opencodeArgsProfiles";
 import type { ThreadOpenCodeParams } from "./threadStorage";
 import { makeThreadOpenCodeParamsKey } from "./threadStorage";
@@ -16,7 +16,7 @@ export type PendingNewThreadSeed = {
   opencodeArgsOverride: string | null;
 };
 
-type ResolveThreadCodexStateInput = {
+type ResolveThreadOpenCodeStateInput = {
   workspaceId: string;
   threadId: string | null;
   defaultAccessMode: AccessMode;
@@ -56,21 +56,21 @@ export function resolveWorkspaceRuntimeOpenCodeArgsOverride(options: {
     getThreadOpenCodeParams(workspaceId, NO_THREAD_SCOPE_SUFFIX)?.opencodeArgsOverride ?? null;
 
   if (!threadId) {
-    return sanitizeRuntimeCodexArgs(getNoThreadArgs());
+    return sanitizeRuntimeOpenCodeArgs(getNoThreadArgs());
   }
 
   const threadScoped = getThreadOpenCodeParams(workspaceId, threadId);
   if (threadScoped) {
     if (threadScoped.opencodeArgsOverride !== undefined) {
-      return sanitizeRuntimeCodexArgs(threadScoped.opencodeArgsOverride);
+      return sanitizeRuntimeOpenCodeArgs(threadScoped.opencodeArgsOverride);
     }
-    return sanitizeRuntimeCodexArgs(getNoThreadArgs());
+    return sanitizeRuntimeOpenCodeArgs(getNoThreadArgs());
   }
 
-  return sanitizeRuntimeCodexArgs(getNoThreadArgs());
+  return sanitizeRuntimeOpenCodeArgs(getNoThreadArgs());
 }
 
-export function resolveWorkspaceRuntimeCodexArgsBadgeLabel(options: {
+export function resolveWorkspaceRuntimeOpenCodeArgsBadgeLabel(options: {
   workspaceId: string;
   threadId: string;
   getThreadOpenCodeParams: (workspaceId: string, threadId: string) => ThreadOpenCodeParams | null;
@@ -80,7 +80,7 @@ export function resolveWorkspaceRuntimeCodexArgsBadgeLabel(options: {
     threadId: options.threadId,
     getThreadOpenCodeParams: options.getThreadOpenCodeParams,
   });
-  return buildEffectiveCodexArgsBadgeLabel(effectiveArgs);
+  return buildEffectiveOpenCodeArgsBadgeLabel(effectiveArgs);
 }
 
 export function createPendingThreadSeed(options: {
@@ -111,8 +111,8 @@ export function createPendingThreadSeed(options: {
   };
 }
 
-export function resolveThreadCodexState(
-  input: ResolveThreadCodexStateInput,
+export function resolveThreadOpenCodeState(
+  input: ResolveThreadOpenCodeStateInput,
 ): ResolvedThreadOpenCodeState {
   const {
     workspaceId,

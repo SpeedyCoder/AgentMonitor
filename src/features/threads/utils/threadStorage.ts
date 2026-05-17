@@ -3,7 +3,7 @@ import type { AccessMode, ServiceTier } from "@/types";
 const STORAGE_KEY_THREAD_ACTIVITY = "opencodemonitor.threadLastUserActivity";
 export const STORAGE_KEY_PINNED_THREADS = "opencodemonitor.pinnedThreads";
 export const STORAGE_KEY_CUSTOM_NAMES = "opencodemonitor.threadCustomNames";
-export const STORAGE_KEY_THREAD_CODEX_PARAMS = "opencodemonitor.threadCodexParams";
+export const STORAGE_KEY_THREAD_CODEX_PARAMS = "opencodemonitor.threadOpenCodeParams";
 export const STORAGE_KEY_DETACHED_REVIEW_LINKS = "opencodemonitor.detachedReviewLinks";
 export const MAX_PINS_SOFT_LIMIT = 5;
 
@@ -12,7 +12,7 @@ export type PinnedThreadsMap = Record<string, number>;
 export type CustomNamesMap = Record<string, string>;
 type DetachedReviewLinksMap = Record<string, Record<string, string>>;
 
-// Per-thread Codex parameter overrides. Keyed by `${workspaceId}:${threadId}`.
+// Per-thread OpenCode parameter overrides. Keyed by `${workspaceId}:${threadId}`.
 // These are UI-level preferences (not server state) and are best-effort persisted.
 export type ThreadOpenCodeParams = {
   modelId: string | null;

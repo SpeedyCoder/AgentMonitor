@@ -60,7 +60,7 @@ getConfigModelMock.mockResolvedValue(null);
 isMobileRuntimeMock.mockResolvedValue(false);
 listWorkspacesMock.mockResolvedValue([]);
 getAgentsSettingsMock.mockResolvedValue({
-  configPath: "/Users/me/.codex/config.toml",
+  configPath: "/Users/me/.config/opencode/config.toml",
   multiAgentEnabled: false,
   maxThreads: 6,
   maxDepth: 1,
@@ -527,7 +527,7 @@ describe("SettingsView Display", () => {
     renderDisplaySection({ onUpdateAppSettings });
 
     const row = screen
-      .getByText("Show remaining Codex limits")
+      .getByText("Show remaining OpenCode limits")
       .closest(".settings-toggle-row") as HTMLElement | null;
     if (!row) {
       throw new Error("Expected remaining limits row");
@@ -1078,7 +1078,7 @@ describe("SettingsView Environments", () => {
   });
 });
 
-describe("SettingsView Codex section", () => {
+describe("SettingsView OpenCode section", () => {
   it("updates review mode in codex section", async () => {
     cleanup();
     const onUpdateAppSettings = vi.fn().mockResolvedValue(undefined);
@@ -1101,7 +1101,7 @@ describe("SettingsView Codex section", () => {
         openAppIconById={{}}
         onUpdateAppSettings={onUpdateAppSettings}
         onRunDoctor={vi.fn().mockResolvedValue(createDoctorResult())}
-        onRunCodexUpdate={vi.fn().mockResolvedValue(createUpdateResult())}
+        onRunOpenCodeUpdate={vi.fn().mockResolvedValue(createUpdateResult())}
         onUpdateWorkspaceSettings={vi.fn().mockResolvedValue(undefined)}
         scaleShortcutTitle="Scale shortcut"
         scaleShortcutText="Use Command +/-"
@@ -1482,7 +1482,7 @@ describe("SettingsView Codex section", () => {
 
 });
 
-describe("SettingsView Codex defaults", () => {
+describe("SettingsView OpenCode defaults", () => {
   const createModelListResponse = (models: Array<Record<string, unknown>>) => ({
     result: { data: models },
   });
@@ -1546,7 +1546,7 @@ describe("SettingsView Codex defaults", () => {
         openAppIconById={{}}
         onUpdateAppSettings={onUpdateAppSettings}
         onRunDoctor={vi.fn().mockResolvedValue(createDoctorResult())}
-        onRunCodexUpdate={vi.fn().mockResolvedValue(createUpdateResult())}
+        onRunOpenCodeUpdate={vi.fn().mockResolvedValue(createUpdateResult())}
         onUpdateWorkspaceSettings={vi.fn().mockResolvedValue(undefined)}
         scaleShortcutTitle="Scale shortcut"
         scaleShortcutText="Use Command +/-"
@@ -1643,7 +1643,7 @@ describe("SettingsView Codex defaults", () => {
         openAppIconById={{}}
         onUpdateAppSettings={onUpdateAppSettings}
         onRunDoctor={vi.fn().mockResolvedValue(createDoctorResult())}
-        onRunCodexUpdate={vi.fn().mockResolvedValue(createUpdateResult())}
+        onRunOpenCodeUpdate={vi.fn().mockResolvedValue(createUpdateResult())}
         onUpdateWorkspaceSettings={vi.fn().mockResolvedValue(undefined)}
         scaleShortcutTitle="Scale shortcut"
         scaleShortcutText="Use Command +/-"
@@ -1770,7 +1770,7 @@ describe("SettingsView Features", () => {
     });
   });
 
-  it("shows fallback description when Codex omits feature description", async () => {
+  it("shows fallback description when OpenCode omits feature description", async () => {
     renderFeaturesSection({
       experimentalFeaturesResponse: {
         data: [
@@ -1849,7 +1849,7 @@ describe("SettingsView Composer", () => {
     expect(steerOption.hasAttribute("disabled")).toBe(true);
     expect(
       screen.getByText(
-        "Steer is unavailable in the current Codex config. Follow-ups will queue.",
+        "Steer is unavailable in the current OpenCode config. Follow-ups will queue.",
       ),
     ).not.toBeNull();
 

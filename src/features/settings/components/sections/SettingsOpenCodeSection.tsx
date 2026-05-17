@@ -21,15 +21,15 @@ type SettingsOpenCodeSectionProps = {
   defaultModelsError: string | null;
   defaultModelsConnectedWorkspaceCount: number;
   onRefreshDefaultModels: () => void;
-  codexPathDraft: string;
+  opencodePathDraft: string;
   opencodeArgsDraft: string;
-  codexDirty: boolean;
+  opencodeDirty: boolean;
   isSavingSettings: boolean;
   doctorState: {
     status: "idle" | "running" | "done";
     result: OpenCodeDoctorResult | null;
   };
-  codexUpdateState: {
+  opencodeUpdateState: {
     status: "idle" | "running" | "done";
     result: OpenCodeUpdateResult | null;
   };
@@ -47,14 +47,14 @@ type SettingsOpenCodeSectionProps = {
   globalConfigRefreshDisabled: boolean;
   globalConfigSaveDisabled: boolean;
   globalConfigSaveLabel: string;
-  onSetCodexPathDraft: Dispatch<SetStateAction<string>>;
-  onSetCodexArgsDraft: Dispatch<SetStateAction<string>>;
+  onSetOpenCodePathDraft: Dispatch<SetStateAction<string>>;
+  onSetOpenCodeArgsDraft: Dispatch<SetStateAction<string>>;
   onSetGlobalAgentsContent: (value: string) => void;
   onSetGlobalConfigContent: (value: string) => void;
-  onBrowseCodex: () => Promise<void>;
-  onSaveCodexSettings: () => Promise<void>;
+  onBrowseOpenCode: () => Promise<void>;
+  onSaveOpenCodeSettings: () => Promise<void>;
   onRunDoctor: () => Promise<void>;
-  onRunCodexUpdate: () => Promise<void>;
+  onRunOpenCodeUpdate: () => Promise<void>;
   onRefreshGlobalAgents: () => void;
   onSaveGlobalAgents: () => void;
   onRefreshGlobalConfig: () => void;
@@ -113,12 +113,12 @@ export function SettingsOpenCodeSection({
   defaultModelsError,
   defaultModelsConnectedWorkspaceCount,
   onRefreshDefaultModels,
-  codexPathDraft,
+  opencodePathDraft,
   opencodeArgsDraft,
-  codexDirty,
+  opencodeDirty,
   isSavingSettings,
   doctorState,
-  codexUpdateState,
+  opencodeUpdateState,
   globalAgentsMeta,
   globalAgentsError,
   globalAgentsContent,
@@ -133,14 +133,14 @@ export function SettingsOpenCodeSection({
   globalConfigRefreshDisabled,
   globalConfigSaveDisabled,
   globalConfigSaveLabel,
-  onSetCodexPathDraft,
-  onSetCodexArgsDraft,
+  onSetOpenCodePathDraft,
+  onSetOpenCodeArgsDraft,
   onSetGlobalAgentsContent,
   onSetGlobalConfigContent,
-  onBrowseCodex,
-  onSaveCodexSettings,
+  onBrowseOpenCode,
+  onSaveOpenCodeSettings,
   onRunDoctor,
-  onRunCodexUpdate,
+  onRunOpenCodeUpdate,
   onRefreshGlobalAgents,
   onSaveGlobalAgents,
   onRefreshGlobalConfig,
@@ -230,25 +230,25 @@ export function SettingsOpenCodeSection({
   return (
     <SettingsSection
       title="OpenCode"
-      subtitle="Configure the Codex CLI used by OpenCodeMonitor and validate the install."
+      subtitle="Configure the OpenCode CLI used by OpenCodeMonitor and validate the install."
     >
       <div className="settings-field">
-        <label className="settings-field-label" htmlFor="codex-path">
-          Default Codex path
+        <label className="settings-field-label" htmlFor="opencode-path">
+          Default OpenCode path
         </label>
         <div className="settings-field-row">
           <input
-            id="codex-path"
+            id="opencode-path"
             className="settings-input"
-            value={codexPathDraft}
+            value={opencodePathDraft}
             placeholder="opencode"
-            onChange={(event) => onSetCodexPathDraft(event.target.value)}
+            onChange={(event) => onSetOpenCodePathDraft(event.target.value)}
           />
           <button
             type="button"
             className="ghost"
             onClick={() => {
-              void onBrowseCodex();
+              void onBrowseOpenCode();
             }}
           >
             Browse
@@ -256,27 +256,27 @@ export function SettingsOpenCodeSection({
           <button
             type="button"
             className="ghost"
-            onClick={() => onSetCodexPathDraft("")}
+            onClick={() => onSetOpenCodePathDraft("")}
           >
             Use PATH
           </button>
         </div>
         <div className="settings-help">Leave empty to use the system PATH resolution.</div>
-        <label className="settings-field-label" htmlFor="codex-args">
-          Default Codex args
+        <label className="settings-field-label" htmlFor="opencode-args">
+          Default OpenCode args
         </label>
         <div className="settings-field-row">
           <input
-            id="codex-args"
+            id="opencode-args"
             className="settings-input"
             value={opencodeArgsDraft}
             placeholder="--profile personal"
-            onChange={(event) => onSetCodexArgsDraft(event.target.value)}
+            onChange={(event) => onSetOpenCodeArgsDraft(event.target.value)}
           />
           <button
             type="button"
             className="ghost"
-            onClick={() => onSetCodexArgsDraft("")}
+            onClick={() => onSetOpenCodeArgsDraft("")}
           >
             Clear
           </button>
@@ -285,7 +285,7 @@ export function SettingsOpenCodeSection({
           Extra flags passed before <code>app-server</code>. Use quotes for values with spaces.
         </div>
         <div className="settings-help">
-          These settings apply to the shared Codex app-server used across all connected workspaces.
+          These settings apply to the shared OpenCode app-server used across all connected workspaces.
         </div>
         <div className="settings-help">
           Per-thread override processing ignores unsupported flags: <code>-m</code>/
@@ -295,12 +295,12 @@ export function SettingsOpenCodeSection({
           <code>--local-provider</code>, and <code>--no-alt-screen</code>.
         </div>
         <div className="settings-field-actions">
-          {codexDirty && (
+          {opencodeDirty && (
             <button
               type="button"
               className="primary"
               onClick={() => {
-                void onSaveCodexSettings();
+                void onSaveOpenCodeSettings();
               }}
               disabled={isSavingSettings}
             >
@@ -322,20 +322,20 @@ export function SettingsOpenCodeSection({
             type="button"
             className="ghost settings-button-compact"
             onClick={() => {
-              void onRunCodexUpdate();
+              void onRunOpenCodeUpdate();
             }}
-            disabled={codexUpdateState.status === "running"}
-            title="Update Codex"
+            disabled={opencodeUpdateState.status === "running"}
+            title="Update OpenCode"
           >
             <Stethoscope aria-hidden />
-            {codexUpdateState.status === "running" ? "Updating..." : "Update"}
+            {opencodeUpdateState.status === "running" ? "Updating..." : "Update"}
           </button>
         </div>
 
         {doctorState.result && (
           <div className={`settings-doctor ${doctorState.result.ok ? "ok" : "error"}`}>
             <div className="settings-doctor-title">
-              {doctorState.result.ok ? "Codex looks good" : "Codex issue detected"}
+              {doctorState.result.ok ? "OpenCode looks good" : "OpenCode issue detected"}
             </div>
             <div className="settings-doctor-body">
               <div>Version: {doctorState.result.version ?? "unknown"}</div>
@@ -355,33 +355,33 @@ export function SettingsOpenCodeSection({
           </div>
         )}
 
-        {codexUpdateState.result && (
+        {opencodeUpdateState.result && (
           <div
-            className={`settings-doctor ${codexUpdateState.result.ok ? "ok" : "error"}`}
+            className={`settings-doctor ${opencodeUpdateState.result.ok ? "ok" : "error"}`}
           >
             <div className="settings-doctor-title">
-              {codexUpdateState.result.ok
-                ? codexUpdateState.result.upgraded
-                  ? "Codex updated"
-                  : "Codex already up-to-date"
-                : "Codex update failed"}
+              {opencodeUpdateState.result.ok
+                ? opencodeUpdateState.result.upgraded
+                  ? "OpenCode updated"
+                  : "OpenCode already up-to-date"
+                : "OpenCode update failed"}
             </div>
             <div className="settings-doctor-body">
-              <div>Method: {codexUpdateState.result.method}</div>
-              {codexUpdateState.result.package && (
-                <div>Package: {codexUpdateState.result.package}</div>
+              <div>Method: {opencodeUpdateState.result.method}</div>
+              {opencodeUpdateState.result.package && (
+                <div>Package: {opencodeUpdateState.result.package}</div>
               )}
               <div>
                 Version:{" "}
-                {codexUpdateState.result.afterVersion ??
-                  codexUpdateState.result.beforeVersion ??
+                {opencodeUpdateState.result.afterVersion ??
+                  opencodeUpdateState.result.beforeVersion ??
                   "unknown"}
               </div>
-              {codexUpdateState.result.details && <div>{codexUpdateState.result.details}</div>}
-              {codexUpdateState.result.output && (
+              {opencodeUpdateState.result.details && <div>{opencodeUpdateState.result.details}</div>}
+              {opencodeUpdateState.result.output && (
                 <details>
                   <summary>output</summary>
-                  <pre>{codexUpdateState.result.output}</pre>
+                  <pre>{opencodeUpdateState.result.output}</pre>
                 </details>
               )}
             </div>
@@ -528,7 +528,7 @@ export function SettingsOpenCodeSection({
         meta={globalAgentsMeta}
         error={globalAgentsError}
         value={globalAgentsContent}
-        placeholder="Add global instructions for Codex agents…"
+        placeholder="Add global instructions for OpenCode agents…"
         disabled={globalAgentsLoading}
         refreshDisabled={globalAgentsRefreshDisabled}
         saveDisabled={globalAgentsSaveDisabled}
@@ -538,7 +538,7 @@ export function SettingsOpenCodeSection({
         onSave={onSaveGlobalAgents}
         helpText={
           <>
-            Stored at <code>~/.codex/AGENTS.md</code>.
+            Stored at <code>~/.config/opencode/AGENTS.md</code>.
           </>
         }
         classNames={{
@@ -559,7 +559,7 @@ export function SettingsOpenCodeSection({
         meta={globalConfigMeta}
         error={globalConfigError}
         value={globalConfigContent}
-        placeholder="Edit the global Codex config.toml…"
+        placeholder="Edit the global OpenCode config.toml…"
         disabled={globalConfigLoading}
         refreshDisabled={globalConfigRefreshDisabled}
         saveDisabled={globalConfigSaveDisabled}
@@ -569,7 +569,7 @@ export function SettingsOpenCodeSection({
         onSave={onSaveGlobalConfig}
         helpText={
           <>
-            Stored at <code>~/.codex/config.toml</code>.
+            Stored at <code>~/.config/opencode/config.toml</code>.
           </>
         }
         classNames={{

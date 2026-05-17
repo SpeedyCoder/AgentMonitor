@@ -47,7 +47,7 @@ export type SettingsViewProps = {
     opencodeBin: string | null,
     opencodeArgs: string | null,
   ) => Promise<OpenCodeDoctorResult>;
-  onRunCodexUpdate?: (
+  onRunOpenCodeUpdate?: (
     opencodeBin: string | null,
     opencodeArgs: string | null,
   ) => Promise<OpenCodeUpdateResult>;
@@ -86,7 +86,7 @@ export function SettingsView({
   onUpdateAppSettings,
   onToggleAutomaticAppUpdateChecks,
   onRunDoctor,
-  onRunCodexUpdate,
+  onRunOpenCodeUpdate,
   onUpdateWorkspaceSettings,
   scaleShortcutTitle,
   scaleShortcutText,
@@ -118,7 +118,7 @@ export function SettingsView({
     onUpdateAppSettings,
     onToggleAutomaticAppUpdateChecks,
     onRunDoctor,
-    onRunCodexUpdate,
+    onRunOpenCodeUpdate,
     onUpdateWorkspaceSettings,
     scaleShortcutTitle,
     scaleShortcutText,

@@ -2,7 +2,7 @@ import { useCallback, useMemo } from "react";
 import { setWorkspaceRuntimeOpenCodeArgs } from "@services/tauri";
 import { buildOpenCodeArgsOptions } from "@threads/utils/opencodeArgsProfiles";
 import {
-  resolveWorkspaceRuntimeCodexArgsBadgeLabel,
+  resolveWorkspaceRuntimeOpenCodeArgsBadgeLabel,
   resolveWorkspaceRuntimeOpenCodeArgsOverride,
 } from "@threads/utils/threadOpenCodeParamsSeed";
 import type { ThreadOpenCodeParams } from "@threads/utils/threadStorage";
@@ -24,8 +24,8 @@ type ThreadOpenCodeMetadata = {
   effort: string | null;
 };
 
-type UseMainAppThreadCodexStateArgs = {
-  appCodexArgs: string | null | undefined;
+type UseMainAppThreadOpenCodeStateArgs = {
+  appOpenCodeArgs: string | null | undefined;
   selectedOpenCodeArgsOverride: string | null;
   getThreadOpenCodeParams: (
     workspaceId: string,
@@ -39,11 +39,11 @@ type UseMainAppThreadCodexStateArgs = {
 };
 
 export function useMainAppThreadOpenCodeState({
-  appCodexArgs,
+  appOpenCodeArgs,
   selectedOpenCodeArgsOverride,
   getThreadOpenCodeParams,
   patchThreadOpenCodeParams,
-}: UseMainAppThreadCodexStateArgs) {
+}: UseMainAppThreadOpenCodeStateArgs) {
   const handleThreadOpenCodeMetadataDetected = useCallback(
     (workspaceId: string, threadId: string, metadata: ThreadOpenCodeMetadata) => {
       if (!workspaceId || !threadId) {
@@ -81,27 +81,27 @@ export function useMainAppThreadOpenCodeState({
   const opencodeArgsOptions = useMemo(
     () =>
       buildOpenCodeArgsOptions({
-        appCodexArgs: appCodexArgs ?? null,
-        additionalCodexArgs: [selectedOpenCodeArgsOverride],
+        appOpenCodeArgs: appOpenCodeArgs ?? null,
+        additionalOpenCodeArgs: [selectedOpenCodeArgsOverride],
       }),
-    [appCodexArgs, selectedOpenCodeArgsOverride],
+    [appOpenCodeArgs, selectedOpenCodeArgsOverride],
   );
 
   const ensureWorkspaceRuntimeOpenCodeArgs = useCallback(
     async (workspaceId: string, threadId: string | null) => {
-      const sanitizedCodexArgsOverride = resolveWorkspaceRuntimeOpenCodeArgsOverride({
+      const sanitizedOpenCodeArgsOverride = resolveWorkspaceRuntimeOpenCodeArgsOverride({
         workspaceId,
         threadId,
         getThreadOpenCodeParams,
       });
-      await setWorkspaceRuntimeOpenCodeArgs(workspaceId, sanitizedCodexArgsOverride);
+      await setWorkspaceRuntimeOpenCodeArgs(workspaceId, sanitizedOpenCodeArgsOverride);
     },
     [getThreadOpenCodeParams],
   );
 
   const getThreadArgsBadge = useCallback(
     (workspaceId: string, threadId: string) =>
-      resolveWorkspaceRuntimeCodexArgsBadgeLabel({
+      resolveWorkspaceRuntimeOpenCodeArgsBadgeLabel({
         workspaceId,
         threadId,
         getThreadOpenCodeParams,

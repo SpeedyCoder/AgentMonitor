@@ -43,7 +43,7 @@ export function useMainAppDisplayNodes({
           disabled={mobileThreadRefreshLoading}
         >
           <RefreshCw
-            className={`compact-codex-refresh-icon${mobileThreadRefreshLoading ? " spinning" : ""}`}
+            className={`compact-opencode-refresh-icon${mobileThreadRefreshLoading ? " spinning" : ""}`}
             size={14}
             aria-hidden
           />

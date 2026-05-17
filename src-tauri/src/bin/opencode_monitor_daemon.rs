@@ -1,11 +1,11 @@
 #[allow(dead_code)]
 #[path = "../backend/mod.rs"]
 mod backend;
-#[path = "../codex/args.rs"]
+#[path = "../opencode/args.rs"]
 mod opencode_args;
-#[path = "../codex/config.rs"]
+#[path = "../opencode/config.rs"]
 mod opencode_config;
-#[path = "../codex/home.rs"]
+#[path = "../opencode/home.rs"]
 mod opencode_home;
 #[path = "../files/io.rs"]
 mod file_io;
@@ -41,7 +41,7 @@ mod opencode {
         pub(crate) use crate::opencode_args::*;
     }
     pub(crate) mod config {
-        pub(crate) use crate::codex_config::*;
+        pub(crate) use crate::opencode_config::*;
     }
     pub(crate) mod home {
         pub(crate) use crate::opencode_home::*;
@@ -593,7 +593,7 @@ impl DaemonState {
         feature_key: String,
         enabled: bool,
     ) -> Result<(), String> {
-        codex_config::write_feature_enabled(feature_key.as_str(), enabled)
+        opencode_config::write_feature_enabled(feature_key.as_str(), enabled)
     }
 
     async fn get_agents_settings(&self) -> Result<agents_config_core::AgentsSettingsDto, String> {
@@ -1499,7 +1499,7 @@ fn default_data_dir() -> PathBuf {
 fn usage() -> String {
     format!(
         "\
-USAGE:\n  codex-monitor-daemon [--listen <addr>] [--data-dir <path>] [--token <token> | --insecure-no-auth]\n\n\
+USAGE:\n  opencode-monitor-daemon [--listen <addr>] [--data-dir <path>] [--token <token> | --insecure-no-auth]\n\n\
 OPTIONS:\n  --listen <addr>          Bind address (default: {DEFAULT_LISTEN_ADDR})\n  --data-dir <path>        Data dir holding workspaces.json/settings.json\n  --token <token>          Shared token required by TCP clients\n  --insecure-no-auth       Disable TCP auth (dev only)\n  -h, --help               Show this help\n"
     )
 }
@@ -1596,7 +1596,7 @@ mod tests {
             .expect("time")
             .as_nanos();
         let dir = std::env::temp_dir().join(format!(
-            "codex-monitor-{prefix}-{}-{unique}",
+            "opencode-monitor-{prefix}-{}-{unique}",
             std::process::id()
         ));
         std::fs::create_dir_all(&dir).expect("create temp dir");
@@ -1614,7 +1614,7 @@ mod tests {
             app_settings: Mutex::new(AppSettings::default()),
             event_sink: DaemonEventSink { tx },
             opencode_login_cancels: Mutex::new(HashMap::new()),
-            daemon_binary_path: Some("/tmp/codex-monitor-daemon".to_string()),
+            daemon_binary_path: Some("/tmp/opencode-monitor-daemon".to_string()),
         }
     }
 
@@ -1940,7 +1940,7 @@ fn main() {
             }
         };
         eprintln!(
-            "codex-monitor-daemon listening on {} (data dir: {})",
+            "opencode-monitor-daemon listening on {} (data dir: {})",
             config.listen,
             state
                 .storage_path

@@ -6,7 +6,7 @@ use std::time::Duration;
 use tokio::sync::Mutex;
 use tokio::time::timeout;
 
-use crate::backend::app_server::check_codex_installation;
+use crate::backend::app_server::check_opencode_installation;
 use crate::shared::process_core::tokio_command;
 use crate::types::AppSettings;
 
@@ -162,7 +162,7 @@ pub(crate) async fn opencode_update_core(
         .or(default_args);
     let _ = resolved_args;
 
-    let before_version = check_codex_installation(resolved.clone())
+    let before_version = check_opencode_installation(resolved.clone())
         .await
         .ok()
         .flatten();
@@ -203,7 +203,7 @@ pub(crate) async fn opencode_update_core(
     let after_version = if method == "unknown" {
         None
     } else {
-        match check_codex_installation(resolved.clone()).await {
+        match check_opencode_installation(resolved.clone()).await {
             Ok(version) => version,
             Err(err) => {
                 let result = CodexUpdateResult {

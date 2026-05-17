@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   buildThreadOpenCodeSeedPatch,
   createPendingThreadSeed,
-  resolveWorkspaceRuntimeCodexArgsBadgeLabel,
+  resolveWorkspaceRuntimeOpenCodeArgsBadgeLabel,
   resolveWorkspaceRuntimeOpenCodeArgsOverride,
-  resolveThreadCodexState,
+  resolveThreadOpenCodeState,
 } from "./threadOpenCodeParamsSeed";
 import type { ThreadOpenCodeParams } from "./threadStorage";
 
@@ -51,7 +51,7 @@ describe("threadCodexParamsSeed", () => {
   });
 
   it("resolves thread state from stored params, then pending seed, then global defaults", () => {
-    const storedResolved = resolveThreadCodexState({
+    const storedResolved = resolveThreadOpenCodeState({
       workspaceId: "ws-1",
       threadId: "thread-1",
       defaultAccessMode: "current",
@@ -86,7 +86,7 @@ describe("threadCodexParamsSeed", () => {
       preferredOpenCodeArgsOverride: "--profile stored",
     });
 
-    const seededResolved = resolveThreadCodexState({
+    const seededResolved = resolveThreadOpenCodeState({
       workspaceId: "ws-1",
       threadId: "thread-2",
       defaultAccessMode: "current",
@@ -113,7 +113,7 @@ describe("threadCodexParamsSeed", () => {
       preferredOpenCodeArgsOverride: "--profile pending",
     });
 
-    const explicitDefaultResolved = resolveThreadCodexState({
+    const explicitDefaultResolved = resolveThreadOpenCodeState({
       workspaceId: "ws-1",
       threadId: "thread-3",
       defaultAccessMode: "current",
@@ -140,7 +140,7 @@ describe("threadCodexParamsSeed", () => {
 
     expect(explicitDefaultResolved.preferredOpenCodeArgsOverride).toBeNull();
 
-    const legacyMissingResolved = resolveThreadCodexState({
+    const legacyMissingResolved = resolveThreadOpenCodeState({
       workspaceId: "ws-1",
       threadId: "thread-4",
       defaultAccessMode: "current",
@@ -167,7 +167,7 @@ describe("threadCodexParamsSeed", () => {
 
     expect(legacyMissingResolved.preferredOpenCodeArgsOverride).toBe("--profile pending");
 
-    const inheritedFromNoThreadResolved = resolveThreadCodexState({
+    const inheritedFromNoThreadResolved = resolveThreadOpenCodeState({
       workspaceId: "ws-1",
       threadId: "thread-5",
       defaultAccessMode: "current",
@@ -200,7 +200,7 @@ describe("threadCodexParamsSeed", () => {
   });
 
   it("resolves no-thread state from stored no-thread params before defaults", () => {
-    const resolved = resolveThreadCodexState({
+    const resolved = resolveThreadOpenCodeState({
       workspaceId: "ws-1",
       threadId: null,
       defaultAccessMode: "current",
@@ -231,7 +231,7 @@ describe("threadCodexParamsSeed", () => {
   });
 
   it("keeps explicit thread-scoped Fast off when no-thread scope is fast", () => {
-    const resolved = resolveThreadCodexState({
+    const resolved = resolveThreadOpenCodeState({
       workspaceId: "ws-1",
       threadId: "thread-1",
       defaultAccessMode: "current",
@@ -395,7 +395,7 @@ describe("threadCodexParamsSeed", () => {
       paramsMap[`${workspaceId}:${threadId}`] ?? null;
 
     expect(
-      resolveWorkspaceRuntimeCodexArgsBadgeLabel({
+      resolveWorkspaceRuntimeOpenCodeArgsBadgeLabel({
         workspaceId: "ws-1",
         threadId: "thread-legacy-inherit",
         getThreadOpenCodeParams,
@@ -403,7 +403,7 @@ describe("threadCodexParamsSeed", () => {
     ).toBe("profile:inherited");
 
     expect(
-      resolveWorkspaceRuntimeCodexArgsBadgeLabel({
+      resolveWorkspaceRuntimeOpenCodeArgsBadgeLabel({
         workspaceId: "ws-1",
         threadId: "thread-explicit-default",
         getThreadOpenCodeParams,

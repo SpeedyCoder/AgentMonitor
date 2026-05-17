@@ -419,8 +419,8 @@ pub(crate) struct RequestContext {
 fn build_initialize_params(client_version: &str) -> Value {
     json!({
         "clientInfo": {
-            "name": "codex_monitor",
-            "title": "Codex Monitor",
+            "name": "opencode_monitor",
+            "title": "OpenCode Monitor",
             "version": client_version
         },
         "capabilities": {
@@ -560,7 +560,7 @@ impl WorkspaceSession {
     }
 }
 
-pub(crate) fn build_codex_path_env(opencode_bin: Option<&str>) -> Option<String> {
+pub(crate) fn build_opencode_path_env(opencode_bin: Option<&str>) -> Option<String> {
     let mut paths: Vec<PathBuf> = env::var_os("PATH")
         .map(|value| env::split_paths(&value).collect())
         .unwrap_or_default();
@@ -643,7 +643,7 @@ pub(crate) fn build_codex_path_env(opencode_bin: Option<&str>) -> Option<String>
         .map(|joined| joined.to_string_lossy().to_string())
 }
 
-pub(crate) fn build_codex_command_with_bin(
+pub(crate) fn build_opencode_command_with_bin(
     opencode_bin: Option<String>,
     opencode_args: Option<&str>,
     args: Vec<String>,
@@ -653,7 +653,7 @@ pub(crate) fn build_codex_command_with_bin(
         .filter(|value| !value.trim().is_empty())
         .unwrap_or_else(|| "opencode".into());
 
-    let path_env = build_codex_path_env(opencode_bin.as_deref());
+    let path_env = build_opencode_path_env(opencode_bin.as_deref());
     let mut command_args = parse_opencode_args(opencode_args)?;
     command_args.extend(args);
 
@@ -697,24 +697,24 @@ pub(crate) fn build_codex_command_with_bin(
     Ok(command)
 }
 
-pub(crate) async fn check_codex_installation(
+pub(crate) async fn check_opencode_installation(
     opencode_bin: Option<String>,
 ) -> Result<Option<String>, String> {
-    let mut command = build_codex_command_with_bin(opencode_bin, None, vec!["--version".to_string()])?;
+    let mut command = build_opencode_command_with_bin(opencode_bin, None, vec!["--version".to_string()])?;
     command.stdout(std::process::Stdio::piped());
     command.stderr(std::process::Stdio::piped());
 
     let output = match timeout(Duration::from_secs(5), command.output()).await {
         Ok(result) => result.map_err(|e| {
             if e.kind() == ErrorKind::NotFound {
-                "Codex CLI not found. Install Codex and ensure `codex` is on your PATH.".to_string()
+                "OpenCode CLI not found. Install OpenCode and ensure `opencode` is on your PATH.".to_string()
             } else {
                 e.to_string()
             }
         })?,
         Err(_) => {
             return Err(
-                "Timed out while checking Codex CLI. Make sure `codex --version` runs in Terminal."
+                "Timed out while checking OpenCode CLI. Make sure `opencode --version` runs in Terminal."
                     .to_string(),
             );
         }
@@ -730,11 +730,11 @@ pub(crate) async fn check_codex_installation(
         };
         if detail.is_empty() {
             return Err(
-                "Codex CLI failed to start. Try running `codex --version` in Terminal.".to_string(),
+                "OpenCode CLI failed to start. Try running `opencode --version` in Terminal.".to_string(),
             );
         }
         return Err(format!(
-            "Codex CLI failed to start: {detail}. Try running `codex --version` in Terminal."
+            "OpenCode CLI failed to start: {detail}. Try running `opencode --version` in Terminal."
         ));
     }
 
@@ -755,9 +755,9 @@ pub(crate) async fn spawn_workspace_session<E: EventSink>(
     event_sink: E,
 ) -> Result<Arc<WorkspaceSession>, String> {
     let opencode_bin = default_opencode_bin;
-    let _ = check_codex_installation(opencode_bin.clone()).await?;
+    let _ = check_opencode_installation(opencode_bin.clone()).await?;
 
-    let mut command = build_codex_command_with_bin(
+    let mut command = build_opencode_command_with_bin(
         opencode_bin,
         opencode_args.as_deref(),
         vec!["app-server".to_string()],
@@ -808,7 +808,7 @@ pub(crate) async fn spawn_workspace_session<E: EventSink>(
                     let payload = AppServerEvent {
                         workspace_id: fallback_workspace_id.clone(),
                         message: json!({
-                            "method": "codex/parseError",
+                            "method": "opencode/parseError",
                             "params": { "error": err.to_string(), "raw": line },
                         }),
                     };
@@ -1082,7 +1082,7 @@ pub(crate) async fn spawn_workspace_session<E: EventSink>(
             let mut child = session.child.lock().await;
             kill_child_process_tree(&mut child).await;
             return Err(
-                "Codex app-server did not respond to initialize. Check that `codex app-server` works in Terminal."
+                "OpenCode serve did not respond to initialize. Check that `opencode serve` works in Terminal."
                     .to_string(),
             );
         }
@@ -1241,9 +1241,9 @@ mod tests {
     #[test]
     fn resolve_workspace_for_cwd_normalizes_windows_paths() {
         let mut roots = HashMap::new();
-        roots.insert("ws-1".to_string(), normalize_root_path("C:\\Dev\\Codex"));
+        roots.insert("ws-1".to_string(), normalize_root_path("C:\\Dev\\OpenCode"));
         assert_eq!(
-            resolve_workspace_for_cwd("c:/dev/codex", &roots),
+            resolve_workspace_for_cwd("c:/dev/opencode", &roots),
             Some("ws-1".to_string())
         );
     }
@@ -1251,7 +1251,7 @@ mod tests {
     #[test]
     fn resolve_workspace_for_cwd_normalizes_windows_namespace_paths() {
         let mut roots = HashMap::new();
-        roots.insert("ws-1".to_string(), normalize_root_path("C:\\Dev\\Codex"));
+        roots.insert("ws-1".to_string(), normalize_root_path("C:\\Dev\\OpenCode"));
         assert_eq!(
             resolve_workspace_for_cwd("\\\\?\\C:\\Dev\\Codex", &roots),
             Some("ws-1".to_string())
@@ -1269,9 +1269,9 @@ mod tests {
     #[test]
     fn resolve_workspace_for_cwd_matches_nested_paths() {
         let mut roots = HashMap::new();
-        roots.insert("ws-1".to_string(), normalize_root_path("/tmp/codex"));
+        roots.insert("ws-1".to_string(), normalize_root_path("/tmp/opencode"));
         assert_eq!(
-            resolve_workspace_for_cwd("/tmp/codex/subdir/project", &roots),
+            resolve_workspace_for_cwd("/tmp/opencode/subdir/project", &roots),
             Some("ws-1".to_string())
         );
     }
@@ -1279,13 +1279,13 @@ mod tests {
     #[test]
     fn resolve_workspace_for_cwd_prefers_longest_matching_root() {
         let mut roots = HashMap::new();
-        roots.insert("ws-parent".to_string(), normalize_root_path("/tmp/codex"));
+        roots.insert("ws-parent".to_string(), normalize_root_path("/tmp/opencode"));
         roots.insert(
             "ws-child".to_string(),
-            normalize_root_path("/tmp/codex/subdir"),
+            normalize_root_path("/tmp/opencode/subdir"),
         );
         assert_eq!(
-            resolve_workspace_for_cwd("/tmp/codex/subdir/project", &roots),
+            resolve_workspace_for_cwd("/tmp/opencode/subdir/project", &roots),
             Some("ws-child".to_string())
         );
     }

@@ -598,10 +598,10 @@ export function useThreads({
       } catch (error) {
         const detail = error instanceof Error ? error.message : String(error);
         onDebug?.({
-          id: `${Date.now()}-client-thread-runtime-codex-args-sync-error`,
+          id: `${Date.now()}-client-thread-runtime-opencode-args-sync-error`,
           timestamp: Date.now(),
           source: "error",
-          label: "thread/runtime-codex-args sync error",
+          label: "thread/runtime-opencode-args sync error",
           payload: `${phase}: ${detail}`,
         });
       }

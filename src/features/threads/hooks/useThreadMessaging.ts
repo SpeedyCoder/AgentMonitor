@@ -222,11 +222,11 @@ export function useThreadMessaging({
         },
       });
       try {
-        const shouldPreflightRuntimeCodexArgs =
+        const shouldPreflightRuntimeOpenCodeArgs =
           shouldPreflightRuntimeOpenCodeArgsForSend?.(workspace.id, threadId) ?? true;
         if (
           !shouldSteer &&
-          shouldPreflightRuntimeCodexArgs &&
+          shouldPreflightRuntimeOpenCodeArgs &&
           ensureWorkspaceRuntimeOpenCodeArgs
         ) {
           await ensureWorkspaceRuntimeOpenCodeArgs(workspace.id, threadId);

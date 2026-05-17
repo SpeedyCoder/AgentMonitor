@@ -7,7 +7,7 @@ import {
   NO_THREAD_SCOPE_SUFFIX,
 } from "@threads/utils/threadOpenCodeParamsSeed";
 
-type ThreadCodexOrchestration = {
+type ThreadOpenCodeOrchestration = {
   accessMode: AccessMode;
   setAccessMode: Dispatch<SetStateAction<AccessMode>>;
   preferredModelId: string | null;
@@ -19,10 +19,10 @@ type ThreadCodexOrchestration = {
   preferredCollabModeId: string | null;
   setPreferredCollabModeId: Dispatch<SetStateAction<string | null>>;
   preferredOpenCodeArgsOverride: string | null;
-  setPreferredCodexArgsOverride: Dispatch<SetStateAction<string | null>>;
-  threadCodexSelectionKey: string | null;
-  setThreadCodexSelectionKey: Dispatch<SetStateAction<string | null>>;
-  threadCodexParamsVersion: number;
+  setPreferredOpenCodeArgsOverride: Dispatch<SetStateAction<string | null>>;
+  threadOpenCodeSelectionKey: string | null;
+  setThreadOpenCodeSelectionKey: Dispatch<SetStateAction<string | null>>;
+  threadOpenCodeParamsVersion: number;
   getThreadOpenCodeParams: ReturnType<typeof useThreadOpenCodeParams>["getThreadOpenCodeParams"];
   patchThreadOpenCodeParams: ReturnType<typeof useThreadOpenCodeParams>["patchThreadOpenCodeParams"];
   persistThreadOpenCodeParams: (patch: {
@@ -37,15 +37,15 @@ type ThreadCodexOrchestration = {
   pendingNewThreadSeedRef: MutableRefObject<PendingNewThreadSeed | null>;
 };
 
-type UseThreadCodexOrchestrationParams = {
+type UseThreadOpenCodeOrchestrationParams = {
   activeWorkspaceIdForParamsRef: MutableRefObject<string | null>;
 };
 
 export function useThreadOpenCodeOrchestration({
   activeWorkspaceIdForParamsRef,
-}: UseThreadCodexOrchestrationParams): ThreadCodexOrchestration {
+}: UseThreadOpenCodeOrchestrationParams): ThreadOpenCodeOrchestration {
   const {
-    version: threadCodexParamsVersion,
+    version: threadOpenCodeParamsVersion,
     getThreadOpenCodeParams,
     patchThreadOpenCodeParams,
   } = useThreadOpenCodeParams();
@@ -58,10 +58,10 @@ export function useThreadOpenCodeOrchestration({
   const [preferredCollabModeId, setPreferredCollabModeId] = useState<string | null>(
     null,
   );
-  const [preferredOpenCodeArgsOverride, setPreferredCodexArgsOverride] = useState<string | null>(
+  const [preferredOpenCodeArgsOverride, setPreferredOpenCodeArgsOverride] = useState<string | null>(
     null,
   );
-  const [threadCodexSelectionKey, setThreadCodexSelectionKey] = useState<string | null>(
+  const [threadOpenCodeSelectionKey, setThreadOpenCodeSelectionKey] = useState<string | null>(
     null,
   );
   const activeThreadIdRef = useRef<string | null>(null);
@@ -107,10 +107,10 @@ export function useThreadOpenCodeOrchestration({
       preferredCollabModeId,
       setPreferredCollabModeId,
       preferredOpenCodeArgsOverride,
-      setPreferredCodexArgsOverride,
-      threadCodexSelectionKey,
-      setThreadCodexSelectionKey,
-      threadCodexParamsVersion,
+      setPreferredOpenCodeArgsOverride,
+      threadOpenCodeSelectionKey,
+      setThreadOpenCodeSelectionKey,
+      threadOpenCodeParamsVersion,
       getThreadOpenCodeParams,
       patchThreadOpenCodeParams,
       persistThreadOpenCodeParams,
@@ -124,9 +124,9 @@ export function useThreadOpenCodeOrchestration({
       preferredEffort,
       preferredModelId,
       preferredServiceTier,
-      threadCodexSelectionKey,
-      threadCodexParamsVersion,
-      setPreferredCodexArgsOverride,
+      threadOpenCodeSelectionKey,
+      threadOpenCodeParamsVersion,
+      setPreferredOpenCodeArgsOverride,
       getThreadOpenCodeParams,
       patchThreadOpenCodeParams,
       persistThreadOpenCodeParams,

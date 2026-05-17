@@ -210,7 +210,7 @@ export const useSettingsFeaturesSection = ({
         setFeatureError(
           error instanceof Error
             ? error.message
-            : "Unable to load Codex feature flags.",
+            : "Unable to load OpenCode feature flags.",
         );
       } finally {
         if (active) {

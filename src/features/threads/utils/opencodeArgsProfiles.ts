@@ -7,7 +7,7 @@ export type OpenCodeArgsRecognizedSegment = {
   label: string;
 };
 
-export type CodexArgsIgnoredFlag = {
+export type OpenCodeArgsIgnoredFlag = {
   flag: string;
   canonicalFlag: string;
   value: string | null;
@@ -16,13 +16,13 @@ export type CodexArgsIgnoredFlag = {
 export type ParsedOpenCodeArgsProfile = {
   originalArgs: string;
   recognizedSegments: OpenCodeArgsRecognizedSegment[];
-  ignoredFlags: CodexArgsIgnoredFlag[];
+  ignoredFlags: OpenCodeArgsIgnoredFlag[];
   effectiveArgs: string | null;
 };
 
-export type CodexArgsIgnoredFlagsMetadata = {
+export type OpenCodeArgsIgnoredFlagsMetadata = {
   hasIgnoredFlags: boolean;
-  ignoredFlags: CodexArgsIgnoredFlag[];
+  ignoredFlags: OpenCodeArgsIgnoredFlag[];
   ignoredCanonicalFlags: string[];
 };
 
@@ -30,9 +30,9 @@ export type OpenCodeArgsOption = {
   value: string; // empty string means default
   opencodeArgs: string | null;
   label: string;
-  effectiveCodexArgs?: string | null;
+  effectiveOpenCodeArgs?: string | null;
   recognizedSegments?: OpenCodeArgsRecognizedSegment[];
-  ignoredFlags?: CodexArgsIgnoredFlag[];
+  ignoredFlags?: OpenCodeArgsIgnoredFlag[];
   hasIgnoredFlags?: boolean;
 };
 
@@ -352,7 +352,7 @@ export function parseOpenCodeArgsProfile(args: string | null | undefined): Parse
 
   const tokens = tokenizeArgs(originalArgs);
   const recognizedSegments: OpenCodeArgsRecognizedSegment[] = [];
-  const ignoredFlags: CodexArgsIgnoredFlag[] = [];
+  const ignoredFlags: OpenCodeArgsIgnoredFlag[] = [];
   const effectiveTokens: string[] = [];
 
   for (let index = 0; index < tokens.length; index += 1) {
@@ -433,13 +433,13 @@ export function parseOpenCodeArgsProfile(args: string | null | undefined): Parse
   };
 }
 
-export function sanitizeRuntimeCodexArgs(args: string | null | undefined): string | null {
+export function sanitizeRuntimeOpenCodeArgs(args: string | null | undefined): string | null {
   return parseOpenCodeArgsProfile(args).effectiveArgs;
 }
 
-export function getIgnoredCodexArgsFlagsMetadata(
+export function getIgnoredOpenCodeArgsFlagsMetadata(
   argsOrParsed: string | ParsedOpenCodeArgsProfile | null | undefined,
-): CodexArgsIgnoredFlagsMetadata {
+): OpenCodeArgsIgnoredFlagsMetadata {
   const parsed =
     typeof argsOrParsed === "string" || argsOrParsed == null
       ? parseOpenCodeArgsProfile(argsOrParsed)
@@ -474,7 +474,7 @@ export function buildOpenCodeArgsOptionLabel(args: string): string {
   return buildOptionLabelFromParsed(parseOpenCodeArgsProfile(args));
 }
 
-export function buildCodexArgsBadgeLabel(args: string): string {
+export function buildOpenCodeArgsBadgeLabel(args: string): string {
   const parsed = parseOpenCodeArgsProfile(args);
   const firstRecognized = parsed.recognizedSegments[0];
   if (firstRecognized) {
@@ -484,24 +484,24 @@ export function buildCodexArgsBadgeLabel(args: string): string {
   return fallbackLabelFromParsed(parsed);
 }
 
-export function labelForCodexArgs(args: string): string {
-  return buildCodexArgsBadgeLabel(args);
+export function labelForOpenCodeArgs(args: string): string {
+  return buildOpenCodeArgsBadgeLabel(args);
 }
 
-export function buildEffectiveCodexArgsBadgeLabel(
+export function buildEffectiveOpenCodeArgsBadgeLabel(
   args: string | null | undefined,
 ): string | null {
-  const sanitizedArgs = sanitizeRuntimeCodexArgs(args);
+  const sanitizedArgs = sanitizeRuntimeOpenCodeArgs(args);
   if (!sanitizedArgs) {
     return null;
   }
-  const label = buildCodexArgsBadgeLabel(sanitizedArgs).trim();
+  const label = buildOpenCodeArgsBadgeLabel(sanitizedArgs).trim();
   return label.length > 0 ? label : null;
 }
 
 export function buildOpenCodeArgsOptions(input: {
-  appCodexArgs: string | null;
-  additionalCodexArgs?: Array<string | null | undefined>;
+  appOpenCodeArgs: string | null;
+  additionalOpenCodeArgs?: Array<string | null | undefined>;
 }): OpenCodeArgsOption[] {
   const seen = new Set<string>();
   const options: OpenCodeArgsOption[] = [
@@ -509,8 +509,8 @@ export function buildOpenCodeArgsOptions(input: {
   ];
 
   const candidates = [
-    normalizeOpenCodeArgs(input.appCodexArgs),
-    ...(input.additionalCodexArgs ?? []).map(normalizeOpenCodeArgs),
+    normalizeOpenCodeArgs(input.appOpenCodeArgs),
+    ...(input.additionalOpenCodeArgs ?? []).map(normalizeOpenCodeArgs),
   ].filter((value): value is string => typeof value === "string" && value.length > 0);
 
   for (const args of candidates) {

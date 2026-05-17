@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   buildOpenCodeArgsOptions,
-  buildCodexArgsBadgeLabel,
-  buildEffectiveCodexArgsBadgeLabel,
+  buildOpenCodeArgsBadgeLabel,
+  buildEffectiveOpenCodeArgsBadgeLabel,
   buildOpenCodeArgsOptionLabel,
-  getIgnoredCodexArgsFlagsMetadata,
+  getIgnoredOpenCodeArgsFlagsMetadata,
   parseOpenCodeArgsProfile,
-  sanitizeRuntimeCodexArgs,
+  sanitizeRuntimeOpenCodeArgs,
 } from "./opencodeArgsProfiles";
 
 describe("opencodeArgsProfiles", () => {
@@ -30,8 +30,8 @@ describe("opencodeArgsProfiles", () => {
     const args =
       "--profile dev --model gpt-5 --sandbox danger-full-access --disable telemetry --full-auto";
 
-    expect(sanitizeRuntimeCodexArgs(args)).toBe("--profile dev --disable telemetry");
-    expect(getIgnoredCodexArgsFlagsMetadata(args)).toEqual({
+    expect(sanitizeRuntimeOpenCodeArgs(args)).toBe("--profile dev --disable telemetry");
+    expect(getIgnoredOpenCodeArgsFlagsMetadata(args)).toEqual({
       hasIgnoredFlags: true,
       ignoredFlags: [
         { flag: "--model", canonicalFlag: "--model", value: "gpt-5" },
@@ -54,7 +54,7 @@ describe("opencodeArgsProfiles", () => {
 
   it("builds badge labels from only the first recognized segment", () => {
     expect(
-      buildCodexArgsBadgeLabel("--profile dev --auth-file auth.json --enable snapshots"),
+      buildOpenCodeArgsBadgeLabel("--profile dev --auth-file auth.json --enable snapshots"),
     ).toBe("profile:dev");
   });
 
@@ -69,40 +69,40 @@ describe("opencodeArgsProfiles", () => {
 
   it("returns empty effective override when args only contain ignored flags", () => {
     expect(
-      sanitizeRuntimeCodexArgs("--model gpt-5 --full-auto --no-alt-screen --sandbox workspace-write"),
+      sanitizeRuntimeOpenCodeArgs("--model gpt-5 --full-auto --no-alt-screen --sandbox workspace-write"),
     ).toBeNull();
   });
 
   it("preserves backslashes in quoted values for recognized flags", () => {
-    expect(sanitizeRuntimeCodexArgs('--auth-file "C:\\Users\\me\\auth.json"')).toBe(
+    expect(sanitizeRuntimeOpenCodeArgs('--auth-file "C:\\Users\\me\\auth.json"')).toBe(
       '--auth-file "C:\\\\Users\\\\me\\\\auth.json"',
     );
-    expect(sanitizeRuntimeCodexArgs('--config "C:\\Program Files\\Codex\\config.toml"')).toBe(
-      '--config "C:\\\\Program Files\\\\Codex\\\\config.toml"',
+    expect(sanitizeRuntimeOpenCodeArgs('--config "C:\\Program Files\\OpenCode\\config.toml"')).toBe(
+      '--config "C:\\\\Program Files\\\\OpenCode\\\\config.toml"',
     );
   });
 
   it("keeps escaped active quotes inside quoted values", () => {
     expect(
-      sanitizeRuntimeCodexArgs('--config "C:\\Program Files\\Codex\\the \\"best\\" config.toml"'),
-    ).toBe('--config "C:\\\\Program Files\\\\Codex\\\\the \\"best\\" config.toml"');
+      sanitizeRuntimeOpenCodeArgs('--config "C:\\Program Files\\OpenCode\\the \\"best\\" config.toml"'),
+    ).toBe('--config "C:\\\\Program Files\\\\OpenCode\\\\the \\"best\\" config.toml"');
   });
 
   it("includes active override in options even when not present in app settings", () => {
     const options = buildOpenCodeArgsOptions({
-      appCodexArgs: null,
-      additionalCodexArgs: ["--profile thread-active"],
+      appOpenCodeArgs: null,
+      additionalOpenCodeArgs: ["--profile thread-active"],
     });
 
     expect(options.map((option) => option.value)).toEqual(["", "--profile thread-active"]);
   });
 
   it("returns null effective badge for ignored-only overrides", () => {
-    expect(buildEffectiveCodexArgsBadgeLabel("--model gpt-5 --sandbox workspace-write")).toBeNull();
+    expect(buildEffectiveOpenCodeArgsBadgeLabel("--model gpt-5 --sandbox workspace-write")).toBeNull();
   });
 
   it("normalizes smart punctuation and unwraps full-string quotes", () => {
-    expect(sanitizeRuntimeCodexArgs("“—search —enable memory_tool”")).toBe(
+    expect(sanitizeRuntimeOpenCodeArgs("“—search —enable memory_tool”")).toBe(
       "--search --enable memory_tool",
     );
   });

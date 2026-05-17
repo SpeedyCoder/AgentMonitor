@@ -125,7 +125,7 @@ export function SettingsNav({
           showDisclosure={showDisclosure}
           onClick={() => onSelectSection("opencode")}
         >
-          Codex
+          OpenCode
         </PanelNavItem>
         <PanelNavItem
           className="settings-nav"

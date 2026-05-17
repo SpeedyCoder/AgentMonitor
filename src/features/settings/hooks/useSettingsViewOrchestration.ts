@@ -39,7 +39,7 @@ type UseSettingsViewOrchestrationArgs = {
     opencodeBin: string | null,
     opencodeArgs: string | null,
   ) => Promise<OpenCodeDoctorResult>;
-  onRunCodexUpdate?: (
+  onRunOpenCodeUpdate?: (
     opencodeBin: string | null,
     opencodeArgs: string | null,
   ) => Promise<OpenCodeUpdateResult>;
@@ -79,7 +79,7 @@ export function useSettingsViewOrchestration({
   onUpdateAppSettings,
   onToggleAutomaticAppUpdateChecks,
   onRunDoctor,
-  onRunCodexUpdate,
+  onRunOpenCodeUpdate,
   onUpdateWorkspaceSettings,
   scaleShortcutTitle,
   scaleShortcutText,
@@ -197,7 +197,7 @@ export function useSettingsViewOrchestration({
     projects,
     onUpdateAppSettings,
     onRunDoctor,
-    onRunCodexUpdate,
+    onRunOpenCodeUpdate,
   });
 
   const gitSectionProps = useSettingsGitSection({

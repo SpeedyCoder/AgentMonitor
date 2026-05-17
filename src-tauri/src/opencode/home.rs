@@ -16,7 +16,7 @@ pub(crate) fn resolve_default_opencode_home() -> Option<PathBuf> {
             return Some(path);
         }
     }
-    resolve_home_dir().map(|home| home.join(".codex"))
+    resolve_home_dir().map(|home| home.join(".config/opencode"))
 }
 
 fn normalize_opencode_home(value: &str) -> Option<PathBuf> {
@@ -202,10 +202,10 @@ mod tests {
         let _guard = ENV_LOCK.lock().expect("lock env");
 
         let prev_opencode_home = std::env::var("OPENCODE_CONFIG_DIR").ok();
-        std::env::set_var("OPENCODE_CONFIG_DIR", "/tmp/codex-global");
+        std::env::set_var("OPENCODE_CONFIG_DIR", "/tmp/opencode-global");
 
         let resolved = resolve_workspace_opencode_home(&entry, None);
-        assert_eq!(resolved, Some(PathBuf::from("/tmp/codex-global")));
+        assert_eq!(resolved, Some(PathBuf::from("/tmp/opencode-global")));
 
         match prev_opencode_home {
             Some(value) => std::env::set_var("OPENCODE_CONFIG_DIR", value),
@@ -216,7 +216,7 @@ mod tests {
     #[test]
     fn opencode_home_expands_tilde_and_env_vars() {
         let _guard = ENV_LOCK.lock().expect("lock env");
-        let home_dir = std::env::temp_dir().join("codex-home-test");
+        let home_dir = std::env::temp_dir().join("opencode-home-test");
         let home_str = home_dir.to_string_lossy().to_string();
 
         let prev_home = std::env::var("HOME").ok();
@@ -226,7 +226,7 @@ mod tests {
         std::env::set_var("APPDATA", "/tmp/appdata-root");
 
         let tilde = normalize_opencode_home("~/.config/opencode-api");
-        assert_eq!(tilde, Some(home_dir.join(".codex-api")));
+        assert_eq!(tilde, Some(home_dir.join(".config/opencode-api")));
 
         let dollar = normalize_opencode_home("$HOME/.codex-api");
         assert_eq!(dollar, Some(home_dir.join(".codex-api")));

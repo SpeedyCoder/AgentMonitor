@@ -61,11 +61,11 @@ function sanitizeEntry(value: unknown): ThreadOpenCodeParams | null {
     return null;
   }
   const entry = value as Record<string, unknown>;
-  const hasCodexArgsOverrideField = Object.prototype.hasOwnProperty.call(
+  const hasOpenCodeArgsOverrideField = Object.prototype.hasOwnProperty.call(
     entry,
     "opencodeArgsOverride",
   );
-  const opencodeArgsOverride = hasCodexArgsOverrideField
+  const opencodeArgsOverride = hasOpenCodeArgsOverrideField
     ? entry.opencodeArgsOverride === undefined
       ? undefined
       : typeof entry.opencodeArgsOverride === "string" || entry.opencodeArgsOverride === null
