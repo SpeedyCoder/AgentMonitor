@@ -15,7 +15,7 @@ When updating this document:
 6. Update supported and missing lists below.
 
 Related project skill:
-- `.codex/skills/app-server-events-sync/SKILL.md`
+- `.opencode/skills/app-server-events-sync/SKILL.md`
 
 ## Where To Look In OpenCodeMonitor
 

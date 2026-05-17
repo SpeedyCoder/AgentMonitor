@@ -15,9 +15,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "09F7A9973F81CD1301FD1481"
-               BuildableName = "Codex Monitor.app"
-               BlueprintName = "codex-monitor_iOS"
-               ReferencedContainer = "container:codex-monitor.xcodeproj">
+               BuildableName = "OpenCode Monitor.app"
+               BlueprintName = "opencode-monitor_iOS"
+               ReferencedContainer = "container:opencode-monitor.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -31,9 +31,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "09F7A9973F81CD1301FD1481"
-            BuildableName = "Codex Monitor.app"
-            BlueprintName = "codex-monitor_iOS"
-            ReferencedContainer = "container:codex-monitor.xcodeproj">
+            BuildableName = "OpenCode Monitor.app"
+            BlueprintName = "opencode-monitor_iOS"
+            ReferencedContainer = "container:opencode-monitor.xcodeproj">
          </BuildableReference>
       </MacroExpansion>
       <EnvironmentVariables>
@@ -66,9 +66,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "09F7A9973F81CD1301FD1481"
-            BuildableName = "Codex Monitor.app"
-            BlueprintName = "codex-monitor_iOS"
-            ReferencedContainer = "container:codex-monitor.xcodeproj">
+            BuildableName = "OpenCode Monitor.app"
+            BlueprintName = "opencode-monitor_iOS"
+            ReferencedContainer = "container:opencode-monitor.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
       <EnvironmentVariables>
@@ -95,9 +95,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "09F7A9973F81CD1301FD1481"
-            BuildableName = "Codex Monitor.app"
-            BlueprintName = "codex-monitor_iOS"
-            ReferencedContainer = "container:codex-monitor.xcodeproj">
+            BuildableName = "OpenCode Monitor.app"
+            BlueprintName = "opencode-monitor_iOS"
+            ReferencedContainer = "container:opencode-monitor.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
       <EnvironmentVariables>
