@@ -1552,7 +1552,7 @@ describe("useThreadActions", () => {
         "ws-1": [{ id: "thread-1", name: "Agent 1", updatedAt: 6000 }],
       },
       threadListCursorByWorkspace: {
-        "ws-1": "__codex_monitor_page_start__",
+        "ws-1": "__opencode_monitor_page_start__",
       },
     });
 
@@ -1733,7 +1733,7 @@ describe("useThreadActions", () => {
             cwd: "/tmp/codex",
             preview: "Uses gpt-5",
             updated_at: 5000,
-            model: "gpt-5-codex",
+            model: "opencode-go/deepseek-v4-flash",
             reasoning_effort: "high",
           },
         ],
@@ -1755,7 +1755,7 @@ describe("useThreadActions", () => {
     expect(onThreadOpenCodeMetadataDetected).toHaveBeenCalledWith(
       "ws-1",
       "thread-model-1",
-      { modelId: "gpt-5-codex", effort: "high" },
+      { modelId: "opencode-go/deepseek-v4-flash", effort: "high" },
     );
   });
 
@@ -1773,7 +1773,7 @@ describe("useThreadActions", () => {
                   type: "turnContext",
                   payload: {
                     info: {
-                      model: "gpt-5.3-codex",
+                      model: "opencode-go/deepseek-v4-flash",
                       reasoning_effort: "medium",
                     },
                   },
@@ -1798,7 +1798,7 @@ describe("useThreadActions", () => {
     expect(onThreadOpenCodeMetadataDetected).toHaveBeenCalledWith(
       "ws-1",
       "thread-resume-model",
-      { modelId: "gpt-5.3-codex", effort: "medium" },
+      { modelId: "opencode-go/deepseek-v4-flash", effort: "medium" },
     );
   });
 

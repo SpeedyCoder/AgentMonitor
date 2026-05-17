@@ -618,7 +618,7 @@ describe("tauri invoke wrappers", () => {
       description: "Research-focused role",
       developerInstructions: "Investigate root cause first.",
       template: "blank",
-      model: "gpt-5-codex",
+      model: "opencode-go/deepseek-v4-flash",
       reasoningEffort: "medium",
     });
 
@@ -628,7 +628,7 @@ describe("tauri invoke wrappers", () => {
         description: "Research-focused role",
         developerInstructions: "Investigate root cause first.",
         template: "blank",
-        model: "gpt-5-codex",
+        model: "opencode-go/deepseek-v4-flash",
         reasoningEffort: "medium",
       },
     });
@@ -676,7 +676,7 @@ describe("tauri invoke wrappers", () => {
 
   it("reads an agent config file", async () => {
     const invokeMock = vi.mocked(invoke);
-    invokeMock.mockResolvedValueOnce("model = \"gpt-5-codex\"");
+    invokeMock.mockResolvedValueOnce("model = \"opencode-go/deepseek-v4-flash\"");
 
     await readAgentConfigToml("researcher");
 
@@ -689,11 +689,11 @@ describe("tauri invoke wrappers", () => {
     const invokeMock = vi.mocked(invoke);
     invokeMock.mockResolvedValueOnce({});
 
-    await writeAgentConfigToml("researcher", "model = \"gpt-5-codex\"");
+    await writeAgentConfigToml("researcher", "model = \"opencode-go/deepseek-v4-flash\"");
 
     expect(invokeMock).toHaveBeenCalledWith("write_agent_config_toml", {
       agentName: "researcher",
-      content: "model = \"gpt-5-codex\"",
+      content: "model = \"opencode-go/deepseek-v4-flash\"",
     });
   });
 

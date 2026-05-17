@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
-import { STORAGE_KEY_THREAD_CODEX_PARAMS } from "@threads/utils/threadStorage";
+import { STORAGE_KEY_THREAD_OPENCODE_PARAMS } from "@threads/utils/threadStorage";
 import { useThreadOpenCodeParams } from "./useThreadOpenCodeParams";
 
 describe("useThreadOpenCodeParams", () => {
@@ -35,14 +35,14 @@ describe("useThreadOpenCodeParams", () => {
     );
 
     const persisted = JSON.parse(
-      window.localStorage.getItem(STORAGE_KEY_THREAD_CODEX_PARAMS) ?? "{}",
+      window.localStorage.getItem(STORAGE_KEY_THREAD_OPENCODE_PARAMS) ?? "{}",
     ) as Record<string, unknown>;
     expect(persisted["ws-1:thread-1"]).toBeTruthy();
   });
 
   it("sanitizes malformed persisted entries", () => {
     window.localStorage.setItem(
-      STORAGE_KEY_THREAD_CODEX_PARAMS,
+      STORAGE_KEY_THREAD_OPENCODE_PARAMS,
       JSON.stringify({
         "ws-1:thread-1": {
           modelId: "gpt-4.1",
@@ -71,7 +71,7 @@ describe("useThreadOpenCodeParams", () => {
 
   it("preserves missing opencodeArgsOverride for legacy persisted entries", () => {
     window.localStorage.setItem(
-      STORAGE_KEY_THREAD_CODEX_PARAMS,
+      STORAGE_KEY_THREAD_OPENCODE_PARAMS,
       JSON.stringify({
         "ws-1:thread-legacy": {
           modelId: "gpt-4.1",
@@ -102,7 +102,7 @@ describe("useThreadOpenCodeParams", () => {
     const { result } = renderHook(() => useThreadOpenCodeParams());
 
     window.localStorage.setItem(
-      STORAGE_KEY_THREAD_CODEX_PARAMS,
+      STORAGE_KEY_THREAD_OPENCODE_PARAMS,
       JSON.stringify({
         "ws-1:thread-2": {
           modelId: "gpt-5",
@@ -118,7 +118,7 @@ describe("useThreadOpenCodeParams", () => {
 
     act(() => {
       window.dispatchEvent(
-        new StorageEvent("storage", { key: STORAGE_KEY_THREAD_CODEX_PARAMS }),
+        new StorageEvent("storage", { key: STORAGE_KEY_THREAD_OPENCODE_PARAMS }),
       );
     });
 

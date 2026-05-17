@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 pub(crate) fn daemon_binary_candidates() -> &'static [&'static str] {
     if cfg!(windows) {
-        &["opencode_monitor_daemon.exe", "codex-monitor-daemon.exe"]
+        &["opencode_monitor_daemon.exe", "opencode-monitor-daemon.exe"]
     } else {
         &["opencode_monitor_daemon", "opencode-monitor-daemon"]
     }

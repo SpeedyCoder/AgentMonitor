@@ -128,11 +128,11 @@ describe("useAppSettings", () => {
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
-    await expect(result.current.doctor("/bin/codex", "--profile test")).rejects.toThrow(
+    await expect(result.current.doctor("/bin/opencode", "--profile test")).rejects.toThrow(
       "doctor fail",
     );
     expect(runOpenCodeDoctorMock).toHaveBeenCalledWith(
-      "/bin/codex",
+      "/bin/opencode",
       "--profile test",
     );
   });
@@ -141,7 +141,7 @@ describe("useAppSettings", () => {
     getAppSettingsMock.mockResolvedValue({} as AppSettings);
     const response: OpenCodeDoctorResult = {
       ok: true,
-      opencodeBin: "/bin/codex",
+      opencodeBin: "/bin/opencode",
       version: "1.0.0",
       appServerOk: true,
       details: null,
@@ -155,7 +155,7 @@ describe("useAppSettings", () => {
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
-    await expect(result.current.doctor("/bin/codex", null)).resolves.toEqual(
+    await expect(result.current.doctor("/bin/opencode", null)).resolves.toEqual(
       response,
     );
   });

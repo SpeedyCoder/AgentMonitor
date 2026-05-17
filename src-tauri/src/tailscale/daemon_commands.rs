@@ -431,7 +431,7 @@ mod tests {
             version: version.to_string(),
             pid: Some(42),
             mode: EXPECTED_DAEMON_MODE.to_string(),
-            binary_path: Some("/tmp/codex-monitor-daemon".to_string()),
+            binary_path: Some("/tmp/opencode-monitor-daemon".to_string()),
         }
     }
 

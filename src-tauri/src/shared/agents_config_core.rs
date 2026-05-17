@@ -15,7 +15,7 @@ const MIN_AGENT_MAX_DEPTH: u32 = 1;
 const MAX_AGENT_MAX_DEPTH: u32 = 4;
 const MANAGED_AGENTS_DIR: &str = "agents";
 const TEMPLATE_BLANK: &str = "blank";
-const DEFAULT_AGENT_MODEL: &str = "gpt-5-codex";
+const DEFAULT_AGENT_MODEL: &str = "opencode-go/deepseek-v4-flash";
 const DEFAULT_REASONING_EFFORT: &str = "medium";
 
 const fn default_agent_max_depth() -> u32 {
@@ -851,7 +851,7 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .expect("clock")
             .as_nanos();
-        let dir = std::env::temp_dir().join(format!("codex-monitor-{prefix}-{nonce}"));
+        let dir = std::env::temp_dir().join(format!("opencode-monitor-{prefix}-{nonce}"));
         if dir.exists() {
             let _ = std::fs::remove_dir_all(&dir);
         }
@@ -927,7 +927,7 @@ mod tests {
     fn managed_write_rejects_symlinked_agents_dir() {
         use std::os::unix::fs::symlink;
 
-        let opencode_home = temp_dir("codex-home");
+        let opencode_home = temp_dir("opencode-home");
         let outside = temp_dir("outside");
         symlink(&outside, opencode_home.join("agents")).expect("symlink agents");
 
@@ -986,7 +986,7 @@ mod tests {
 
     #[test]
     fn collect_agents_ignores_reserved_keys() {
-        let opencode_home = temp_dir("codex-home");
+        let opencode_home = temp_dir("opencode-home");
         let document: Document = r#"
 [agents]
 max_threads = 8

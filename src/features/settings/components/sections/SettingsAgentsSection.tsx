@@ -16,9 +16,9 @@ import {
 
 const FALLBACK_AGENT_MODELS: ModelOption[] = [
   {
-    id: "gpt-5-codex",
-    model: "gpt-5-codex",
-    displayName: "gpt-5-codex",
+    id: "opencode-go/deepseek-v4-flash",
+    model: "opencode-go/deepseek-v4-flash",
+    displayName: "opencode-go/deepseek-v4-flash",
     description: "Fallback model while workspace model list is unavailable.",
     supportedReasoningEfforts: [
       { reasoningEffort: "low", description: "" },

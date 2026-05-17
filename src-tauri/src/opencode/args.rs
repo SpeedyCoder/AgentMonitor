@@ -6,7 +6,7 @@ pub(crate) fn parse_opencode_args(value: Option<&str>) -> Result<Vec<String>, St
         _ => return Ok(Vec::new()),
     };
     shell_words::split(raw)
-        .map_err(|err| format!("Invalid Codex args: {err}"))
+        .map_err(|err| format!("Invalid OpenCode args: {err}"))
         .map(|args| args.into_iter().filter(|arg| !arg.is_empty()).collect())
 }
 

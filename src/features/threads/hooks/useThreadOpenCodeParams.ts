@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AccessMode, ServiceTier } from "@/types";
 import {
-  STORAGE_KEY_THREAD_CODEX_PARAMS,
+  STORAGE_KEY_THREAD_OPENCODE_PARAMS,
   type ThreadOpenCodeParams,
   type ThreadOpenCodeParamsMap,
   loadThreadOpenCodeParams,
@@ -103,7 +103,7 @@ export function useThreadOpenCodeParams(): UseThreadOpenCodeParamsResult {
       return undefined;
     }
     const handleStorage = (event: StorageEvent) => {
-      if (event.key !== STORAGE_KEY_THREAD_CODEX_PARAMS) {
+      if (event.key !== STORAGE_KEY_THREAD_OPENCODE_PARAMS) {
         return;
       }
       paramsRef.current = loadThreadOpenCodeParams();

@@ -91,7 +91,7 @@ fn convert_heif_image_to_jpeg_bytes(path: &str) -> Result<Vec<u8>, String> {
     if !status.success() {
         let _ = std::fs::remove_file(&output_path);
         return Err(format!(
-            "Failed to convert HEIC/HEIF image into a Codex-compatible JPEG: {path}"
+            "Failed to convert HEIC/HEIF image into an OpenCode-compatible JPEG: {path}"
         ));
     }
     let bytes = std::fs::read(&output_path).map_err(|err| {
@@ -687,12 +687,12 @@ pub(crate) async fn opencode_login_core(
             Ok(_) => {
                 let mut cancels = opencode_login_cancels.lock().await;
                 cancels.remove(&workspace_id);
-                return Err("Codex login canceled.".to_string());
+                return Err("OpenCode login canceled.".to_string());
             }
             Err(TryRecvError::Closed) => {
                 let mut cancels = opencode_login_cancels.lock().await;
                 cancels.remove(&workspace_id);
-                return Err("Codex login canceled.".to_string());
+                return Err("OpenCode login canceled.".to_string());
             }
             Err(TryRecvError::Empty) => {}
         }
@@ -801,7 +801,7 @@ pub(crate) async fn skills_list_core(
     let session = get_session_clone(sessions, &workspace_id).await?;
     let workspace_path = resolve_workspace_path_core(workspaces, &workspace_id).await?;
 
-    // Codex can discover project-scoped skills from `<workspace>/.agents/skills`.
+    // OpenCode can discover project-scoped skills from `<workspace>/.agents/skills`.
     // Some environments don't surface those reliably in OpenCodeMonitor unless we
     // pass the default project skills path explicitly.
     let mut source_paths: Vec<String> = vec![];
@@ -1004,9 +1004,9 @@ mod tests {
 
     #[test]
     fn heif_paths_are_inlined_for_opencode() {
-        assert!(should_inline_image_path_for_codex("/tmp/photo.heic"));
-        assert!(should_inline_image_path_for_codex("/tmp/photo.HEIF"));
-        assert!(!should_inline_image_path_for_codex("/tmp/photo.png"));
+        assert!(should_inline_image_path_for_opencode("/tmp/photo.heic"));
+        assert!(should_inline_image_path_for_opencode("/tmp/photo.HEIF"));
+        assert!(!should_inline_image_path_for_opencode("/tmp/photo.png"));
     }
 
     #[test]

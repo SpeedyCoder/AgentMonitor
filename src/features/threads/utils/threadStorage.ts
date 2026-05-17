@@ -3,7 +3,7 @@ import type { AccessMode, ServiceTier } from "@/types";
 const STORAGE_KEY_THREAD_ACTIVITY = "opencodemonitor.threadLastUserActivity";
 export const STORAGE_KEY_PINNED_THREADS = "opencodemonitor.pinnedThreads";
 export const STORAGE_KEY_CUSTOM_NAMES = "opencodemonitor.threadCustomNames";
-export const STORAGE_KEY_THREAD_CODEX_PARAMS = "opencodemonitor.threadOpenCodeParams";
+export const STORAGE_KEY_THREAD_OPENCODE_PARAMS = "opencodemonitor.threadOpenCodeParams";
 export const STORAGE_KEY_DETACHED_REVIEW_LINKS = "opencodemonitor.detachedReviewLinks";
 export const MAX_PINS_SOFT_LIMIT = 5;
 
@@ -41,7 +41,7 @@ export function loadThreadOpenCodeParams(): ThreadOpenCodeParamsMap {
     return {};
   }
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY_THREAD_CODEX_PARAMS);
+    const raw = window.localStorage.getItem(STORAGE_KEY_THREAD_OPENCODE_PARAMS);
     if (!raw) {
       return {};
     }
@@ -61,7 +61,7 @@ export function saveThreadOpenCodeParams(next: ThreadOpenCodeParamsMap): void {
   }
   try {
     window.localStorage.setItem(
-      STORAGE_KEY_THREAD_CODEX_PARAMS,
+      STORAGE_KEY_THREAD_OPENCODE_PARAMS,
       JSON.stringify(next),
     );
   } catch {

@@ -39,7 +39,7 @@ afterEach(() => {
 });
 
 describe("useSkills", () => {
-  it("refreshes skills on canonical codex/event/skills_update_available notifications", async () => {
+  it("refreshes skills on canonical opencode/event/skills_update_available notifications", async () => {
     vi.mocked(getSkillsList)
       .mockResolvedValueOnce({ result: { skills: [{ name: "first", path: "/skills/first" }] } })
       .mockResolvedValueOnce({

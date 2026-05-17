@@ -228,19 +228,19 @@ mod tests {
         let tilde = normalize_opencode_home("~/.config/opencode-api");
         assert_eq!(tilde, Some(home_dir.join(".config/opencode-api")));
 
-        let dollar = normalize_opencode_home("$HOME/.codex-api");
-        assert_eq!(dollar, Some(home_dir.join(".codex-api")));
+        let dollar = normalize_opencode_home("$HOME/.opencode-api");
+        assert_eq!(dollar, Some(home_dir.join(".opencode-api")));
 
-        let braces = normalize_opencode_home("${HOME}/.codex-api");
-        assert_eq!(braces, Some(home_dir.join(".codex-api")));
+        let braces = normalize_opencode_home("${HOME}/.opencode-api");
+        assert_eq!(braces, Some(home_dir.join(".opencode-api")));
 
-        let appdata = normalize_opencode_home("%APPDATA%/Codex");
-        assert_eq!(appdata, Some(PathBuf::from("/tmp/appdata-root/Codex")));
+        let appdata = normalize_opencode_home("%APPDATA%/OpenCode");
+        assert_eq!(appdata, Some(PathBuf::from("/tmp/appdata-root/OpenCode")));
 
-        let appdata_lower = normalize_opencode_home("$appdata/Codex");
+        let appdata_lower = normalize_opencode_home("$appdata/OpenCode");
         assert_eq!(
             appdata_lower,
-            Some(PathBuf::from("/tmp/appdata-root/Codex"))
+            Some(PathBuf::from("/tmp/appdata-root/OpenCode"))
         );
 
         match prev_home {

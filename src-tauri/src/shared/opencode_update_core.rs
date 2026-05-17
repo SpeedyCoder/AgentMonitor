@@ -12,7 +12,7 @@ use crate::types::AppSettings;
 
 #[derive(serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-struct CodexUpdateResult {
+struct OpenCodeUpdateResult {
     ok: bool,
     method: String,
     package: Option<String>,
@@ -206,7 +206,7 @@ pub(crate) async fn opencode_update_core(
         match check_opencode_installation(resolved.clone()).await {
             Ok(version) => version,
             Err(err) => {
-                let result = CodexUpdateResult {
+                let result = OpenCodeUpdateResult {
                     ok: false,
                     method,
                     package,
@@ -222,14 +222,14 @@ pub(crate) async fn opencode_update_core(
     };
 
     let details = if method == "unknown" {
-        Some("Unable to detect Codex installation method (brew/npm).".to_string())
+        Some("Unable to detect OpenCode installation method (brew/npm).".to_string())
     } else if upgrade_ok {
         None
     } else {
-        Some("Codex update failed.".to_string())
+        Some("OpenCode update failed.".to_string())
     };
 
-    let result = CodexUpdateResult {
+    let result = OpenCodeUpdateResult {
         ok: upgrade_ok,
         method,
         package,

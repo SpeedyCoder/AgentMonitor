@@ -519,7 +519,7 @@ fn make_day_keys(days: u32) -> Vec<String> {
         .collect()
 }
 
-fn resolve_codex_sessions_root(opencode_home_override: Option<PathBuf>) -> Option<PathBuf> {
+fn resolve_opencode_sessions_root(opencode_home_override: Option<PathBuf>) -> Option<PathBuf> {
     opencode_home_override
         .or_else(resolve_default_opencode_home)
         .map(|home| home.join("sessions"))
@@ -532,7 +532,7 @@ fn resolve_sessions_roots(
     if let Some(workspace_path) = workspace_path {
         let opencode_home_override =
             resolve_workspace_opencode_home_for_path(workspaces, Some(workspace_path));
-        return resolve_codex_sessions_root(opencode_home_override)
+        return resolve_opencode_sessions_root(opencode_home_override)
             .into_iter()
             .collect();
     }
@@ -540,7 +540,7 @@ fn resolve_sessions_roots(
     let mut roots = Vec::new();
     let mut seen = HashSet::new();
 
-    if let Some(root) = resolve_codex_sessions_root(None) {
+    if let Some(root) = resolve_opencode_sessions_root(None) {
         if seen.insert(root.clone()) {
             roots.push(root);
         }
@@ -554,7 +554,7 @@ fn resolve_sessions_roots(
         let Some(opencode_home) = resolve_workspace_opencode_home(entry, parent_entry) else {
             continue;
         };
-        if let Some(root) = resolve_codex_sessions_root(Some(opencode_home)) {
+        if let Some(root) = resolve_opencode_sessions_root(Some(opencode_home)) {
             if seen.insert(root.clone()) {
                 roots.push(root);
             }
@@ -832,7 +832,7 @@ mod tests {
         workspaces.insert(entry_b.id.clone(), entry_b.clone());
 
         let roots = resolve_sessions_roots(&workspaces, None);
-        let expected = resolve_codex_sessions_root(None)
+        let expected = resolve_opencode_sessions_root(None)
             .map(|root| vec![root])
             .unwrap_or_default();
         assert_eq!(roots, expected);

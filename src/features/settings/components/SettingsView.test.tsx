@@ -179,8 +179,8 @@ const createUpdateResult = () => ({
   ok: true,
   method: "brew_formula" as const,
   package: "opencode",
-  beforeVersion: "codex 0.0.0",
-  afterVersion: "codex 0.0.1",
+  beforeVersion: "opencode 0.0.0",
+  afterVersion: "opencode 0.0.1",
   upgraded: true,
   output: null,
   details: null,
@@ -1079,7 +1079,7 @@ describe("SettingsView Environments", () => {
 });
 
 describe("SettingsView OpenCode section", () => {
-  it("updates review mode in codex section", async () => {
+  it("updates review mode in opencode section", async () => {
     cleanup();
     const onUpdateAppSettings = vi.fn().mockResolvedValue(undefined);
     render(
