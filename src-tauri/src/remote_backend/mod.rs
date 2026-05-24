@@ -169,17 +169,17 @@ fn can_retry_after_disconnect(method: &str) -> bool {
             | "list_git_branches"
             | "list_git_roots"
             | "list_mcp_server_status"
-            | "list_threads"
+            | "acp_list_threads"
             | "local_usage_snapshot"
             | "list_workspace_files"
             | "list_workspaces"
             | "model_list"
-            | "read_thread"
+            | "acp_read_thread"
             | "read_agent_config_toml"
             | "read_workspace_file"
-            | "resume_thread"
-            | "thread_live_subscribe"
-            | "thread_live_unsubscribe"
+            | "acp_resume_thread"
+            | "acp_thread_live_subscribe"
+            | "acp_thread_live_unsubscribe"
             | "skills_list"
             | "worktree_setup_status"
     )
@@ -265,8 +265,8 @@ mod tests {
 
     #[test]
     fn retries_only_retry_safe_methods_after_disconnect() {
-        assert!(can_retry_after_disconnect("resume_thread"));
-        assert!(can_retry_after_disconnect("list_threads"));
+        assert!(can_retry_after_disconnect("acp_resume_thread"));
+        assert!(can_retry_after_disconnect("acp_list_threads"));
         assert!(can_retry_after_disconnect("local_usage_snapshot"));
         assert!(!can_retry_after_disconnect("send_user_message"));
         assert!(!can_retry_after_disconnect("start_thread"));

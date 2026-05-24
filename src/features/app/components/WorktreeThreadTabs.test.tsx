@@ -86,7 +86,12 @@ describe("WorktreeThreadTabs", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Start a new thread in Feature Worktree" }));
+    const addButton = screen.getByRole("button", {
+      name: "Start a new thread in Feature Worktree",
+    });
+    expect(addButton.getAttribute("data-tauri-drag-region")).toBe("false");
+
+    fireEvent.click(addButton);
 
     expect(onStartThread).toHaveBeenCalledWith("worktree-1");
   });

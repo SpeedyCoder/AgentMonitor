@@ -1,23 +1,13 @@
-//! ACP (Agent Client Protocol) module for Trantor
-//!
-//! This module provides ACP-based agent integration, replacing the legacy Codex app-server protocol.
-//! It supports both Codex and Claude agents through bundled ACP adapters.
-
-pub mod agent;
-pub mod mcp;
-pub mod notifications;
-pub mod session;
-
-// Re-export key types
-pub use session::SessionManager;
-
-use agent_client_protocol_schema::{ContentBlock, ImageContent, TextContent};
-use base64::Engine;
+use agent_client_protocol_schema::{ContentBlock, TextContent};
 use serde_json::{json, Value};
 use std::path::PathBuf;
+use std::sync::Arc;
+use tauri::Emitter;
 use tauri::{AppHandle, State};
 
-use crate::acp::mcp::WorkspaceMcpConfig;
+use crate::remote_backend;
+pub(crate) use crate::shared::acp_core::SessionManager;
+use crate::shared::acp_core::{content_from_text_and_images, AcpAppEvent, WorkspaceMcpConfig};
 use crate::state::AppState;
 use crate::types::AgentRuntime;
 
@@ -28,14 +18,25 @@ pub async fn acp_start_thread(
     state: State<'_, AppState>,
     app: AppHandle,
 ) -> Result<Value, String> {
+    if remote_backend::is_remote_mode(&*state).await {
+        return remote_backend::call_remote(
+            &*state,
+            app,
+            "acp_start_thread",
+            json!({ "workspaceId": workspace_id }),
+        )
+        .await;
+    }
+
     let workspaces = state.workspaces.lock().await;
-    let workspace = workspaces
-        .get(&workspace_id)
-        .ok_or("Workspace not found")?;
+    let workspace = workspaces.get(&workspace_id).ok_or("Workspace not found")?;
 
     let settings = state.app_settings.lock().await;
-    // Default to Codex for now, will be configurable via workspace settings
-    let runtime = workspace.settings.agent_runtime.clone().unwrap_or(AgentRuntime::Codex);
+    let runtime = workspace
+        .settings
+        .agent_runtime
+        .clone()
+        .unwrap_or(AgentRuntime::Codex);
     let api_key = match runtime {
         AgentRuntime::Codex => settings.codex_api_key.clone(),
         AgentRuntime::Claude => settings.claude_api_key.clone(),
@@ -44,10 +45,27 @@ pub async fn acp_start_thread(
     let cwd = PathBuf::from(&workspace.path);
     let mcp_config = WorkspaceMcpConfig::default();
     let mcp_servers = mcp_config.to_acp_servers(&cwd);
+    let emit_app = app.clone();
+    let emit_event = Arc::new(move |event: AcpAppEvent| {
+        let _ = emit_app.emit(
+            "app-server-event",
+            json!({
+                "workspace_id": event.workspace_id,
+                "message": event.message,
+            }),
+        );
+    });
 
     let session_id = state
         .acp_sessions
-        .create_session(workspace_id.clone(), cwd, runtime, api_key, mcp_servers, app)
+        .create_session(
+            workspace_id.clone(),
+            cwd,
+            runtime,
+            api_key,
+            mcp_servers,
+            emit_event,
+        )
         .await?;
 
     // Store the session_id in workspace settings or return it
@@ -61,24 +79,33 @@ pub async fn acp_start_thread(
 #[tauri::command]
 pub async fn acp_send_user_message(
     workspace_id: String,
-    _thread_id: String,
+    thread_id: String,
     text: String,
     images: Option<Vec<String>>,
     state: State<'_, AppState>,
+    app: AppHandle,
 ) -> Result<Value, String> {
-    let mut content: Vec<ContentBlock> = vec![ContentBlock::Text(TextContent::new(text))];
-
-    if let Some(imgs) = images {
-        for path in imgs {
-            let data = std::fs::read(&path)
-                .map_err(|e| format!("Failed to read image {}: {}", path, e))?;
-            let b64 = base64::engine::general_purpose::STANDARD.encode(data);
-            let data_uri = format!("data:image/png;base64,{}", b64);
-            content.push(ContentBlock::Image(ImageContent::new(data_uri, "image/png")));
-        }
+    if remote_backend::is_remote_mode(&*state).await {
+        return remote_backend::call_remote(
+            &*state,
+            app,
+            "acp_send_user_message",
+            json!({
+                "workspaceId": workspace_id,
+                "threadId": thread_id,
+                "text": text,
+                "images": images,
+            }),
+        )
+        .await;
     }
 
-    state.acp_sessions.send_prompt(&workspace_id, content).await?;
+    let content = content_from_text_and_images(text, images.unwrap_or_default())?;
+
+    state
+        .acp_sessions
+        .send_prompt(&workspace_id, Some(&thread_id), content)
+        .await?;
 
     Ok(json!({}))
 }
@@ -87,11 +114,25 @@ pub async fn acp_send_user_message(
 #[tauri::command]
 pub async fn acp_turn_interrupt(
     workspace_id: String,
-    _thread_id: String,
-    _turn_id: String,
+    thread_id: String,
+    turn_id: String,
     state: State<'_, AppState>,
+    app: AppHandle,
 ) -> Result<Value, String> {
-    state.acp_sessions.cancel(&workspace_id).await?;
+    if remote_backend::is_remote_mode(&*state).await {
+        return remote_backend::call_remote(
+            &*state,
+            app,
+            "acp_turn_interrupt",
+            json!({ "workspaceId": workspace_id, "threadId": thread_id, "turnId": turn_id }),
+        )
+        .await;
+    }
+
+    state
+        .acp_sessions
+        .cancel(&workspace_id, Some(&thread_id))
+        .await?;
     Ok(json!({}))
 }
 
@@ -100,34 +141,196 @@ pub async fn acp_turn_interrupt(
 pub async fn acp_list_threads(
     workspace_id: String,
     state: State<'_, AppState>,
+    app: AppHandle,
 ) -> Result<Value, String> {
-    let session_id = state.acp_sessions.get_session_id(&workspace_id).await;
+    if remote_backend::is_remote_mode(&*state).await {
+        return remote_backend::call_remote(
+            &*state,
+            app,
+            "acp_list_threads",
+            json!({ "workspaceId": workspace_id }),
+        )
+        .await;
+    }
 
-    let threads = session_id
-        .map(|s| vec![json!({
-            "id": s.to_string(),
-            "name": "Session",
-            "updatedAt": 0
-        })])
-        .unwrap_or_default();
+    let threads: Vec<Value> = state
+        .acp_sessions
+        .list_thread_summaries(&workspace_id)
+        .await
+        .into_iter()
+        .map(|summary| summary.to_list_item(&workspace_id))
+        .collect();
 
-    Ok(json!({ "data": threads }))
+    Ok(json!({
+        "data": threads,
+        "nextCursor": Value::Null,
+        "next_cursor": Value::Null,
+    }))
+}
+
+/// Resume an active ACP session.
+#[tauri::command]
+pub async fn acp_resume_thread(
+    workspace_id: String,
+    thread_id: String,
+    state: State<'_, AppState>,
+    app: AppHandle,
+) -> Result<Value, String> {
+    if remote_backend::is_remote_mode(&*state).await {
+        return remote_backend::call_remote(
+            &*state,
+            app,
+            "acp_resume_thread",
+            json!({ "workspaceId": workspace_id, "threadId": thread_id }),
+        )
+        .await;
+    }
+
+    let summary = state
+        .acp_sessions
+        .get_thread_summary(&workspace_id, &thread_id)
+        .await
+        .ok_or("ACP thread not found")?;
+    Ok(json!({ "thread": summary.to_thread_payload() }))
+}
+
+/// Read an active ACP session.
+#[tauri::command]
+pub async fn acp_read_thread(
+    workspace_id: String,
+    thread_id: String,
+    state: State<'_, AppState>,
+    app: AppHandle,
+) -> Result<Value, String> {
+    if remote_backend::is_remote_mode(&*state).await {
+        return remote_backend::call_remote(
+            &*state,
+            app,
+            "acp_read_thread",
+            json!({ "workspaceId": workspace_id, "threadId": thread_id }),
+        )
+        .await;
+    }
+    let summary = state
+        .acp_sessions
+        .get_thread_summary(&workspace_id, &thread_id)
+        .await
+        .ok_or("ACP thread not found")?;
+    Ok(json!({ "thread": summary.to_thread_payload() }))
+}
+
+/// Mark an ACP session as live-attached for frontend compatibility.
+#[tauri::command]
+pub async fn acp_thread_live_subscribe(
+    workspace_id: String,
+    thread_id: String,
+    state: State<'_, AppState>,
+    app: AppHandle,
+) -> Result<Value, String> {
+    if remote_backend::is_remote_mode(&*state).await {
+        return remote_backend::call_remote(
+            &*state,
+            app,
+            "acp_thread_live_subscribe",
+            json!({ "workspaceId": workspace_id, "threadId": thread_id }),
+        )
+        .await;
+    }
+
+    state
+        .acp_sessions
+        .ensure_active_thread(&workspace_id, &thread_id)
+        .await?;
+    let subscription_id = format!("{workspace_id}:{thread_id}");
+    let _ = app.emit(
+        "app-server-event",
+        json!({
+            "workspace_id": workspace_id,
+            "message": {
+                "method": "thread/live_attached",
+                "params": {
+                    "threadId": thread_id,
+                    "subscriptionId": subscription_id,
+                }
+            }
+        }),
+    );
+    Ok(json!({
+        "subscriptionId": subscription_id,
+        "state": "live",
+    }))
+}
+
+/// Mark an ACP session as live-detached for frontend compatibility.
+#[tauri::command]
+pub async fn acp_thread_live_unsubscribe(
+    workspace_id: String,
+    thread_id: String,
+    state: State<'_, AppState>,
+    app: AppHandle,
+) -> Result<Value, String> {
+    if remote_backend::is_remote_mode(&*state).await {
+        return remote_backend::call_remote(
+            &*state,
+            app,
+            "acp_thread_live_unsubscribe",
+            json!({ "workspaceId": workspace_id, "threadId": thread_id }),
+        )
+        .await;
+    }
+
+    let _ = app.emit(
+        "app-server-event",
+        json!({
+            "workspace_id": workspace_id,
+            "message": {
+                "method": "thread/live_detached",
+                "params": {
+                    "threadId": thread_id,
+                    "reason": "manual",
+                }
+            }
+        }),
+    );
+    Ok(json!({ "ok": true }))
 }
 
 /// Steer a turn (prefix with steering text)
 #[tauri::command]
 pub async fn acp_turn_steer(
     workspace_id: String,
-    _thread_id: String,
-    _turn_id: String,
+    thread_id: String,
+    turn_id: String,
     text: String,
     state: State<'_, AppState>,
+    app: AppHandle,
 ) -> Result<Value, String> {
+    if remote_backend::is_remote_mode(&*state).await {
+        return remote_backend::call_remote(
+            &*state,
+            app,
+            "acp_turn_steer",
+            json!({
+                "workspaceId": workspace_id,
+                "threadId": thread_id,
+                "turnId": turn_id,
+                "text": text,
+            }),
+        )
+        .await;
+    }
+
     // For ACP, steering is done by sending a special message
     // This is a simplified implementation - actual steering depends on ACP adapter support
-    let content = vec![ContentBlock::Text(TextContent::new(format!("[STEERING] {}", text)))];
+    let content = vec![ContentBlock::Text(TextContent::new(format!(
+        "[STEERING] {}",
+        text
+    )))];
 
-    state.acp_sessions.send_prompt(&workspace_id, content).await?;
+    state
+        .acp_sessions
+        .send_prompt(&workspace_id, Some(&thread_id), content)
+        .await?;
 
     Ok(json!({}))
 }
@@ -136,14 +339,25 @@ pub async fn acp_turn_steer(
 #[tauri::command]
 pub async fn acp_set_thread_name(
     workspace_id: String,
-    _thread_id: String,
-    _name: String,
+    thread_id: String,
+    name: String,
     state: State<'_, AppState>,
+    app: AppHandle,
 ) -> Result<Value, String> {
-    // ACP sessions can have titles updated via session info
-    // This is a placeholder - actual implementation depends on ACP adapter support
-    let _session_id = state.acp_sessions.get_session_id(&workspace_id).await;
-    // TODO: Send session info update when ACP supports it
+    if remote_backend::is_remote_mode(&*state).await {
+        return remote_backend::call_remote(
+            &*state,
+            app,
+            "acp_set_thread_name",
+            json!({ "workspaceId": workspace_id, "threadId": thread_id, "name": name }),
+        )
+        .await;
+    }
+
+    state
+        .acp_sessions
+        .rename_thread(&workspace_id, &thread_id, name)
+        .await?;
     Ok(json!({}))
 }
 
@@ -151,11 +365,24 @@ pub async fn acp_set_thread_name(
 #[tauri::command]
 pub async fn acp_archive_thread(
     workspace_id: String,
-    _thread_id: String,
+    thread_id: String,
     state: State<'_, AppState>,
+    app: AppHandle,
 ) -> Result<Value, String> {
-    // For now, just remove the session
-    state.acp_sessions.remove_session(&workspace_id).await;
+    if remote_backend::is_remote_mode(&*state).await {
+        return remote_backend::call_remote(
+            &*state,
+            app,
+            "acp_archive_thread",
+            json!({ "workspaceId": workspace_id, "threadId": thread_id }),
+        )
+        .await;
+    }
+
+    state
+        .acp_sessions
+        .archive_thread(&workspace_id, &thread_id)
+        .await?;
     Ok(json!({}))
 }
 
@@ -163,10 +390,45 @@ pub async fn acp_archive_thread(
 #[tauri::command]
 pub async fn acp_compact_thread(
     workspace_id: String,
-    _thread_id: String,
+    thread_id: String,
     state: State<'_, AppState>,
+    app: AppHandle,
 ) -> Result<Value, String> {
-    // For now, just remove the session to free resources
-    state.acp_sessions.remove_session(&workspace_id).await;
+    if remote_backend::is_remote_mode(&*state).await {
+        return remote_backend::call_remote(
+            &*state,
+            app,
+            "acp_compact_thread",
+            json!({ "workspaceId": workspace_id, "threadId": thread_id }),
+        )
+        .await;
+    }
+
+    state
+        .acp_sessions
+        .ensure_active_thread(&workspace_id, &thread_id)
+        .await?;
+    drop(state.acp_sessions.remove_session(&workspace_id).await);
     Ok(json!({}))
+}
+
+/// ACP does not define fork semantics. Keep this explicit instead of falling
+/// back to legacy Codex app-server behavior.
+#[tauri::command]
+pub async fn acp_fork_thread(
+    workspace_id: String,
+    thread_id: String,
+    state: State<'_, AppState>,
+    app: AppHandle,
+) -> Result<Value, String> {
+    if remote_backend::is_remote_mode(&*state).await {
+        return remote_backend::call_remote(
+            &*state,
+            app,
+            "acp_fork_thread",
+            json!({ "workspaceId": workspace_id, "threadId": thread_id }),
+        )
+        .await;
+    }
+    Err("Forking ACP sessions is not supported".to_string())
 }

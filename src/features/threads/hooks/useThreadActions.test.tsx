@@ -146,6 +146,39 @@ describe("useThreadActions", () => {
     expect(loadedThreadsRef.current["thread-1"]).toBe(true);
   });
 
+  it("starts and activates ACP sessions returned as threadId/sessionId", async () => {
+    vi.mocked(startThread).mockResolvedValue({
+      threadId: "session-1",
+      sessionId: "session-1",
+    });
+
+    const { result, dispatch, loadedThreadsRef } = renderActions();
+
+    let threadId: string | null = null;
+    await act(async () => {
+      threadId = await result.current.startThreadForWorkspace("ws-1");
+    });
+
+    expect(threadId).toBe("session-1");
+    expect(dispatch.mock.calls.slice(0, 2)).toEqual([
+      [
+        {
+          type: "setActiveThreadId",
+          workspaceId: "ws-1",
+          threadId: "session-1",
+        },
+      ],
+      [
+        {
+          type: "ensureThread",
+          workspaceId: "ws-1",
+          threadId: "session-1",
+        },
+      ],
+    ]);
+    expect(loadedThreadsRef.current["session-1"]).toBe(true);
+  });
+
   it("forks a thread and activates the fork", async () => {
     vi.mocked(forkThread).mockResolvedValue({
       result: { thread: { id: "thread-fork-1" } },
@@ -763,6 +796,46 @@ describe("useThreadActions", () => {
     });
     expect(threadActivityRef.current).toEqual({
       "ws-1": { "thread-1": 5000 },
+    });
+  });
+
+  it("keeps scoped ACP thread list items that do not include cwd", async () => {
+    vi.mocked(listThreads).mockResolvedValue({
+      result: {
+        data: [
+          {
+            id: "thread-acp-1",
+            preview: "ACP thread",
+            updatedAt: 6000,
+          },
+        ],
+        nextCursor: null,
+      },
+    });
+    vi.mocked(getThreadTimestamp).mockImplementation((thread) => {
+      const record = thread as Record<string, unknown>;
+      return (record.updatedAt as number) ?? (record.updated_at as number) ?? 0;
+    });
+
+    const { result, dispatch } = renderActions();
+
+    await act(async () => {
+      await result.current.listThreadsForWorkspace(workspace);
+    });
+
+    expect(dispatch).toHaveBeenCalledWith({
+      type: "setThreads",
+      workspaceId: "ws-1",
+      sortKey: "updated_at",
+      preserveAnchors: true,
+      threads: [
+        {
+          id: "thread-acp-1",
+          name: "ACP thread",
+          updatedAt: 6000,
+          createdAt: 0,
+        },
+      ],
     });
   });
 

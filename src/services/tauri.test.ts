@@ -317,13 +317,13 @@ describe("tauri invoke wrappers", () => {
     });
   });
 
-  it("maps workspaceId and threadId for fork_thread", async () => {
+  it("maps workspaceId and threadId for acp_fork_thread", async () => {
     const invokeMock = vi.mocked(invoke);
     invokeMock.mockResolvedValueOnce({});
 
     await forkThread("ws-9", "thread-9");
 
-    expect(invokeMock).toHaveBeenCalledWith("fork_thread", {
+    expect(invokeMock).toHaveBeenCalledWith("acp_fork_thread", {
       workspaceId: "ws-9",
       threadId: "thread-9",
     });
@@ -335,7 +335,7 @@ describe("tauri invoke wrappers", () => {
 
     await compactThread("ws-10", "thread-10");
 
-    expect(invokeMock).toHaveBeenCalledWith("compact_thread", {
+    expect(invokeMock).toHaveBeenCalledWith("acp_compact_thread", {
       workspaceId: "ws-10",
       threadId: "thread-10",
     });
@@ -347,7 +347,7 @@ describe("tauri invoke wrappers", () => {
 
     await setThreadName("ws-9", "thread-9", "New Name");
 
-    expect(invokeMock).toHaveBeenCalledWith("set_thread_name", {
+    expect(invokeMock).toHaveBeenCalledWith("acp_set_thread_name", {
       workspaceId: "ws-9",
       threadId: "thread-9",
       name: "New Name",
@@ -373,11 +373,8 @@ describe("tauri invoke wrappers", () => {
 
     await listThreads("ws-10", "cursor-1", 25, "updated_at");
 
-    expect(invokeMock).toHaveBeenCalledWith("list_threads", {
+    expect(invokeMock).toHaveBeenCalledWith("acp_list_threads", {
       workspaceId: "ws-10",
-      cursor: "cursor-1",
-      limit: 25,
-      sortKey: "updated_at",
     });
   });
 
@@ -387,7 +384,7 @@ describe("tauri invoke wrappers", () => {
 
     await readThread("ws-10", "thread-1");
 
-    expect(invokeMock).toHaveBeenCalledWith("read_thread", {
+    expect(invokeMock).toHaveBeenCalledWith("acp_read_thread", {
       workspaceId: "ws-10",
       threadId: "thread-1",
     });
@@ -776,7 +773,7 @@ describe("tauri invoke wrappers", () => {
     });
   });
 
-  it("fills sendUserMessage defaults in payload", async () => {
+  it("maps sendUserMessage to the ACP payload", async () => {
     const invokeMock = vi.mocked(invoke);
     invokeMock.mockResolvedValueOnce({});
 
@@ -785,30 +782,26 @@ describe("tauri invoke wrappers", () => {
       images: ["image.png"],
     });
 
-    expect(invokeMock).toHaveBeenLastCalledWith("send_user_message", {
+    expect(invokeMock).toHaveBeenLastCalledWith("acp_send_user_message", {
       workspaceId: "ws-4",
       threadId: "thread-1",
       text: "hello",
-      model: null,
-      effort: null,
-      accessMode: "full-access",
       images: ["image.png"],
     });
   });
 
-  it("strips runtime prefixes from start_thread model payloads", async () => {
+  it("starts ACP threads from workspace settings", async () => {
     const invokeMock = vi.mocked(invoke);
     invokeMock.mockResolvedValueOnce({});
 
     await startThread("ws-4", "codex:gpt-5.5");
 
-    expect(invokeMock).toHaveBeenCalledWith("start_thread", {
+    expect(invokeMock).toHaveBeenCalledWith("acp_start_thread", {
       workspaceId: "ws-4",
-      modelId: "gpt-5.5",
     });
   });
 
-  it("strips runtime prefixes from turn/start model payloads", async () => {
+  it("omits legacy model and collaboration fields from ACP messages", async () => {
     const invokeMock = vi.mocked(invoke);
     invokeMock.mockResolvedValueOnce({});
 
@@ -823,25 +816,15 @@ describe("tauri invoke wrappers", () => {
       },
     });
 
-    expect(invokeMock).toHaveBeenLastCalledWith("send_user_message", {
+    expect(invokeMock).toHaveBeenLastCalledWith("acp_send_user_message", {
       workspaceId: "ws-4",
       threadId: "thread-1",
       text: "hello",
-      model: "gpt-5.5",
-      effort: null,
-      accessMode: null,
       images: null,
-      collaborationMode: {
-        mode: "default",
-        settings: {
-          id: "default",
-          model: "gpt-5.5",
-        },
-      },
     });
   });
 
-  it("preserves explicit null serviceTier overrides", async () => {
+  it("omits legacy service tier fields from ACP messages", async () => {
     const invokeMock = vi.mocked(invoke);
     invokeMock.mockResolvedValueOnce({});
 
@@ -849,14 +832,10 @@ describe("tauri invoke wrappers", () => {
       serviceTier: null,
     });
 
-    expect(invokeMock).toHaveBeenLastCalledWith("send_user_message", {
+    expect(invokeMock).toHaveBeenLastCalledWith("acp_send_user_message", {
       workspaceId: "ws-4",
       threadId: "thread-1",
       text: "hello",
-      model: null,
-      effort: null,
-      serviceTier: null,
-      accessMode: null,
       images: null,
     });
   });
@@ -872,7 +851,7 @@ describe("tauri invoke wrappers", () => {
     });
   });
 
-  it("converts image paths before send_user_message in remote mode", async () => {
+  it("converts image paths before acp_send_user_message in remote mode", async () => {
     const invokeMock = vi.mocked(invoke);
     invokeMock.mockImplementation(async (command: string) => {
       if (command === "is_macos_debug_build") {
@@ -894,18 +873,15 @@ describe("tauri invoke wrappers", () => {
       images: ["/tmp/image.png"],
     });
 
-    expect(invokeMock).toHaveBeenLastCalledWith("send_user_message", {
+    expect(invokeMock).toHaveBeenLastCalledWith("acp_send_user_message", {
       workspaceId: "ws-4",
       threadId: "thread-1",
       text: "hello",
-      model: null,
-      effort: null,
-      accessMode: null,
       images: ["data:image/png;base64,abc"],
     });
   });
 
-  it("includes app mentions when sending a message", async () => {
+  it("omits app mentions from ACP messages", async () => {
     const invokeMock = vi.mocked(invoke);
     invokeMock.mockResolvedValueOnce({});
 
@@ -913,34 +889,29 @@ describe("tauri invoke wrappers", () => {
       appMentions: [{ name: "Calendar", path: "app://connector_calendar" }],
     });
 
-    expect(invokeMock).toHaveBeenCalledWith("send_user_message", {
+    expect(invokeMock).toHaveBeenCalledWith("acp_send_user_message", {
       workspaceId: "ws-4",
       threadId: "thread-1",
       text: "hello $calendar",
-      model: null,
-      effort: null,
-      accessMode: null,
       images: null,
-      appMentions: [{ name: "Calendar", path: "app://connector_calendar" }],
     });
   });
 
-  it("invokes turn_steer for steer payloads", async () => {
+  it("invokes acp_turn_steer for steer payloads", async () => {
     const invokeMock = vi.mocked(invoke);
     invokeMock.mockResolvedValueOnce({});
 
     await steerTurn("ws-4", "thread-1", "turn-2", "continue", ["image.png"]);
 
-    expect(invokeMock).toHaveBeenCalledWith("turn_steer", {
+    expect(invokeMock).toHaveBeenCalledWith("acp_turn_steer", {
       workspaceId: "ws-4",
       threadId: "thread-1",
       turnId: "turn-2",
       text: "continue",
-      images: ["image.png"],
     });
   });
 
-  it("converts image paths before turn_steer in remote mode", async () => {
+  it("keeps ACP steer text-only in remote mode", async () => {
     const invokeMock = vi.mocked(invoke);
     invokeMock.mockImplementation(async (command: string) => {
       if (command === "is_macos_debug_build") {
@@ -960,13 +931,13 @@ describe("tauri invoke wrappers", () => {
 
     await steerTurn("ws-4", "thread-1", "turn-2", "continue", ["/tmp/image.jpg"]);
 
-    expect(invokeMock).toHaveBeenCalledWith("turn_steer", {
+    expect(invokeMock).toHaveBeenCalledWith("acp_turn_steer", {
       workspaceId: "ws-4",
       threadId: "thread-1",
       turnId: "turn-2",
       text: "continue",
-      images: ["data:image/jpeg;base64,xyz"],
     });
+    expect(invokeMock).not.toHaveBeenCalledWith("read_image_as_data_url", expect.anything());
   });
 
   it("converts image paths on mobile even in local backend mode", async () => {
@@ -991,18 +962,15 @@ describe("tauri invoke wrappers", () => {
       images: ["/private/var/mobile/sample.png"],
     });
 
-    expect(invokeMock).toHaveBeenLastCalledWith("send_user_message", {
+    expect(invokeMock).toHaveBeenLastCalledWith("acp_send_user_message", {
       workspaceId: "ws-4",
       threadId: "thread-1",
       text: "hello",
-      model: null,
-      effort: null,
-      accessMode: null,
       images: ["data:image/png;base64,mobile"],
     });
   });
 
-  it("fails when image conversion fails for send_user_message", async () => {
+  it("fails when image conversion fails for acp_send_user_message", async () => {
     const invokeMock = vi.mocked(invoke);
     invokeMock.mockImplementation(async (command: string) => {
       if (command === "is_macos_debug_build") {
@@ -1023,7 +991,7 @@ describe("tauri invoke wrappers", () => {
     await expect(
       sendUserMessage("ws-4", "thread-1", "hello", { images: ["/tmp/image.png"] }),
     ).rejects.toThrow("conversion failed");
-    expect(invokeMock).not.toHaveBeenCalledWith("send_user_message", expect.anything());
+    expect(invokeMock).not.toHaveBeenCalledWith("acp_send_user_message", expect.anything());
   });
 
   it("omits delivery when starting reviews without override", async () => {

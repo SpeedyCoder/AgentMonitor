@@ -81,8 +81,8 @@ use shared::codex_core::CodexLoginCancelState;
 use shared::process_core::kill_child_process_tree;
 use shared::prompts_core::{self, CustomPromptEntry};
 use shared::{
-    agents_config_core, codex_aux_core, codex_core, files_core, git_core, git_ui_core, linear_core,
-    local_usage_core, settings_core, workspaces_core, worktree_core,
+    acp_core, agents_config_core, codex_aux_core, codex_core, files_core, git_core, git_ui_core,
+    linear_core, local_usage_core, settings_core, workspaces_core, worktree_core,
 };
 use storage::{read_settings, read_workspaces};
 use types::{
@@ -153,6 +153,7 @@ struct DaemonState {
     data_dir: PathBuf,
     workspaces: Mutex<HashMap<String, WorkspaceEntry>>,
     sessions: Mutex<HashMap<String, Arc<WorkspaceSession>>>,
+    acp_sessions: acp_core::SessionManager,
     storage_path: PathBuf,
     settings_path: PathBuf,
     app_settings: Mutex<AppSettings>,
@@ -180,6 +181,9 @@ impl DaemonState {
             data_dir: config.data_dir.clone(),
             workspaces: Mutex::new(workspaces),
             sessions: Mutex::new(HashMap::new()),
+            acp_sessions: acp_core::SessionManager::with_summaries_path(
+                config.data_dir.join("acp_threads.json"),
+            ),
             storage_path,
             settings_path,
             app_settings: Mutex::new(app_settings),
@@ -1632,6 +1636,9 @@ mod tests {
             data_dir: data_dir.to_path_buf(),
             workspaces: Mutex::new(HashMap::new()),
             sessions: Mutex::new(HashMap::new()),
+            acp_sessions: acp_core::SessionManager::with_summaries_path(
+                data_dir.join("acp_threads.json"),
+            ),
             storage_path: data_dir.join("workspaces.json"),
             settings_path: data_dir.join("settings.json"),
             app_settings: Mutex::new(AppSettings::default()),
