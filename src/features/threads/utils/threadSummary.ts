@@ -30,12 +30,30 @@ export function extractThreadFromResponse(
     response.result && typeof response.result === "object" && !Array.isArray(response.result)
       ? (response.result as Record<string, unknown>)
       : null;
+  const payload = result ?? response;
   const thread =
-    (result?.thread as Record<string, unknown> | undefined) ??
+    (payload.thread as Record<string, unknown> | undefined) ??
     (response.thread as Record<string, unknown> | undefined);
   if (!thread) {
-    return null;
+    const threadId = asString(
+      payload.threadId ??
+        payload.thread_id ??
+        payload.sessionId ??
+        payload.session_id ??
+        response.threadId ??
+        response.thread_id ??
+        response.sessionId ??
+        response.session_id,
+    );
+    return threadId ? { id: threadId } : null;
   }
+  const fallbackId = asString(
+    thread.id ??
+      payload.threadId ??
+      payload.thread_id ??
+      payload.sessionId ??
+      payload.session_id,
+  );
   const model = thread.model ?? result?.model ?? response.model;
   const modelProvider =
     thread.modelProvider ??
@@ -53,6 +71,7 @@ export function extractThreadFromResponse(
     response.reasoning_effort;
   return {
     ...thread,
+    ...(thread.id === undefined && fallbackId ? { id: fallbackId } : {}),
     ...(model !== undefined ? { model } : {}),
     ...(modelProvider !== undefined ? { modelProvider } : {}),
     ...(reasoningEffort !== undefined ? { reasoningEffort } : {}),

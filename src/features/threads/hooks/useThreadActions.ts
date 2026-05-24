@@ -33,7 +33,7 @@ import {
   buildWorkspacePathLookup,
   buildWorkspaceThreadListState,
   getThreadListNextCursor,
-  resolveWorkspaceIdForThreadPath,
+  resolveWorkspaceIdForThreadListItem,
 } from "@threads/utils/threadActionHelpers";
 import type { ThreadAction, ThreadState } from "./useThreadsReducer";
 
@@ -550,10 +550,11 @@ export function useThreadActions({
             : [];
           const nextCursor = getThreadListNextCursor(result);
           data.forEach((thread) => {
-            const workspaceId = resolveWorkspaceIdForThreadPath(
-              String(thread?.cwd ?? ""),
+            const workspaceId = resolveWorkspaceIdForThreadListItem(
+              thread,
               workspacePathLookup,
               targetWorkspaceIds,
+              requester.id,
             );
             if (!workspaceId) {
               return;
@@ -751,10 +752,11 @@ export function useThreadActions({
           matchingThreads.push(
             ...data.filter(
               (thread) => {
-                const workspaceId = resolveWorkspaceIdForThreadPath(
-                  String(thread?.cwd ?? ""),
+                const workspaceId = resolveWorkspaceIdForThreadListItem(
+                  thread,
                   workspacePathLookup,
                   allowedWorkspaceIds,
+                  workspace.id,
                 );
                 if (workspaceId !== workspace.id) {
                   return false;

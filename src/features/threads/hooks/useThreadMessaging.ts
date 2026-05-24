@@ -305,11 +305,10 @@ export function useThreadMessaging({
           | null;
         const turnId = asString(turn?.id ?? "");
         if (!turnId) {
+          // ACP prompt responses complete without a Codex turn id.
           markProcessing(threadId, false);
           setActiveTurnId(threadId, null);
-          pushThreadErrorMessage(threadId, "Turn failed to start.");
-          safeMessageActivity();
-          return { status: "blocked" };
+          return { status: "sent" };
         }
         setActiveTurnId(threadId, turnId);
         return { status: "sent" };

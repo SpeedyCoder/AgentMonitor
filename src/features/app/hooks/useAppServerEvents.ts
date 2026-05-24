@@ -575,15 +575,15 @@ export function useAppServerEvents(handlers: AppServerEventHandlers) {
 
       // ACP notification handlers
       if (method === "agent_message_chunk") {
-        // ACP sends message chunks as assistant messages
         const threadId = String(params.threadId ?? params.thread_id ?? "");
+        const itemId = String(params.itemId ?? params.item_id ?? "");
         const content = params.content as Record<string, unknown> | null;
         const text = String(content?.text ?? content ?? "");
-        if (text) {
+        if (threadId && itemId && text) {
           currentHandlers.onAgentMessageDelta?.({
             workspaceId: workspace_id,
             threadId,
-            itemId: "",
+            itemId,
             delta: text,
           });
         }
@@ -591,36 +591,48 @@ export function useAppServerEvents(handlers: AppServerEventHandlers) {
       }
 
       if (method === "agent_thought_chunk") {
-        // ACP thought chunks map to reasoning deltas
         const threadId = String(params.threadId ?? params.thread_id ?? "");
+        const itemId = String(params.itemId ?? params.item_id ?? "");
         const content = params.content as Record<string, unknown> | null;
         const thoughtText = String(content?.text ?? content ?? "");
-        if (threadId && thoughtText) {
-          currentHandlers.onReasoningTextDelta?.(workspace_id, threadId, "", thoughtText);
+        if (threadId && itemId && thoughtText) {
+          currentHandlers.onReasoningTextDelta?.(workspace_id, threadId, itemId, thoughtText);
         }
         return;
       }
 
       if (method === "tool_call") {
-        // ACP tool call notification
         const toolCall = params.toolCall as Record<string, unknown> | null;
         if (toolCall) {
           const threadId = String(params.threadId ?? params.thread_id ?? "");
+          const itemId = String(
+            params.itemId ?? params.item_id ?? toolCall.toolCallId ?? toolCall.tool_call_id ?? "",
+          );
+          const title = String(toolCall.title ?? "Tool");
           currentHandlers.onItemStarted?.(workspace_id, threadId, {
             ...toolCall,
-            type: "toolCall",
+            id: itemId,
+            type: "commandExecution",
+            command: [title],
+            status: String(toolCall.status ?? "running"),
           });
         }
         return;
       }
 
       if (method === "tool_call_update") {
-        // ACP tool call update notification
         const update = params.update as Record<string, unknown> | null;
         if (update) {
           const threadId = String(params.threadId ?? params.thread_id ?? "");
           const itemId = String(params.itemId ?? params.item_id ?? "");
-          const delta = String(update.delta ?? "");
+          const fields = update.fields as Record<string, unknown> | null;
+          const delta = String(
+            update.delta ??
+              fields?.rawOutput ??
+              fields?.raw_output ??
+              fields?.status ??
+              "",
+          );
           if (threadId && itemId && delta) {
             currentHandlers.onCommandOutputDelta?.(workspace_id, threadId, itemId, delta);
           }
@@ -629,11 +641,11 @@ export function useAppServerEvents(handlers: AppServerEventHandlers) {
       }
 
       if (method === "plan") {
-        // ACP plan notification
         const plan = params.plan as Record<string, unknown> | null;
         if (plan) {
           const threadId = String(params.threadId ?? params.thread_id ?? "");
-          currentHandlers.onTurnPlanUpdated?.(workspace_id, threadId, "", {
+          const itemId = String(params.itemId ?? params.item_id ?? "");
+          currentHandlers.onTurnPlanUpdated?.(workspace_id, threadId, itemId, {
             explanation: plan.explanation,
             plan: plan.plan,
           });

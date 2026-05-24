@@ -158,6 +158,63 @@ describe("useThreadMessaging telemetry", () => {
     expect(ensureWorkspaceRuntimeCodexArgs).toHaveBeenCalledWith("ws-1", "thread-1");
   });
 
+  it("treats ACP prompt responses without turn ids as successful completed sends", async () => {
+    const markProcessing = vi.fn();
+    const setActiveTurnId = vi.fn();
+    const pushThreadErrorMessage = vi.fn();
+    vi.mocked(sendUserMessageService).mockResolvedValueOnce(
+      {} as unknown as Awaited<ReturnType<typeof sendUserMessageService>>,
+    );
+
+    const { result } = renderHook(() =>
+      useThreadMessaging({
+        activeWorkspace: workspace,
+        activeThreadId: "thread-1",
+        accessMode: "current",
+        model: null,
+        effort: null,
+        collaborationMode: null,
+        reviewDeliveryMode: "inline",
+        steerEnabled: false,
+        customPrompts: [],
+        threadStatusById: {},
+        activeTurnIdByThread: {},
+        rateLimitsByWorkspace: {},
+        pendingInterruptsRef: { current: new Set<string>() },
+        dispatch: vi.fn(),
+        getCustomName: vi.fn(() => undefined),
+        markProcessing,
+        markReviewing: vi.fn(),
+        setActiveTurnId,
+        recordThreadActivity: vi.fn(),
+        safeMessageActivity: vi.fn(),
+        onDebug: vi.fn(),
+        pushThreadErrorMessage,
+        ensureThreadForActiveWorkspace: vi.fn(async () => "thread-1"),
+        ensureThreadForWorkspace: vi.fn(async () => "thread-1"),
+        refreshThread: vi.fn(async () => null),
+        forkThreadForWorkspace: vi.fn(async () => null),
+        updateThreadParent: vi.fn(),
+      }),
+    );
+
+    let sendResult: Awaited<ReturnType<typeof result.current.sendUserMessageToThread>>;
+    await act(async () => {
+      sendResult = await result.current.sendUserMessageToThread(
+        workspace,
+        "thread-1",
+        "hello",
+        [],
+      );
+    });
+
+    expect(sendResult!).toEqual({ status: "sent" });
+    expect(markProcessing).toHaveBeenCalledWith("thread-1", true);
+    expect(markProcessing).toHaveBeenCalledWith("thread-1", false);
+    expect(setActiveTurnId).toHaveBeenCalledWith("thread-1", null);
+    expect(pushThreadErrorMessage).not.toHaveBeenCalled();
+  });
+
   it("forwards explicit app mentions to turn/start", async () => {
     const { result } = renderHook(() =>
       useThreadMessaging({

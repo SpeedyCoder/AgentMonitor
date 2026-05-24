@@ -432,7 +432,7 @@ export async function startThread(workspaceId: string, _modelId?: string | null)
 }
 
 export async function forkThread(workspaceId: string, threadId: string) {
-  return invoke<any>("fork_thread", { workspaceId, threadId });
+  return invoke<any>("acp_fork_thread", { workspaceId, threadId });
 }
 
 export async function compactThread(workspaceId: string, threadId: string) {
@@ -1144,19 +1144,19 @@ export async function listMcpServerStatus(
 }
 
 export async function resumeThread(workspaceId: string, threadId: string) {
-  return invoke<any>("resume_thread", { workspaceId, threadId });
+  return invoke<any>("acp_resume_thread", { workspaceId, threadId });
 }
 
 export async function readThread(workspaceId: string, threadId: string) {
-  return invoke<any>("read_thread", { workspaceId, threadId });
+  return invoke<any>("acp_read_thread", { workspaceId, threadId });
 }
 
 export async function threadLiveSubscribe(workspaceId: string, threadId: string) {
-  return invoke<any>("thread_live_subscribe", { workspaceId, threadId });
+  return invoke<any>("acp_thread_live_subscribe", { workspaceId, threadId });
 }
 
 export async function threadLiveUnsubscribe(workspaceId: string, threadId: string) {
-  return invoke<any>("thread_live_unsubscribe", { workspaceId, threadId });
+  return invoke<any>("acp_thread_live_unsubscribe", { workspaceId, threadId });
 }
 
 export async function archiveThread(workspaceId: string, threadId: string) {

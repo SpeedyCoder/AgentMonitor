@@ -1,6 +1,7 @@
 #!/bin/bash
-# Bundle ACP adapters for Trantor
-# This script downloads the codex-acp and claude-agent-acp binaries for bundling with Trantor
+# Bundle ACP adapters for Trantor.
+# This script installs pinned adapter packages into src-tauri resources and
+# prefers native adapter executables when packages provide them.
 
 set -euo pipefail
 
@@ -20,90 +21,148 @@ ARCH="$(uname -m)"
 
 echo "Detected platform: $OS-$ARCH"
 
-# Download codex-acp
-CODEX_URL="https://github.com/zed-industries/codex-acp/releases/download/v${VERSION_CODEX}/codex-acp-${OS}-${ARCH}"
+case "$OS-$ARCH" in
+    darwin-x86_64) CODEX_NATIVE_PACKAGE="@zed-industries/codex-acp-darwin-x64" ;;
+    darwin-arm64) CODEX_NATIVE_PACKAGE="@zed-industries/codex-acp-darwin-arm64" ;;
+    linux-x86_64) CODEX_NATIVE_PACKAGE="@zed-industries/codex-acp-linux-x64" ;;
+    linux-arm64|linux-aarch64) CODEX_NATIVE_PACKAGE="@zed-industries/codex-acp-linux-arm64" ;;
+    mingw-x86_64|msys-x86_64|cygwin-x86_64) CODEX_NATIVE_PACKAGE="@zed-industries/codex-acp-win32-x64" ;;
+    mingw-arm64|msys-arm64|cygwin-arm64|mingw-aarch64|msys-aarch64|cygwin-aarch64) CODEX_NATIVE_PACKAGE="@zed-industries/codex-acp-win32-arm64" ;;
+    *) CODEX_NATIVE_PACKAGE="" ;;
+esac
 
-if [ "$OS" = "darwin" ]; then
-    # macOS uses universal binary
-    CODEX_URL="https://github.com/zed-industries/codex-acp/releases/download/v${VERSION_CODEX}/codex-acp-macos-x64"
+# Check if npm is available
+if ! command -v npm &> /dev/null; then
+    echo "Error: npm is required to bundle ACP adapters"
+    exit 1
+fi
+
+TMP_DIR="$(mktemp -d)"
+trap 'rm -rf "$TMP_DIR"' EXIT
+
+CODEX_PACKAGE="@zed-industries/codex-acp@${VERSION_CODEX}"
+CODEX_BUNDLE_DIR="$BIN_DIR/codex-acp-node"
+
+echo "Installing $CODEX_PACKAGE into a local bundle..."
+npm install \
+    --prefix "$TMP_DIR/codex" \
+    --omit=dev \
+    --ignore-scripts \
+    --no-audit \
+    --no-fund \
+    "$CODEX_PACKAGE"
+
+rm -rf "$CODEX_BUNDLE_DIR"
+mkdir -p "$CODEX_BUNDLE_DIR"
+cp -R "$TMP_DIR/codex/node_modules" "$CODEX_BUNDLE_DIR/node_modules"
+
+CODEX_ENTRY="$CODEX_BUNDLE_DIR/node_modules/@zed-industries/codex-acp/bin/codex-acp.js"
+if [ ! -f "$CODEX_ENTRY" ]; then
+    echo "Error: expected Codex ACP entrypoint missing: $CODEX_ENTRY"
+    exit 1
+fi
+
+CODEX_NATIVE_BIN=""
+if [ -n "$CODEX_NATIVE_PACKAGE" ]; then
+    CODEX_NATIVE_BIN="$CODEX_BUNDLE_DIR/node_modules/$CODEX_NATIVE_PACKAGE/bin/codex-acp"
+    if [ ! -f "$CODEX_NATIVE_BIN" ] && [ -f "$CODEX_NATIVE_BIN.exe" ]; then
+        CODEX_NATIVE_BIN="$CODEX_NATIVE_BIN.exe"
+    fi
+fi
+
+if [ -n "$CODEX_NATIVE_BIN" ] && [ -f "$CODEX_NATIVE_BIN" ]; then
     CODEX_BIN="$BIN_DIR/codex-acp"
-elif [ "$OS" = "linux" ]; then
+    if [ "$OS" = "windows" ] || [ "$OS" = "mingw" ] || [ "$OS" = "msys" ] || [ "$OS" = "cygwin" ]; then
+        CODEX_BIN="$BIN_DIR/codex-acp.exe"
+    fi
+    cp "$CODEX_NATIVE_BIN" "$CODEX_BIN"
+    chmod +x "$CODEX_BIN"
+elif [ "$OS" = "darwin" ] || [ "$OS" = "linux" ]; then
     CODEX_BIN="$BIN_DIR/codex-acp"
-    CODEX_URL="https://github.com/zed-industries/codex-acp/releases/download/v${VERSION_CODEX}/codex-acp-linux-x64"
+    cat > "$CODEX_BIN" << 'EOF'
+#!/bin/bash
+DIR="$(cd "$(dirname "$0")" && pwd)"
+if ! command -v node >/dev/null 2>&1; then
+  echo "codex-acp requires Node.js because no native bundled binary was available for this platform." >&2
+  echo "Install Node.js or update scripts/bundle_acp_agents.sh to bundle a native codex-acp executable." >&2
+  exit 127
+fi
+exec node "$DIR/codex-acp-node/node_modules/@zed-industries/codex-acp/bin/codex-acp.js" "$@"
+EOF
+    chmod +x "$CODEX_BIN"
 elif [ "$OS" = "windows" ] || [ "$OS" = "mingw" ]; then
-    CODEX_BIN="$BIN_DIR/codex-acp.exe"
-    CODEX_URL="https://github.com/zed-industries/codex-acp/releases/download/v${VERSION_CODEX}/codex-acp-windows-x64.exe"
+    CODEX_BIN="$BIN_DIR/codex-acp.cmd"
+    cat > "$CODEX_BIN" << 'EOF'
+@echo off
+set DIR=%~dp0
+where node >nul 2>nul
+if errorlevel 1 (
+  echo codex-acp requires Node.js because no native bundled binary was available for this platform. 1>&2
+  exit /b 127
+)
+node "%DIR%\codex-acp-node\node_modules\@zed-industries\codex-acp\bin\codex-acp.js" %*
+EOF
 else
     echo "Unsupported OS for codex-acp: $OS"
     exit 1
 fi
 
-echo "Downloading codex-acp from $CODEX_URL..."
-if command -v curl &> /dev/null; then
-    curl -L -f "$CODEX_URL" -o "$CODEX_BIN"
-elif command -v wget &> /dev/null; then
-    wget -O "$CODEX_BIN" "$CODEX_URL"
-else
-    echo "Error: Neither curl nor wget found"
-    exit 1
-fi
-
-chmod +x "$CODEX_BIN"
 echo "✓ codex-acp bundled"
-
-# Download claude-agent-acp (Node.js package)
-# For now, we use npx which will resolve the latest version
-# In production, we should download a specific version
 
 echo "Setting up claude-agent-acp..."
 
-# Check if npm is available
-if ! command -v npm &> /dev/null; then
-    echo "Warning: npm not found, skipping claude-agent-acp bundling"
-    echo "You will need npm installed to use Claude ACP adapter"
-    exit 0
+CLAUDE_PACKAGE="@agentclientprotocol/claude-agent-acp@${VERSION_CLAUDE}"
+CLAUDE_BUNDLE_DIR="$BIN_DIR/claude-agent-acp-node"
+
+echo "Installing $CLAUDE_PACKAGE into a local bundle..."
+npm install \
+    --prefix "$TMP_DIR/claude" \
+    --omit=dev \
+    --ignore-scripts \
+    --no-audit \
+    --no-fund \
+    "$CLAUDE_PACKAGE"
+
+rm -rf "$CLAUDE_BUNDLE_DIR"
+mkdir -p "$CLAUDE_BUNDLE_DIR"
+cp -R "$TMP_DIR/claude/node_modules" "$CLAUDE_BUNDLE_DIR/node_modules"
+
+CLAUDE_ENTRY="$CLAUDE_BUNDLE_DIR/node_modules/@agentclientprotocol/claude-agent-acp/dist/index.js"
+if [ ! -f "$CLAUDE_ENTRY" ]; then
+    echo "Error: expected Claude ACP entrypoint missing: $CLAUDE_ENTRY"
+    exit 1
 fi
 
-# Install claude-agent-acp globally if not already installed
-if ! npx --yes @agentclientprotocol/claude-agent-acp --version &> /dev/null; then
-    echo "Installing @agentclientprotocol/claude-agent-acp..."
-    npm install --global @agentclientprotocol/claude-agent-acp
-fi
-
-# Find the installed binary
-CLAUDE_BIN=""
 if [ "$OS" = "darwin" ] || [ "$OS" = "linux" ]; then
-    # On Unix-like systems, find the global npm binary
-    CLAUDE_GLOBAL=$(npm root --global 2>/dev/null || echo "")
-    if [ -n "$CLAUDE_GLOBAL" ] && [ -d "$CLAUDE_GLOBAL" ]; then
-        # Look for the package directory
-        CLAUDE_PKG="$CLAUDE_GLOBAL/@agentclientprotocol/claude-agent-acp"
-        if [ -d "$CLAUDE_PKG" ]; then
-            # Find the main index.js
-            CLAUDE_BIN="$CLAUDE_PKG/dist/index.js"
-        fi
-    fi
-    
-    # Fallback: use npx wrapper
-    if [ -z "$CLAUDE_BIN" ] || [ ! -f "$CLAUDE_BIN" ]; then
-        # Create a wrapper script that uses npx
-        CLAUDE_BIN="$BIN_DIR/claude-agent-acp"
-        cat > "$CLAUDE_BIN" << 'EOF'
+    CLAUDE_BIN="$BIN_DIR/claude-agent-acp"
+    cat > "$CLAUDE_BIN" << 'EOF'
 #!/bin/bash
-exec npx --yes @agentclientprotocol/claude-agent-acp "$@"
+DIR="$(cd "$(dirname "$0")" && pwd)"
+if [ -x "$DIR/node" ]; then
+  exec "$DIR/node" "$DIR/claude-agent-acp-node/node_modules/@agentclientprotocol/claude-agent-acp/dist/index.js" "$@"
+fi
+if ! command -v node >/dev/null 2>&1; then
+  echo "claude-agent-acp requires Node.js. Packaged releases must bundle a Node runtime at Resources/bin/node or declare Node.js as a release prerequisite." >&2
+  exit 127
+fi
+exec node "$DIR/claude-agent-acp-node/node_modules/@agentclientprotocol/claude-agent-acp/dist/index.js" "$@"
 EOF
-        chmod +x "$CLAUDE_BIN"
-    else
-        # Copy the actual binary
-        cp "$CLAUDE_BIN" "$BIN_DIR/claude-agent-acp"
-        chmod +x "$BIN_DIR/claude-agent-acp"
-        CLAUDE_BIN="$BIN_DIR/claude-agent-acp"
-    fi
+    chmod +x "$CLAUDE_BIN"
 elif [ "$OS" = "windows" ] || [ "$OS" = "mingw" ]; then
     CLAUDE_BIN="$BIN_DIR/claude-agent-acp.cmd"
     cat > "$CLAUDE_BIN" << 'EOF'
 @echo off
-npx --yes @agentclientprotocol/claude-agent-acp %*
+set DIR=%~dp0
+if exist "%DIR%\node.exe" (
+  "%DIR%\node.exe" "%DIR%\claude-agent-acp-node\node_modules\@agentclientprotocol\claude-agent-acp\dist\index.js" %*
+  exit /b %ERRORLEVEL%
+)
+where node >nul 2>nul
+if errorlevel 1 (
+  echo claude-agent-acp requires Node.js. Packaged releases must bundle node.exe in the resource bin directory or declare Node.js as a release prerequisite. 1>&2
+  exit /b 127
+)
+node "%DIR%\claude-agent-acp-node\node_modules\@agentclientprotocol\claude-agent-acp\dist\index.js" %*
 EOF
 else
     echo "Unsupported OS for claude-agent-acp: $OS"

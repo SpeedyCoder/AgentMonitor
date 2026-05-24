@@ -107,6 +107,48 @@ export function resolveWorkspaceIdForThreadPath(
   );
 }
 
+export function resolveWorkspaceIdForThreadListItem(
+  thread: ThreadRecord,
+  lookup: WorkspacePathLookup,
+  allowedWorkspaceIds?: Set<string>,
+  scopedWorkspaceId?: string | null,
+) {
+  const explicitWorkspaceId = asString(
+    thread.workspaceId ?? thread.workspace_id,
+  );
+  if (
+    explicitWorkspaceId &&
+    (!allowedWorkspaceIds || allowedWorkspaceIds.has(explicitWorkspaceId))
+  ) {
+    return explicitWorkspaceId;
+  }
+
+  const pathCandidate = asString(
+    thread.cwd ?? thread.path ?? thread.workspacePath ?? thread.workspace_path,
+  );
+  const pathWorkspaceId = resolveWorkspaceIdForThreadPath(
+    pathCandidate,
+    lookup,
+    allowedWorkspaceIds,
+  );
+  if (pathWorkspaceId) {
+    return pathWorkspaceId;
+  }
+
+  if (pathCandidate) {
+    return null;
+  }
+
+  if (
+    scopedWorkspaceId &&
+    (!allowedWorkspaceIds || allowedWorkspaceIds.has(scopedWorkspaceId))
+  ) {
+    return scopedWorkspaceId;
+  }
+
+  return null;
+}
+
 export function getThreadListNextCursor(result: Record<string, unknown>) {
   if (typeof result.nextCursor === "string") {
     return result.nextCursor;
@@ -136,7 +178,23 @@ export function buildResumeHydrationPlan({
   threadId: string;
   workspaceId: string;
 }): ResumeHydrationPlan {
-  const items = buildItemsFromThread(thread);
+  const historyPlaceholder =
+    thread.historyPlaceholder === true || thread.resumable === false;
+  const placeholderMessage = asString(thread.historyStatus ?? "");
+  const items = historyPlaceholder
+    ? [
+        {
+          id: `${threadId}-acp-history-placeholder`,
+          kind: "tool" as const,
+          toolType: "acpHistoryPlaceholder",
+          title: "ACP history unavailable",
+          detail:
+            placeholderMessage ||
+            "This ACP session summary can be listed, but its transcript cannot be reloaded.",
+          status: "info",
+        },
+      ]
+    : buildItemsFromThread(thread);
   if (localItems.length > 0 && !replaceLocal) {
     return {
       keepLocalProcessing: false,

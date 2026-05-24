@@ -58,7 +58,7 @@ impl AppState {
         Self {
             workspaces: Mutex::new(workspaces),
             sessions: Mutex::new(HashMap::new()),
-            acp_sessions: SessionManager::new(),
+            acp_sessions: SessionManager::with_summaries_path(data_dir.join("acp_threads.json")),
             terminal_sessions: Mutex::new(HashMap::new()),
             remote_backend: Mutex::new(None),
             storage_path,
