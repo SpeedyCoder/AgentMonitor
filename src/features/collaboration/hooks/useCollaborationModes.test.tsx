@@ -103,6 +103,47 @@ describe("useCollaborationModes", () => {
     );
   });
 
+  it("keeps Claude plan and default modes available when the runtime has no list", async () => {
+    vi.mocked(getCollaborationModes).mockResolvedValue({ result: { data: [] } });
+
+    const { result } = renderHook(() =>
+      useCollaborationModes({
+        activeWorkspace: workspaceOne,
+        enabled: true,
+        runtime: "claude",
+        preferredModeId: "plan",
+      }),
+    );
+
+    await waitFor(() =>
+      expect(result.current.collaborationModes.map((mode) => mode.id)).toEqual([
+        "default",
+        "plan",
+      ]),
+    );
+    expect(result.current.selectedCollaborationModeId).toBe("plan");
+  });
+
+  it("falls back to Claude plan and default modes when listing fails", async () => {
+    vi.mocked(getCollaborationModes).mockRejectedValue(new Error("unsupported method"));
+
+    const { result } = renderHook(() =>
+      useCollaborationModes({
+        activeWorkspace: workspaceOne,
+        enabled: true,
+        runtime: "claude",
+      }),
+    );
+
+    await waitFor(() =>
+      expect(result.current.collaborationModes.map((mode) => mode.id)).toEqual([
+        "default",
+        "plan",
+      ]),
+    );
+    expect(result.current.selectedCollaborationModeId).toBe("default");
+  });
+
   it("resets the selection when the feature is disabled", async () => {
     vi.mocked(getCollaborationModes).mockResolvedValue(makeModesResponse());
 

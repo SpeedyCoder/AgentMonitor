@@ -1,4 +1,6 @@
 .worktree-thread-tabs {
+  display: flex;
+  align-items: stretch;
   background: var(--surface-debug);
   border-bottom: 0;
   box-shadow: inset 0 -1px rgba(255, 255, 255, 0.08);
@@ -7,24 +9,66 @@
   overflow: hidden;
 }
 
+.worktree-thread-tabs .terminal-header {
+  flex: 1;
+  min-width: 0;
+  box-shadow: none;
+}
+
 .worktree-thread-tabs .terminal-tabs {
   height: 100%;
 }
 
 .worktree-thread-tabs .terminal-tab,
-.worktree-thread-tabs .terminal-tab-add {
+.worktree-thread-tabs .terminal-tab-add,
+.worktree-thread-history-tab {
   height: 34px;
   min-height: 0;
   line-height: 1;
 }
 
-.worktree-thread-tabs .terminal-tab.active::after {
+.worktree-thread-tabs .terminal-tab.active::after,
+.worktree-thread-history-tab.active::after {
   bottom: 0;
 }
 
 .worktree-thread-tabs .terminal-tab-status {
   width: 7px;
   height: 7px;
+}
+
+.worktree-thread-history-tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  flex: 0 0 38px;
+  border: 0;
+  border-inline-end: 1px solid rgba(255, 255, 255, 0.08);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.worktree-thread-history-tab svg {
+  width: 15px;
+  height: 15px;
+}
+
+.worktree-thread-history-tab.active {
+  color: var(--text-stronger);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.worktree-thread-history-tab.active::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--border-strong);
+  pointer-events: none;
 }
 
 .worktree-thread-empty {
@@ -34,4 +78,82 @@
   min-height: 0;
   padding: 32px 24px calc(32px + var(--composer-overlay-height, 0px));
   color: var(--text-secondary);
+}
+
+.worktree-thread-history {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 18px;
+}
+
+.worktree-thread-history-list {
+  display: grid;
+  gap: 0;
+  max-width: 760px;
+}
+
+.worktree-thread-history-row {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 34px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 7px 2px;
+}
+
+.worktree-thread-history-row:hover .worktree-thread-history-title {
+  background: transparent;
+  color: var(--text-stronger);
+}
+
+.worktree-thread-history-agent {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 150px;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  padding: 0;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.worktree-thread-history-agent:hover {
+  color: var(--text-stronger);
+}
+
+.worktree-thread-history-agent svg {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+}
+
+.worktree-thread-history-title {
+  border: 0;
+  background: transparent;
+  color: var(--text-primary);
+  padding: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.worktree-thread-history-time {
+  color: var(--text-muted);
+  font-size: 11px;
+  white-space: nowrap;
 }

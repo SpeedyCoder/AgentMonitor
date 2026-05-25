@@ -168,6 +168,38 @@ pub async fn acp_list_threads(
     }))
 }
 
+/// List archived threads/sessions for a workspace
+#[tauri::command]
+pub async fn acp_list_historical_threads(
+    workspace_id: String,
+    state: State<'_, AppState>,
+    app: AppHandle,
+) -> Result<Value, String> {
+    if remote_backend::is_remote_mode(&*state).await {
+        return remote_backend::call_remote(
+            &*state,
+            app,
+            "acp_list_historical_threads",
+            json!({ "workspaceId": workspace_id }),
+        )
+        .await;
+    }
+
+    let threads: Vec<Value> = state
+        .acp_sessions
+        .list_archived_thread_summaries(&workspace_id)
+        .await
+        .into_iter()
+        .map(|summary| summary.to_list_item(&workspace_id))
+        .collect();
+
+    Ok(json!({
+        "data": threads,
+        "nextCursor": Value::Null,
+        "next_cursor": Value::Null,
+    }))
+}
+
 /// Resume an active ACP session.
 #[tauri::command]
 pub async fn acp_resume_thread(
@@ -219,7 +251,7 @@ async fn load_thread_for_workspace(
 ) -> Result<crate::shared::acp_core::AcpThreadSummary, String> {
     let summary = state
         .acp_sessions
-        .get_thread_summary(workspace_id, thread_id)
+        .get_thread_summary_including_archived(workspace_id, thread_id)
         .await
         .ok_or("ACP thread not found")?;
 
@@ -431,6 +463,31 @@ pub async fn acp_archive_thread(
     state
         .acp_sessions
         .archive_thread(&workspace_id, &thread_id)
+        .await?;
+    Ok(json!({}))
+}
+
+/// Discard an empty thread/session
+#[tauri::command]
+pub async fn acp_discard_thread(
+    workspace_id: String,
+    thread_id: String,
+    state: State<'_, AppState>,
+    app: AppHandle,
+) -> Result<Value, String> {
+    if remote_backend::is_remote_mode(&*state).await {
+        return remote_backend::call_remote(
+            &*state,
+            app,
+            "acp_discard_thread",
+            json!({ "workspaceId": workspace_id, "threadId": thread_id }),
+        )
+        .await;
+    }
+
+    state
+        .acp_sessions
+        .discard_thread(&workspace_id, &thread_id)
         .await?;
     Ok(json!({}))
 }

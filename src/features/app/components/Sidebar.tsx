@@ -24,17 +24,17 @@ type SidebarProps = {
   newAgentDraftWorkspaceId?: string | null;
   startingDraftThreadWorkspaceId?: string | null;
   threadsByWorkspace: Record<string, ThreadSummary[]>;
+  historicalThreadsByWorkspace?: Record<string, ThreadSummary[]>;
   threadParentById: Record<string, string>;
   threadStatusById: ThreadStatusById;
   threadListLoadingByWorkspace: Record<string, boolean>;
   threadListPagingByWorkspace: Record<string, boolean>;
   threadListCursorByWorkspace: Record<string, string | null>;
   pinnedThreadsVersion: number;
-  threadListSortKey: ThreadListSortKey;
-  onSetThreadListSortKey: (sortKey: ThreadListSortKey) => void;
+  threadListSortKey?: ThreadListSortKey;
+  onSetThreadListSortKey?: (sortKey: ThreadListSortKey) => void;
   threadListOrganizeMode: ThreadListOrganizeMode;
-  onSetThreadListOrganizeMode: (organizeMode: ThreadListOrganizeMode) => void;
-  onRefreshAllThreads: () => void;
+  onSetThreadListOrganizeMode?: (organizeMode: ThreadListOrganizeMode) => void;
   activeWorkspaceId: string | null;
   activeThreadId: string | null;
   userInputRequests?: RequestUserInputRequest[];
@@ -76,13 +76,10 @@ export const Sidebar = memo(function Sidebar({
   deletingWorktreeIds,
   defaultWorktreeBranchFormat,
   threadsByWorkspace,
+  historicalThreadsByWorkspace: _historicalThreadsByWorkspace,
   threadStatusById,
   threadListLoadingByWorkspace,
-  threadListSortKey,
-  onSetThreadListSortKey,
   threadListOrganizeMode,
-  onSetThreadListOrganizeMode,
-  onRefreshAllThreads,
   activeWorkspaceId,
   onOpenSettings,
   onOpenDebug,
@@ -120,11 +117,6 @@ export const Sidebar = memo(function Sidebar({
     onDeleteWorkspace,
     onDeleteWorktree,
   });
-
-  const refreshDisabled = workspaces.length === 0 || workspaces.every((workspace) => !workspace.connected);
-  const refreshInProgress = workspaces.some(
-    (workspace) => threadListLoadingByWorkspace[workspace.id] ?? false,
-  );
 
   const worktreesByParent = useMemo(() => {
     const worktrees = new Map<string, WorkspaceInfo[]>();
@@ -207,13 +199,6 @@ export const Sidebar = memo(function Sidebar({
       <div className="sidebar-drag-strip" />
       <SidebarHeader
         onAddWorkspace={onAddWorkspace}
-        threadListSortKey={threadListSortKey}
-        onSetThreadListSortKey={onSetThreadListSortKey}
-        threadListOrganizeMode={threadListOrganizeMode}
-        onSetThreadListOrganizeMode={onSetThreadListOrganizeMode}
-        onRefreshAllThreads={onRefreshAllThreads}
-        refreshDisabled={refreshDisabled || refreshInProgress}
-        refreshInProgress={refreshInProgress}
       />
       <div
         className={`workspace-drop-overlay${isWorkspaceDropActive ? " is-active" : ""}`}

@@ -807,7 +807,22 @@ impl SessionManager {
             .collect()
     }
 
-    pub(crate) async fn get_thread_summary(
+    pub(crate) async fn list_archived_thread_summaries(
+        &self,
+        workspace_id: &str,
+    ) -> Vec<AcpThreadSummary> {
+        self.summaries
+            .lock()
+            .await
+            .get(workspace_id)
+            .cloned()
+            .unwrap_or_default()
+            .into_iter()
+            .filter(|summary| summary.archived)
+            .collect()
+    }
+
+    pub(crate) async fn get_thread_summary_including_archived(
         &self,
         workspace_id: &str,
         thread_id: &str,
@@ -817,7 +832,7 @@ impl SessionManager {
             .await
             .get(workspace_id)?
             .iter()
-            .find(|summary| summary.id == thread_id && !summary.archived)
+            .find(|summary| summary.id == thread_id)
             .cloned()
     }
 
@@ -861,6 +876,25 @@ impl SessionManager {
                 summary.archived = true;
                 summary.updated_at = now_ms();
             }
+        }
+        self.persist_summaries(&summaries)
+    }
+
+    pub(crate) async fn discard_thread(
+        &self,
+        workspace_id: &str,
+        thread_id: &str,
+    ) -> Result<(), String> {
+        if self
+            .get_session_id(workspace_id)
+            .await
+            .is_some_and(|active_id| active_id.to_string() == thread_id)
+        {
+            drop(self.remove_session(workspace_id).await);
+        }
+        let mut summaries = self.summaries.lock().await;
+        if let Some(workspace_summaries) = summaries.get_mut(workspace_id) {
+            workspace_summaries.retain(|summary| summary.id != thread_id);
         }
         self.persist_summaries(&summaries)
     }

@@ -16,61 +16,47 @@ function workspace(id: string, connected: boolean): WorkspaceInfo {
 }
 
 describe("useThreadListActions", () => {
-  it("refreshes workspaces before reloading connected workspace threads", async () => {
-    const stale = [workspace("stale", true)];
-    const fresh = [workspace("one", true), workspace("two", false), workspace("three", true)];
-    const refreshWorkspaces = vi.fn(async () => fresh);
+  it("reloads connected workspace threads when the sort key changes", () => {
+    const workspaces = [workspace("one", true), workspace("two", false), workspace("three", true)];
+    const setThreadListSortKey = vi.fn();
     const listThreadsForWorkspaces = vi.fn(async () => {});
-    const resetWorkspaceThreads = vi.fn();
 
     const { result } = renderHook(() =>
       useThreadListActions({
         threadListSortKey: "updated_at",
-        setThreadListSortKey: vi.fn(),
-        workspaces: stale,
-        refreshWorkspaces,
+        setThreadListSortKey,
+        workspaces,
         listThreadsForWorkspaces,
-        resetWorkspaceThreads,
       }),
     );
 
-    await act(async () => {
-      await result.current.handleRefreshAllWorkspaceThreads();
+    act(() => {
+      result.current.handleSetThreadListSortKey("created_at");
     });
 
-    expect(refreshWorkspaces).toHaveBeenCalledTimes(1);
-    expect(resetWorkspaceThreads).toHaveBeenCalledTimes(2);
-    expect(resetWorkspaceThreads).toHaveBeenNthCalledWith(1, "one");
-    expect(resetWorkspaceThreads).toHaveBeenNthCalledWith(2, "three");
+    expect(setThreadListSortKey).toHaveBeenCalledWith("created_at");
     expect(listThreadsForWorkspaces).toHaveBeenCalledTimes(1);
-    expect(listThreadsForWorkspaces).toHaveBeenCalledWith([fresh[0], fresh[2]]);
+    expect(listThreadsForWorkspaces).toHaveBeenCalledWith([workspaces[0], workspaces[2]], {
+      sortKey: "created_at",
+    });
   });
 
-  it("falls back to current workspaces when refresh fails", async () => {
-    const current = [workspace("one", true), workspace("two", false)];
-    const refreshWorkspaces = vi.fn(async () => undefined);
+  it("does not reload threads when selecting the current sort key", () => {
     const listThreadsForWorkspaces = vi.fn(async () => {});
-    const resetWorkspaceThreads = vi.fn();
 
     const { result } = renderHook(() =>
       useThreadListActions({
         threadListSortKey: "updated_at",
         setThreadListSortKey: vi.fn(),
-        workspaces: current,
-        refreshWorkspaces,
+        workspaces: [workspace("one", true)],
         listThreadsForWorkspaces,
-        resetWorkspaceThreads,
       }),
     );
 
-    await act(async () => {
-      await result.current.handleRefreshAllWorkspaceThreads();
+    act(() => {
+      result.current.handleSetThreadListSortKey("updated_at");
     });
 
-    expect(refreshWorkspaces).toHaveBeenCalledTimes(1);
-    expect(resetWorkspaceThreads).toHaveBeenCalledTimes(1);
-    expect(resetWorkspaceThreads).toHaveBeenCalledWith("one");
-    expect(listThreadsForWorkspaces).toHaveBeenCalledTimes(1);
-    expect(listThreadsForWorkspaces).toHaveBeenCalledWith([current[0]]);
+    expect(listThreadsForWorkspaces).not.toHaveBeenCalled();
   });
 });

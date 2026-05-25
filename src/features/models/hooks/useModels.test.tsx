@@ -351,6 +351,15 @@ describe("useModels", () => {
         "claude:haiku",
       ]),
     );
+    expect(result.current.reasoningSupported).toBe(true);
+    expect(result.current.reasoningOptions).toEqual([
+      "low",
+      "medium",
+      "high",
+      "xhigh",
+      "none",
+    ]);
+    expect(result.current.selectedEffort).toBe("none");
   });
 
   it("shows versioned names while keeping Claude alias provider ids", async () => {
@@ -420,5 +429,12 @@ describe("useModels", () => {
       "haiku",
     ]);
     expect(result.current.selectedModelId).toBe("claude:default");
+    expect(result.current.reasoningOptions).toEqual([
+      "low",
+      "medium",
+      "high",
+      "xhigh",
+      "none",
+    ]);
   });
 });

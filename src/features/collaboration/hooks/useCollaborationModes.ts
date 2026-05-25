@@ -16,6 +16,45 @@ type UseCollaborationModesOptions = {
   onDebug?: (entry: DebugEntry) => void;
 };
 
+const CLAUDE_FALLBACK_MODES: CollaborationModeOption[] = [
+  {
+    id: "default",
+    label: "Default",
+    mode: "default",
+    model: "",
+    reasoningEffort: null,
+    developerInstructions: null,
+    value: {
+      mode: "default",
+      settings: {
+        model: null,
+        reasoning_effort: null,
+        developer_instructions: null,
+      },
+    },
+  },
+  {
+    id: "plan",
+    label: "Plan",
+    mode: "plan",
+    model: "",
+    reasoningEffort: null,
+    developerInstructions: null,
+    value: {
+      mode: "plan",
+      settings: {
+        model: null,
+        reasoning_effort: null,
+        developer_instructions: null,
+      },
+    },
+  },
+];
+
+function fallbackModesForRuntime(runtime: AgentHarness): CollaborationModeOption[] {
+  return runtime === "claude" ? CLAUDE_FALLBACK_MODES : [];
+}
+
 function pickWorkspaceDefaultModeId(modes: CollaborationModeOption[]): string | null {
   return (
     modes.find(
@@ -161,15 +200,19 @@ export function useCollaborationModes({
           return option;
         })
         .filter((mode): mode is CollaborationModeOption => mode !== null);
-      setModes(data);
+      const resolvedData = data.length > 0 ? data : fallbackModesForRuntime(runtime);
+      setModes(resolvedData);
       lastFetchedKey.current = fetchKey;
-      const workspaceDefaultModeId = pickWorkspaceDefaultModeId(data);
+      const workspaceDefaultModeId = pickWorkspaceDefaultModeId(resolvedData);
       setSelectedModeId((currentSelection) => {
         const selection = currentSelection ?? selectedModeIdRef.current;
         if (!selection) {
+          if (preferredModeId && resolvedData.some((mode) => mode.id === preferredModeId)) {
+            return preferredModeId;
+          }
           return workspaceDefaultModeId;
         }
-        if (!data.some((mode) => mode.id === selection)) {
+        if (!resolvedData.some((mode) => mode.id === selection)) {
           return workspaceDefaultModeId;
         }
         return selection;
@@ -182,10 +225,34 @@ export function useCollaborationModes({
         label: "collaborationMode/list error",
         payload: error instanceof Error ? error.message : String(error),
       });
+      const fallbackModes = fallbackModesForRuntime(runtime);
+      if (fallbackModes.length > 0) {
+        setModes(fallbackModes);
+        lastFetchedKey.current = fetchKey;
+        setSelectedModeId((currentSelection) => {
+          const selection = currentSelection ?? selectedModeIdRef.current;
+          if (selection && fallbackModes.some((mode) => mode.id === selection)) {
+            return selection;
+          }
+          if (preferredModeId && fallbackModes.some((mode) => mode.id === preferredModeId)) {
+            return preferredModeId;
+          }
+          return pickWorkspaceDefaultModeId(fallbackModes);
+        });
+      }
     } finally {
       inFlight.current = false;
     }
-  }, [enabled, extractModeList, fetchKey, isConnected, onDebug, runtime, workspaceId]);
+  }, [
+    enabled,
+    extractModeList,
+    fetchKey,
+    isConnected,
+    onDebug,
+    preferredModeId,
+    runtime,
+    workspaceId,
+  ]);
 
   useEffect(() => {
     selectedModeIdRef.current = selectedModeId;

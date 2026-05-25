@@ -47,6 +47,7 @@ type UseMainAppLayoutSurfacesArgs = {
   newAgentDraftWorkspaceId: string | null;
   startingDraftThreadWorkspaceId: string | null;
   threadsByWorkspace: SidebarProps["threadsByWorkspace"];
+  historicalThreadsByWorkspace: SidebarProps["historicalThreadsByWorkspace"];
   threadParentById: SidebarProps["threadParentById"];
   threadStatusById: ThreadState["threadStatusById"];
   threadResumeLoadingById: Record<string, boolean>;
@@ -54,11 +55,7 @@ type UseMainAppLayoutSurfacesArgs = {
   threadListPagingByWorkspace: SidebarProps["threadListPagingByWorkspace"];
   threadListCursorByWorkspace: SidebarProps["threadListCursorByWorkspace"];
   pinnedThreadsVersion: number;
-  threadListSortKey: SidebarProps["threadListSortKey"];
-  onSetThreadListSortKey: SidebarProps["onSetThreadListSortKey"];
   threadListOrganizeMode: SidebarProps["threadListOrganizeMode"];
-  onSetThreadListOrganizeMode: SidebarProps["onSetThreadListOrganizeMode"];
-  onRefreshAllThreads: SidebarProps["onRefreshAllThreads"];
   activeWorkspace: WorkspaceInfo | null;
   activeWorkspaceId: string | null;
   activeThreadId: string | null;
@@ -232,6 +229,7 @@ function buildPrimarySurface({
   newAgentDraftWorkspaceId,
   startingDraftThreadWorkspaceId,
   threadsByWorkspace,
+  historicalThreadsByWorkspace,
   threadParentById,
   threadStatusById,
   threadResumeLoadingById,
@@ -239,11 +237,7 @@ function buildPrimarySurface({
   threadListPagingByWorkspace,
   threadListCursorByWorkspace,
   pinnedThreadsVersion,
-  threadListSortKey,
-  onSetThreadListSortKey,
   threadListOrganizeMode,
-  onSetThreadListOrganizeMode,
-  onRefreshAllThreads,
   activeWorkspace,
   activeWorkspaceId,
   activeThreadId,
@@ -359,17 +353,14 @@ function buildPrimarySurface({
       newAgentDraftWorkspaceId,
       startingDraftThreadWorkspaceId,
       threadsByWorkspace,
+      historicalThreadsByWorkspace,
       threadParentById,
       threadStatusById,
       threadListLoadingByWorkspace,
       threadListPagingByWorkspace,
       threadListCursorByWorkspace,
       pinnedThreadsVersion,
-      threadListSortKey,
-      onSetThreadListSortKey,
       threadListOrganizeMode,
-      onSetThreadListOrganizeMode,
-      onRefreshAllThreads,
       activeWorkspaceId,
       activeThreadId,
       userInputRequests,
@@ -930,6 +921,7 @@ export function useMainAppLayoutSurfaces({
   newAgentDraftWorkspaceId,
   startingDraftThreadWorkspaceId,
   threadsByWorkspace,
+  historicalThreadsByWorkspace,
   threadParentById,
   threadStatusById,
   threadResumeLoadingById,
@@ -937,11 +929,7 @@ export function useMainAppLayoutSurfaces({
   threadListPagingByWorkspace,
   threadListCursorByWorkspace,
   pinnedThreadsVersion,
-  threadListSortKey,
-  onSetThreadListSortKey,
   threadListOrganizeMode,
-  onSetThreadListOrganizeMode,
-  onRefreshAllThreads,
   activeWorkspace,
   activeWorkspaceId,
   activeThreadId,
@@ -1075,6 +1063,7 @@ export function useMainAppLayoutSurfaces({
     newAgentDraftWorkspaceId,
     startingDraftThreadWorkspaceId,
     threadsByWorkspace,
+    historicalThreadsByWorkspace,
     threadParentById,
     threadStatusById,
     threadResumeLoadingById,
@@ -1082,11 +1071,7 @@ export function useMainAppLayoutSurfaces({
     threadListPagingByWorkspace,
     threadListCursorByWorkspace,
     pinnedThreadsVersion,
-    threadListSortKey,
-    onSetThreadListSortKey,
     threadListOrganizeMode,
-    onSetThreadListOrganizeMode,
-    onRefreshAllThreads,
     activeWorkspace,
     activeWorkspaceId,
     activeThreadId,

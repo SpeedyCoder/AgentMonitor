@@ -62,7 +62,6 @@ import { useOpenAppIcons } from "@app/hooks/useOpenAppIcons";
 import { useNewAgentDraft } from "@app/hooks/useNewAgentDraft";
 import { useSystemNotificationThreadLinks } from "@app/hooks/useSystemNotificationThreadLinks";
 import { useThreadListSortKey } from "@app/hooks/useThreadListSortKey";
-import { useThreadListActions } from "@app/hooks/useThreadListActions";
 import { useRemoteThreadLiveConnection } from "@app/hooks/useRemoteThreadLiveConnection";
 import { useTrayRecentThreads } from "@app/hooks/useTrayRecentThreads";
 import { useTraySessionUsage } from "@app/hooks/useTraySessionUsage";
@@ -82,6 +81,11 @@ import { useAppShellOrchestration } from "@app/orchestration/useLayoutOrchestrat
 import { normalizeCodexArgsInput } from "@/utils/codexArgsInput";
 import { subscribeTrayOpenThread } from "@services/events";
 import { WorktreeThreadTabs } from "@app/components/WorktreeThreadTabs";
+import { WorktreeThreadHistory } from "@app/components/WorktreeThreadHistory";
+import {
+  canDeleteGenericEmptySession,
+  isGenericEmptySession,
+} from "@threads/utils/emptyThreadSession";
 
 const SettingsView = lazy(() =>
   import("@settings/components/SettingsView").then((module) => ({
@@ -121,9 +125,7 @@ export default function MainApp() {
   } = useAppBootstrapOrchestration();
   const {
     threadListSortKey,
-    setThreadListSortKey,
     threadListOrganizeMode,
-    setThreadListOrganizeMode,
   } = useThreadListSortKey();
   const [activeTab, setActiveTab] = useState<
     "home" | "projects" | "codex" | "git" | "log"
@@ -441,7 +443,9 @@ export default function MainApp() {
     activeItems,
     approvals,
     userInputRequests,
+    itemsByThread,
     threadsByWorkspace,
+    historicalThreadsByWorkspace,
     threadParentById,
     isSubagentThread,
     threadStatusById,
@@ -458,6 +462,7 @@ export default function MainApp() {
     pinnedThreadsVersion,
     interruptTurn,
     removeThread,
+    restoreHistoricalThread,
     pinThread,
     unpinThread,
     isThreadPinned,
@@ -467,6 +472,7 @@ export default function MainApp() {
     resolvePendingThreadId,
     listThreadsForWorkspaces,
     listThreadsForWorkspace,
+    listHistoricalThreadsForWorkspace,
     loadOlderThreadsForWorkspace,
     resetWorkspaceThreads,
     refreshThread,
@@ -706,16 +712,6 @@ export default function MainApp() {
     selectedCollaborationModeId,
     selectedCodexArgsOverride,
   });
-
-  const { handleSetThreadListSortKey, handleRefreshAllWorkspaceThreads } =
-    useThreadListActions({
-      threadListSortKey,
-      setThreadListSortKey,
-      workspaces,
-      refreshWorkspaces,
-      listThreadsForWorkspaces,
-      resetWorkspaceThreads,
-    });
 
   useResponseRequiredNotificationsController({
     systemNotificationsEnabled: appSettings.systemNotificationsEnabled,
@@ -1601,6 +1597,7 @@ export default function MainApp() {
     newAgentDraftWorkspaceId,
     startingDraftThreadWorkspaceId,
     threadsByWorkspace,
+    historicalThreadsByWorkspace,
     threadParentById,
     threadStatusById,
     threadResumeLoadingById,
@@ -1608,11 +1605,7 @@ export default function MainApp() {
     threadListPagingByWorkspace,
     threadListCursorByWorkspace,
     pinnedThreadsVersion,
-    threadListSortKey,
-    onSetThreadListSortKey: handleSetThreadListSortKey,
     threadListOrganizeMode,
-    onSetThreadListOrganizeMode: setThreadListOrganizeMode,
-    onRefreshAllThreads: handleRefreshAllWorkspaceThreads,
     activeWorkspace,
     activeWorkspaceId,
     activeThreadId,
@@ -1792,34 +1785,112 @@ export default function MainApp() {
     compactGitBackNode,
   } = useMainAppLayoutNodes(layoutSurfaces);
 
-  const mainMessagesNode = showWorkspaceHome ? workspaceHomeNode : messagesNode;
+  const [threadHistoryWorkspaceId, setThreadHistoryWorkspaceId] = useState<string | null>(
+    null,
+  );
   const activeWorkspaceThreads = activeWorkspaceId
     ? threadsByWorkspace[activeWorkspaceId] ?? []
     : [];
+  const activeWorkspaceHistoricalThreads = activeWorkspaceId
+    ? historicalThreadsByWorkspace[activeWorkspaceId] ?? []
+    : [];
   const showWorktreeThreadTabs =
     (activeWorkspace?.kind ?? "main") === "worktree" && !showWorkspaceHome;
+  const showThreadHistory =
+    showWorktreeThreadTabs &&
+    activeWorkspaceId !== null &&
+    threadHistoryWorkspaceId === activeWorkspaceId;
+
+  useEffect(() => {
+    if (!showThreadHistory || !activeWorkspace) {
+      return;
+    }
+    void listHistoricalThreadsForWorkspace(activeWorkspace);
+  }, [activeWorkspace, listHistoricalThreadsForWorkspace, showThreadHistory]);
+
+  const canCloseWorktreeThread = useCallback(
+    (workspaceId: string, threadId: string) => {
+      const workspaceThreads = threadsByWorkspace[workspaceId] ?? [];
+      const thread = workspaceThreads.find((entry) => entry.id === threadId);
+      const items = itemsByThread[threadId] ?? [];
+      return (
+        !isGenericEmptySession(thread, items) ||
+        canDeleteGenericEmptySession(workspaceThreads, threadId, items)
+      );
+    },
+    [itemsByThread, threadsByWorkspace],
+  );
+
+  const handleStartWorktreeThread = useCallback(
+    (workspaceId: string) => {
+      void (async () => {
+        const threadId = await startThreadForWorkspace(workspaceId, {
+          modelId: resolvedModel,
+        });
+        const resolvedThreadId = threadId
+          ? await resolvePendingThreadId(threadId)
+          : null;
+        if (resolvedThreadId) {
+          patchThreadCodexParams(workspaceId, resolvedThreadId, {
+            harness: selectedHarness,
+          });
+        }
+      })();
+    },
+    [
+      patchThreadCodexParams,
+      resolvePendingThreadId,
+      resolvedModel,
+      selectedHarness,
+      startThreadForWorkspace,
+    ],
+  );
+
+  const mainMessagesNode =
+    showWorkspaceHome ? (
+      workspaceHomeNode
+    ) : showThreadHistory && activeWorkspace ? (
+      <WorktreeThreadHistory
+        workspace={activeWorkspace}
+        threads={activeWorkspaceHistoricalThreads}
+        onSelectThread={(workspaceId, threadId) => {
+          restoreHistoricalThread(workspaceId, threadId);
+          setThreadHistoryWorkspaceId(null);
+          sidebarMenuOrchestration.onSelectThread(workspaceId, threadId);
+        }}
+      />
+    ) : (
+      messagesNode
+    );
   const chatHeaderNode = showWorktreeThreadTabs && activeWorkspace ? (
     <WorktreeThreadTabs
       workspace={activeWorkspace}
       threads={activeWorkspaceThreads}
       threadStatusById={threadStatusById}
       activeThreadId={activeThreadId}
-      onSelectThread={sidebarMenuOrchestration.onSelectThread}
-      onStartThread={(workspaceId) => {
-        void (async () => {
-          const threadId = await startThreadForWorkspace(workspaceId, {
-            modelId: resolvedModel,
-          });
-          const resolvedThreadId = threadId
-            ? await resolvePendingThreadId(threadId)
-            : null;
-          if (resolvedThreadId) {
-            patchThreadCodexParams(workspaceId, resolvedThreadId, {
-              harness: selectedHarness,
-            });
-          }
-        })();
+      historyOpen={showThreadHistory}
+      onSelectThread={(workspaceId, threadId) => {
+        setThreadHistoryWorkspaceId(null);
+        sidebarMenuOrchestration.onSelectThread(workspaceId, threadId);
       }}
+      onCloseThread={(workspaceId, threadId) => {
+        if (!canCloseWorktreeThread(workspaceId, threadId)) {
+          return;
+        }
+        const shouldCreateReplacement =
+          (threadsByWorkspace[workspaceId] ?? []).length <= 1;
+        sidebarMenuOrchestration.onDeleteThread(workspaceId, threadId);
+        if (shouldCreateReplacement) {
+          handleStartWorktreeThread(workspaceId);
+        }
+      }}
+      canCloseThread={canCloseWorktreeThread}
+      onToggleHistory={(workspaceId) => {
+        setThreadHistoryWorkspaceId((current) =>
+          current === workspaceId ? null : workspaceId,
+        );
+      }}
+      onStartThread={handleStartWorktreeThread}
     />
   ) : null;
   const chatMessagesNode =

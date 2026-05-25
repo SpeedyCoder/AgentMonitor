@@ -1135,6 +1135,10 @@ export async function listThreads(
   return invoke<any>("acp_list_threads", { workspaceId });
 }
 
+export async function listHistoricalThreads(workspaceId: string) {
+  return invoke<any>("acp_list_historical_threads", { workspaceId });
+}
+
 export async function listMcpServerStatus(
   workspaceId: string,
   cursor?: string | null,
@@ -1161,6 +1165,10 @@ export async function threadLiveUnsubscribe(workspaceId: string, threadId: strin
 
 export async function archiveThread(workspaceId: string, threadId: string) {
   return invoke<any>("acp_archive_thread", { workspaceId, threadId });
+}
+
+export async function discardThread(workspaceId: string, threadId: string) {
+  return invoke<any>("acp_discard_thread", { workspaceId, threadId });
 }
 
 export async function setThreadName(

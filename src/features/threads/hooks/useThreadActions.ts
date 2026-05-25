@@ -9,6 +9,7 @@ import type {
 import {
   archiveThread as archiveThreadService,
   forkThread as forkThreadService,
+  listHistoricalThreads as listHistoricalThreadsService,
   listThreads as listThreadsService,
   listWorkspaces as listWorkspacesService,
   resumeThread as resumeThreadService,
@@ -743,6 +744,63 @@ export function useThreadActions({
     [listThreadsForWorkspaces],
   );
 
+  const listHistoricalThreadsForWorkspace = useCallback(
+    async (workspace: WorkspaceInfo) => {
+      onDebug?.({
+        id: `${Date.now()}-client-thread-history-list`,
+        timestamp: Date.now(),
+        source: "client",
+        label: "thread/history list",
+        payload: { workspaceId: workspace.id },
+      });
+      try {
+        const response = (await listHistoricalThreadsService(workspace.id)) as
+          | Record<string, unknown>
+          | null;
+        onDebug?.({
+          id: `${Date.now()}-server-thread-history-list`,
+          timestamp: Date.now(),
+          source: "server",
+          label: "thread/history list response",
+          payload: response,
+        });
+        const result = ((response?.result as Record<string, unknown> | undefined) ??
+          response ??
+          {}) as Record<string, unknown>;
+        const data = Array.isArray(result.data)
+          ? (result.data as Record<string, unknown>[])
+          : [];
+        const summaries = data
+          .map((thread, index) => {
+            const threadId = String(thread?.id ?? "");
+            if (!threadId || shouldHideSubagentThreadFromSidebar(thread.source)) {
+              return null;
+            }
+            applyThreadMetadata(workspace.id, threadId, thread, {
+              notifySubagent: true,
+            });
+            return buildThreadSummary(workspace.id, thread, index);
+          })
+          .filter((thread): thread is ThreadSummary => Boolean(thread))
+          .sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0));
+        dispatch({
+          type: "setHistoricalThreads",
+          workspaceId: workspace.id,
+          threads: summaries,
+        });
+      } catch (error) {
+        onDebug?.({
+          id: `${Date.now()}-client-thread-history-list-error`,
+          timestamp: Date.now(),
+          source: "error",
+          label: "thread/history list error",
+          payload: error instanceof Error ? error.message : String(error),
+        });
+      }
+    },
+    [applyThreadMetadata, buildThreadSummary, dispatch, onDebug],
+  );
+
   const loadOlderThreadsForWorkspace = useCallback(
     async (workspace: WorkspaceInfo) => {
       const requestedSortKey = threadSortKey;
@@ -933,6 +991,7 @@ export function useThreadActions({
     resetWorkspaceThreads,
     listThreadsForWorkspaces,
     listThreadsForWorkspace,
+    listHistoricalThreadsForWorkspace,
     loadOlderThreadsForWorkspace,
     archiveThread,
   };

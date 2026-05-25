@@ -29,6 +29,7 @@ export type ThreadState = {
   itemsByThread: Record<string, ConversationItem[]>;
   maxItemsPerThread: number | null;
   threadsByWorkspace: Record<string, ThreadSummary[]>;
+  historicalThreadsByWorkspace: Record<string, ThreadSummary[]>;
   hiddenThreadIdsByWorkspace: Record<string, Record<string, true>>;
   threadParentById: Record<string, string>;
   threadStatusById: Record<string, ThreadActivityStatus>;
@@ -60,6 +61,21 @@ export type ThreadAction =
     }
   | { type: "hideThread"; workspaceId: string; threadId: string }
   | { type: "removeThread"; workspaceId: string; threadId: string }
+  | {
+      type: "archiveThreadLocally";
+      workspaceId: string;
+      thread: ThreadSummary;
+    }
+  | {
+      type: "setHistoricalThreads";
+      workspaceId: string;
+      threads: ThreadSummary[];
+    }
+  | {
+      type: "restoreHistoricalThreadFirst";
+      workspaceId: string;
+      threadId: string;
+    }
   | { type: "setThreadParent"; threadId: string; parentId: string }
   | {
       type: "markProcessing";
@@ -192,6 +208,7 @@ export const initialState: ThreadState = {
   itemsByThread: emptyItems,
   maxItemsPerThread: CHAT_SCROLLBACK_DEFAULT,
   threadsByWorkspace: {},
+  historicalThreadsByWorkspace: {},
   hiddenThreadIdsByWorkspace: {},
   threadParentById: {},
   threadStatusById: {},
