@@ -43,7 +43,7 @@ chrono = { version = "0.4", features = ["clock"] }
 shell-words = "1.1"
 toml_edit = "0.20.2"
 agent-client-protocol = "0.11"
-agent-client-protocol-schema = "0.12"
+agent-client-protocol-schema = { version = "0.12", features = ["unstable_message_id"] }
 agent-client-protocol-tokio = "0.11"
 which = "6.0"
 tokio-util = "0.7"

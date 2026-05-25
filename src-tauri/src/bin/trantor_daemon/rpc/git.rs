@@ -170,12 +170,10 @@ pub(super) async fn try_handle(
         git_rpc::METHOD_GET_GITHUB_PULL_REQUEST_REVIEW_THREADS => {
             let request = parse_request_or_err!(params, git_rpc::GitHubPullRequestRequest);
             Some(
-                serialize_result(
-                    state.get_github_pull_request_review_threads(
-                        request.workspace_id,
-                        request.pr_number,
-                    ),
-                )
+                serialize_result(state.get_github_pull_request_review_threads(
+                    request.workspace_id,
+                    request.pr_number,
+                ))
                 .await,
             )
         }

@@ -33,7 +33,7 @@ Trantor uses Agent Client Protocol (ACP) as the runtime boundary for local app m
 - `listThreads`, `readThread`, `resumeThread`, `setThreadName`, `archiveThread`, and `compactThread` call ACP-prefixed commands.
 - `threadLiveSubscribe` and `threadLiveUnsubscribe` call ACP-prefixed commands.
 - `forkThread` calls `acp_fork_thread`, which returns an explicit unsupported error until ACP adapters expose a fork contract.
-- Persisted ACP entries are summary placeholders after restart or after another ACP session replaces them. They are listable and rename/archive-capable, but `readThread` and `resumeThread` return `historyPlaceholder: true`, `resumable: false`, and no transcript items until adapters expose a real load/resume contract.
+- Persisted ACP entries are listable and rename/archive-capable after restart. `readThread` and `resumeThread` reload transcript history through ACP `session/load` when the selected adapter advertises that capability.
 
 ## Validation
 

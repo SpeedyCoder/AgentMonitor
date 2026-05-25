@@ -464,6 +464,7 @@ export default function MainApp() {
     getPinTimestamp,
     renameThread,
     startThreadForWorkspace,
+    resolvePendingThreadId,
     listThreadsForWorkspaces,
     listThreadsForWorkspace,
     loadOlderThreadsForWorkspace,
@@ -1809,8 +1810,11 @@ export default function MainApp() {
           const threadId = await startThreadForWorkspace(workspaceId, {
             modelId: resolvedModel,
           });
-          if (threadId) {
-            patchThreadCodexParams(workspaceId, threadId, {
+          const resolvedThreadId = threadId
+            ? await resolvePendingThreadId(threadId)
+            : null;
+          if (resolvedThreadId) {
+            patchThreadCodexParams(workspaceId, resolvedThreadId, {
               harness: selectedHarness,
             });
           }

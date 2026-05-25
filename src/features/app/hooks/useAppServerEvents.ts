@@ -19,6 +19,7 @@ type AgentDelta = {
   threadId: string;
   itemId: string;
   delta: string;
+  shouldMarkProcessing?: boolean;
 };
 
 type AgentCompleted = {
@@ -82,14 +83,26 @@ type AppServerEventHandlers = {
   onReasoningSummaryBoundary?: (workspaceId: string, threadId: string, itemId: string) => void;
   onReasoningTextDelta?: (workspaceId: string, threadId: string, itemId: string, delta: string) => void;
   onPlanDelta?: (workspaceId: string, threadId: string, itemId: string, delta: string) => void;
-  onCommandOutputDelta?: (workspaceId: string, threadId: string, itemId: string, delta: string) => void;
+  onCommandOutputDelta?: (
+    workspaceId: string,
+    threadId: string,
+    itemId: string,
+    delta: string,
+    shouldMarkProcessing?: boolean,
+  ) => void;
   onTerminalInteraction?: (
     workspaceId: string,
     threadId: string,
     itemId: string,
     stdin: string,
   ) => void;
-  onFileChangeOutputDelta?: (workspaceId: string, threadId: string, itemId: string, delta: string) => void;
+  onFileChangeOutputDelta?: (
+    workspaceId: string,
+    threadId: string,
+    itemId: string,
+    delta: string,
+    shouldMarkProcessing?: boolean,
+  ) => void;
   onTurnDiffUpdated?: (workspaceId: string, threadId: string, diff: string) => void;
   onThreadTokenUsageUpdated?: (
     workspaceId: string,
@@ -579,12 +592,14 @@ export function useAppServerEvents(handlers: AppServerEventHandlers) {
         const itemId = String(params.itemId ?? params.item_id ?? "");
         const content = params.content as Record<string, unknown> | null;
         const text = String(content?.text ?? content ?? "");
+        const historyReplay = params.historyReplay === true;
         if (threadId && itemId && text) {
           currentHandlers.onAgentMessageDelta?.({
             workspaceId: workspace_id,
             threadId,
             itemId,
             delta: text,
+            shouldMarkProcessing: !historyReplay,
           });
         }
         return;
@@ -605,16 +620,20 @@ export function useAppServerEvents(handlers: AppServerEventHandlers) {
         const toolCall = params.toolCall as Record<string, unknown> | null;
         if (toolCall) {
           const threadId = String(params.threadId ?? params.thread_id ?? "");
+          const historyReplay = params.historyReplay === true;
           const itemId = String(
             params.itemId ?? params.item_id ?? toolCall.toolCallId ?? toolCall.tool_call_id ?? "",
           );
           const title = String(toolCall.title ?? "Tool");
-          currentHandlers.onItemStarted?.(workspace_id, threadId, {
+          const handler = historyReplay
+            ? currentHandlers.onItemCompleted
+            : currentHandlers.onItemStarted;
+          handler?.(workspace_id, threadId, {
             ...toolCall,
             id: itemId,
             type: "commandExecution",
             command: [title],
-            status: String(toolCall.status ?? "running"),
+            status: String(toolCall.status ?? (historyReplay ? "completed" : "running")),
           });
         }
         return;
@@ -625,6 +644,7 @@ export function useAppServerEvents(handlers: AppServerEventHandlers) {
         if (update) {
           const threadId = String(params.threadId ?? params.thread_id ?? "");
           const itemId = String(params.itemId ?? params.item_id ?? "");
+          const historyReplay = params.historyReplay === true;
           const fields = update.fields as Record<string, unknown> | null;
           const delta = String(
             update.delta ??
@@ -634,7 +654,13 @@ export function useAppServerEvents(handlers: AppServerEventHandlers) {
               "",
           );
           if (threadId && itemId && delta) {
-            currentHandlers.onCommandOutputDelta?.(workspace_id, threadId, itemId, delta);
+            currentHandlers.onCommandOutputDelta?.(
+              workspace_id,
+              threadId,
+              itemId,
+              delta,
+              !historyReplay,
+            );
           }
         }
         return;
@@ -667,9 +693,24 @@ export function useAppServerEvents(handlers: AppServerEventHandlers) {
       }
 
       if (method === "user_message_chunk") {
-        // ACP user message echo - typically echoed back, can be ignored
-        // const content = params.content as Record<string, unknown> | null;
-        // const _text = String(content?.text ?? content ?? "");
+        const threadId = String(params.threadId ?? params.thread_id ?? "");
+        const itemId = String(params.itemId ?? params.item_id ?? "");
+        const content = Array.isArray(params.content)
+          ? params.content
+          : params.content
+            ? [params.content]
+            : [];
+        if (threadId && itemId && content.length > 0) {
+          const historyReplay = params.historyReplay === true;
+          const handler = historyReplay
+            ? currentHandlers.onItemCompleted
+            : currentHandlers.onItemStarted;
+          handler?.(workspace_id, threadId, {
+            id: itemId,
+            type: "userMessage",
+            content,
+          });
+        }
         return;
       }
 

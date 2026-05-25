@@ -769,7 +769,7 @@ describe("Messages", () => {
     expect(useFileLinkOpenerMock).toHaveBeenCalledTimes(1);
   });
 
-  it("collapses completed agent activity after a user request to the last agent message", () => {
+  it("collapses completed agent activity to the last assistant message", () => {
     const items: ConversationItem[] = [
       {
         id: "user-activity-1",
@@ -817,26 +817,33 @@ describe("Messages", () => {
     expect(screen.getByText(/1 file edit across 1 file \+1 -1/)).toBeTruthy();
     expect(screen.queryByText(/agent message/)).toBeNull();
     expect(container.querySelector(".tool-group-collapsed")).toBeTruthy();
-    expect(screen.getByText("file edited:")).toBeTruthy();
-    const editedFile = screen.getByText("App.tsx (+1 -1)");
-    expect(editedFile).toBeTruthy();
+    expect(screen.queryByText("file edited:")).toBeNull();
     expect(container.querySelector(".diff-viewer-output")).toBeNull();
     expect(container.textContent ?? "").not.toContain("new");
-    fireEvent.click(screen.getByRole("button", { name: "Toggle tool details" }));
-    expect(container.querySelector(".diff-viewer-output")).toBeTruthy();
-    expect(container.textContent ?? "").toContain("new");
     const groupHeader = container.querySelector(".tool-group-header");
     const finalMessageNode = finalMessage.closest(".message");
-    const editedFilesNode = editedFile.closest(".tool-group-edited-files");
     expect(groupHeader).toBeTruthy();
     expect(finalMessageNode).toBeTruthy();
-    expect(editedFilesNode).toBeTruthy();
     expect(
       (groupHeader as Element).compareDocumentPosition(finalMessageNode as Element) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Expand tool calls" }));
+    expect(screen.getByText("file edited:")).toBeTruthy();
+    const editedFile = screen.getByText("App.tsx (+1 -1)");
+    expect(editedFile).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Toggle tool details" }));
+    expect(container.querySelector(".diff-viewer-output")).toBeTruthy();
+    expect(container.textContent ?? "").toContain("new");
+    const editedFilesNode = editedFile.closest(".tool-inline");
+    expect(editedFilesNode).toBeTruthy();
     expect(
-      (finalMessageNode as Element).compareDocumentPosition(editedFilesNode as Element) &
+      (groupHeader as Element).compareDocumentPosition(editedFilesNode as Element) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      (editedFilesNode as Element).compareDocumentPosition(finalMessageNode as Element) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
   });

@@ -48,6 +48,65 @@ describe("threadReducer", () => {
     }
   });
 
+  it("replaces provisional user message ids without moving the item", () => {
+    const provisional: ConversationItem = {
+      id: "user-provisional",
+      kind: "message",
+      role: "user",
+      text: "Hello there",
+    };
+    const tool: ConversationItem = {
+      id: "tool-1",
+      kind: "tool",
+      toolType: "commandExecution",
+      title: "Tool",
+      detail: "",
+      output: "",
+      status: "running",
+    };
+    const next = threadReducer(
+      {
+        ...initialState,
+        itemsByThread: { "thread-1": [provisional, tool] },
+      },
+      {
+        type: "upsertItem",
+        workspaceId: "ws-1",
+        threadId: "thread-1",
+        replaceItemId: "user-provisional",
+        item: {
+          ...provisional,
+          id: "user-final",
+        },
+      },
+    );
+    expect(next.itemsByThread["thread-1"]?.map((item) => item.id)).toEqual([
+      "user-final",
+      "tool-1",
+    ]);
+  });
+
+  it("removes provisional items from stale ACP threads", () => {
+    const user: ConversationItem = {
+      id: "user-provisional",
+      kind: "message",
+      role: "user",
+      text: "Hello there",
+    };
+    const next = threadReducer(
+      {
+        ...initialState,
+        itemsByThread: { "thread-1": [user] },
+      },
+      {
+        type: "removeItem",
+        threadId: "thread-1",
+        itemId: "user-provisional",
+      },
+    );
+    expect(next.itemsByThread["thread-1"]).toEqual([]);
+  });
+
   it("renames auto-generated thread from assistant output when no user message", () => {
     const threads: ThreadSummary[] = [
       { id: "thread-1", name: "New Agent", updatedAt: 1 },

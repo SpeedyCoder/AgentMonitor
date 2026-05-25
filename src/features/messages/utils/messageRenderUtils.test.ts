@@ -130,6 +130,46 @@ describe("messageRenderUtils", () => {
     expect(grouped[1].group.lastAssistantMessage?.id).toBe("assistant-1");
   });
 
+  it("groups intermediate assistant responses and uses the last response as the preview", () => {
+    const assistantOne: ConversationItem = {
+      id: "assistant-1",
+      kind: "message",
+      role: "assistant",
+      text: "First update.",
+    };
+    const assistantTwo: ConversationItem = {
+      id: "assistant-2",
+      kind: "message",
+      role: "assistant",
+      text: "Second update.",
+    };
+    const items: ConversationItem[] = [
+      {
+        id: "user-1",
+        kind: "message",
+        role: "user",
+        text: "Inspect the repo",
+      },
+      assistantOne,
+      makeToolItem({ id: "tool-1" }),
+      assistantTwo,
+    ];
+
+    const grouped = buildToolGroups(items);
+
+    expect(grouped[0]).toEqual({ kind: "item", item: items[0] });
+    expect(grouped[1]?.kind).toBe("toolGroup");
+    if (grouped[1]?.kind !== "toolGroup") {
+      throw new Error("Expected tool group");
+    }
+    expect(grouped[1].group.items.map((item) => item.id)).toEqual([
+      "assistant-1",
+      "tool-1",
+      "assistant-2",
+    ]);
+    expect(grouped[1].group.lastAssistantMessage).toEqual(assistantTwo);
+  });
+
   it("marks the latest agent activity group active while thinking", () => {
     const grouped = buildToolGroups(
       [

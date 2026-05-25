@@ -108,10 +108,8 @@ mod tests {
 
     #[test]
     fn checkout_branch_missing_does_not_change_head() {
-        let root = std::env::temp_dir().join(format!(
-            "trantor-git-utils-test-{}",
-            uuid::Uuid::new_v4()
-        ));
+        let root =
+            std::env::temp_dir().join(format!("trantor-git-utils-test-{}", uuid::Uuid::new_v4()));
         fs::create_dir_all(&root).expect("create temp repo root");
         let repo = Repository::init(&root).expect("init repo");
 

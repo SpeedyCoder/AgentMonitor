@@ -36,6 +36,7 @@ import {
   buildReviewThreadTitle,
   buildStatusLines,
   buildTurnStartPayload,
+  isInactiveAcpSessionError,
   isStaleSteerTurnError,
   parseFastCommand,
   resolveSendMessageOptions,
@@ -81,6 +82,11 @@ type UseThreadMessagingOptions = {
   pushThreadErrorMessage: (threadId: string, message: string) => void;
   ensureThreadForActiveWorkspace: () => Promise<string | null>;
   ensureThreadForWorkspace: (workspaceId: string) => Promise<string | null>;
+  startThreadForWorkspace?: (
+    workspaceId: string,
+    options?: { activate?: boolean; modelId?: string | null },
+  ) => Promise<string | null>;
+  resolvePendingThreadId?: (threadId: string) => Promise<string | null>;
   refreshThread: (workspaceId: string, threadId: string) => Promise<string | null>;
   forkThreadForWorkspace: (
     workspaceId: string,
@@ -95,6 +101,14 @@ type UseThreadMessagingOptions = {
   ) => void;
   renameThread?: (workspaceId: string, threadId: string, name: string) => void;
 };
+
+function getPromptStream(response: Record<string, unknown>) {
+  const stream = response.promptStream ?? response.prompt_stream ?? null;
+  if (!stream || typeof stream !== "object" || Array.isArray(stream)) {
+    return null;
+  }
+  return stream as Record<string, unknown>;
+}
 
 export function useThreadMessaging({
   activeWorkspace,
@@ -125,6 +139,8 @@ export function useThreadMessaging({
   pushThreadErrorMessage,
   ensureThreadForActiveWorkspace,
   ensureThreadForWorkspace,
+  startThreadForWorkspace,
+  resolvePendingThreadId,
   refreshThread,
   forkThreadForWorkspace,
   updateThreadParent,
@@ -193,6 +209,8 @@ export function useThreadMessaging({
       });
       const timestamp = Date.now();
       const customThreadName = getCustomName(workspace.id, threadId) ?? null;
+      const provisionalUserItemId =
+        requestMode !== "steer" ? `user-message-${threadId}-${timestamp}` : null;
       recordThreadActivity(workspace.id, threadId, timestamp);
       dispatch({
         type: "setThreadTimestamp",
@@ -200,6 +218,21 @@ export function useThreadMessaging({
         threadId,
         timestamp,
       });
+      if (provisionalUserItemId) {
+        dispatch({
+          type: "upsertItem",
+          workspaceId: workspace.id,
+          threadId,
+          item: {
+            id: provisionalUserItemId,
+            kind: "message",
+            role: "user",
+            text: finalText,
+            images: images.length > 0 ? images : undefined,
+          },
+          hasCustomName: Boolean(customThreadName),
+        });
+      }
       markProcessing(threadId, true);
       safeMessageActivity();
       onDebug?.({
@@ -221,21 +254,98 @@ export function useThreadMessaging({
           threadCustomName: customThreadName,
         },
       });
+      let backendThreadId = threadId;
+      if (!shouldSteer && resolvePendingThreadId) {
+        try {
+          const resolvedThreadId = await resolvePendingThreadId(threadId);
+          if (!resolvedThreadId) {
+            markProcessing(threadId, false);
+            setActiveTurnId(threadId, null);
+            pushThreadErrorMessage(threadId, "Thread failed to start.");
+            safeMessageActivity();
+            return { status: "blocked" };
+          }
+          backendThreadId = resolvedThreadId;
+        } catch (error) {
+          markProcessing(threadId, false);
+          setActiveTurnId(threadId, null);
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          pushThreadErrorMessage(threadId, `Thread failed to start: ${errorMessage}`);
+          safeMessageActivity();
+          return { status: "blocked" };
+        }
+      }
+      const recoverInactiveAcpSession = async (
+        errorMessage: string,
+      ): Promise<SendMessageResult | null> => {
+        if (
+          requestMode === "steer" ||
+          options?.retryInactiveAcpSession === false ||
+          !startThreadForWorkspace ||
+          !isInactiveAcpSessionError(errorMessage)
+        ) {
+          return null;
+        }
+        if (provisionalUserItemId) {
+          dispatch({
+            type: "removeItem",
+            threadId: backendThreadId,
+            itemId: provisionalUserItemId,
+          });
+        }
+        try {
+          const replacementThreadId = await startThreadForWorkspace(workspace.id, {
+            activate: true,
+            modelId: resolvedModel ?? null,
+          });
+          if (!replacementThreadId) {
+            return null;
+          }
+          onDebug?.({
+            id: `${Date.now()}-client-acp-session-recovery`,
+            timestamp: Date.now(),
+            source: "client",
+            label: "acp/session recovery",
+            payload: {
+              workspaceId: workspace.id,
+              staleThreadId: backendThreadId,
+              replacementThreadId,
+            },
+          });
+          return sendMessageToThread(workspace, replacementThreadId, finalText, images, {
+            ...options,
+            skipPromptExpansion: true,
+            retryInactiveAcpSession: false,
+          });
+        } catch (recoveryError) {
+          onDebug?.({
+            id: `${Date.now()}-client-acp-session-recovery-error`,
+            timestamp: Date.now(),
+            source: "error",
+            label: "acp/session recovery error",
+            payload:
+              recoveryError instanceof Error
+                ? recoveryError.message
+                : String(recoveryError),
+          });
+          return null;
+        }
+      };
       try {
         const shouldPreflightRuntimeCodexArgs =
-          shouldPreflightRuntimeCodexArgsForSend?.(workspace.id, threadId) ?? true;
+          shouldPreflightRuntimeCodexArgsForSend?.(workspace.id, backendThreadId) ?? true;
         if (
           !shouldSteer &&
           shouldPreflightRuntimeCodexArgs &&
           ensureWorkspaceRuntimeCodexArgs
         ) {
-          await ensureWorkspaceRuntimeCodexArgs(workspace.id, threadId);
+          await ensureWorkspaceRuntimeCodexArgs(workspace.id, backendThreadId);
         }
         const response: Record<string, unknown> = shouldSteer
           ? (await (appMentions.length > 0
             ? steerTurnService(
               workspace.id,
-              threadId,
+              backendThreadId,
               activeTurnId ?? "",
               finalText,
               images,
@@ -243,14 +353,14 @@ export function useThreadMessaging({
             )
             : steerTurnService(
               workspace.id,
-              threadId,
+              backendThreadId,
               activeTurnId ?? "",
               finalText,
               images,
             ))) as Record<string, unknown>
           : (await sendUserMessageService(
             workspace.id,
-            threadId,
+            backendThreadId,
             finalText,
             buildTurnStartPayload({
               model: resolvedModel,
@@ -274,52 +384,84 @@ export function useThreadMessaging({
         });
         if (rpcError) {
           if (requestMode !== "steer") {
-            markProcessing(threadId, false);
-            setActiveTurnId(threadId, null);
-            pushThreadErrorMessage(threadId, `Turn failed to start: ${rpcError}`);
+            markProcessing(backendThreadId, false);
+            setActiveTurnId(backendThreadId, null);
+            const recoveryResult = await recoverInactiveAcpSession(rpcError);
+            if (recoveryResult) {
+              return recoveryResult;
+            }
+            pushThreadErrorMessage(backendThreadId, `Turn failed to start: ${rpcError}`);
             safeMessageActivity();
             return { status: "blocked" };
           }
           if (isStaleSteerTurnError(rpcError)) {
-            markProcessing(threadId, false);
-            setActiveTurnId(threadId, null);
+            markProcessing(backendThreadId, false);
+            setActiveTurnId(backendThreadId, null);
           }
           pushThreadErrorMessage(
-            threadId,
+            backendThreadId,
             `Turn steer failed: ${rpcError}`,
           );
           safeMessageActivity();
           return { status: "steer_failed" };
         }
+        const result = (response?.result ?? response) as Record<string, unknown>;
         if (requestMode === "steer") {
-          const result = (response?.result ?? response) as Record<string, unknown>;
           const steeredTurnId = asString(result?.turnId ?? result?.turn_id ?? "");
           if (steeredTurnId) {
-            setActiveTurnId(threadId, steeredTurnId);
+            setActiveTurnId(backendThreadId, steeredTurnId);
           }
           return { status: "sent" };
         }
-        const result = (response?.result ?? response) as Record<string, unknown>;
         const turn = (result?.turn ?? response?.turn ?? null) as
           | Record<string, unknown>
           | null;
         const turnId = asString(turn?.id ?? "");
+        const promptStream = getPromptStream(result);
+        if (promptStream && provisionalUserItemId) {
+          const userItemId =
+            asString(
+              promptStream?.userItemId ??
+                promptStream?.user_item_id ??
+                result.userItemId ??
+                result.user_item_id ??
+                "",
+            ) || provisionalUserItemId;
+          dispatch({
+            type: "upsertItem",
+            workspaceId: workspace.id,
+            threadId: backendThreadId,
+            item: {
+              id: userItemId,
+              kind: "message",
+              role: "user",
+              text: finalText,
+              images: images.length > 0 ? images : undefined,
+            },
+            hasCustomName: Boolean(customThreadName),
+            replaceItemId: provisionalUserItemId,
+          });
+        }
         if (!turnId) {
           // ACP prompt responses complete without a Codex turn id.
-          markProcessing(threadId, false);
-          setActiveTurnId(threadId, null);
+          markProcessing(backendThreadId, false);
+          setActiveTurnId(backendThreadId, null);
           return { status: "sent" };
         }
-        setActiveTurnId(threadId, turnId);
+        setActiveTurnId(backendThreadId, turnId);
         return { status: "sent" };
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         if (requestMode !== "steer") {
-          markProcessing(threadId, false);
-          setActiveTurnId(threadId, null);
+          markProcessing(backendThreadId, false);
+          setActiveTurnId(backendThreadId, null);
         } else if (isStaleSteerTurnError(errorMessage)) {
-          markProcessing(threadId, false);
-          setActiveTurnId(threadId, null);
+          markProcessing(backendThreadId, false);
+          setActiveTurnId(backendThreadId, null);
+        }
+        const recoveryResult = await recoverInactiveAcpSession(errorMessage);
+        if (recoveryResult) {
+          return recoveryResult;
         }
         onDebug?.({
           id: `${Date.now()}-${requestMode === "steer" ? "client-turn-steer-error" : "client-turn-start-error"}`,
@@ -329,7 +471,7 @@ export function useThreadMessaging({
           payload: errorMessage,
         });
         pushThreadErrorMessage(
-          threadId,
+          backendThreadId,
           requestMode === "steer"
             ? `Turn steer failed: ${errorMessage}`
             : errorMessage,
@@ -354,8 +496,10 @@ export function useThreadMessaging({
       onDebug,
       pushThreadErrorMessage,
       recordThreadActivity,
+      resolvePendingThreadId,
       safeMessageActivity,
       setActiveTurnId,
+      startThreadForWorkspace,
       steerEnabled,
       threadStatusById,
     ],

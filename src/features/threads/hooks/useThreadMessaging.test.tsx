@@ -159,12 +159,31 @@ describe("useThreadMessaging telemetry", () => {
   });
 
   it("treats ACP prompt responses without turn ids as successful completed sends", async () => {
+    const nowSpy = vi.spyOn(Date, "now").mockReturnValue(1234);
     const markProcessing = vi.fn();
     const setActiveTurnId = vi.fn();
     const pushThreadErrorMessage = vi.fn();
-    vi.mocked(sendUserMessageService).mockResolvedValueOnce(
-      {} as unknown as Awaited<ReturnType<typeof sendUserMessageService>>,
-    );
+    const dispatch = vi.fn();
+    vi.mocked(sendUserMessageService).mockImplementationOnce(async () => {
+      expect(dispatch).toHaveBeenCalledWith({
+        type: "upsertItem",
+        workspaceId: "ws-1",
+        threadId: "thread-1",
+        item: {
+          id: "user-message-thread-1-1234",
+          kind: "message",
+          role: "user",
+          text: "hello",
+          images: undefined,
+        },
+        hasCustomName: false,
+      });
+      return {
+        promptStream: {
+          userItemId: "user-message-thread-1-1",
+        },
+      } as unknown as Awaited<ReturnType<typeof sendUserMessageService>>;
+    });
 
     const { result } = renderHook(() =>
       useThreadMessaging({
@@ -181,7 +200,7 @@ describe("useThreadMessaging telemetry", () => {
         activeTurnIdByThread: {},
         rateLimitsByWorkspace: {},
         pendingInterruptsRef: { current: new Set<string>() },
-        dispatch: vi.fn(),
+        dispatch,
         getCustomName: vi.fn(() => undefined),
         markProcessing,
         markReviewing: vi.fn(),
@@ -212,6 +231,100 @@ describe("useThreadMessaging telemetry", () => {
     expect(markProcessing).toHaveBeenCalledWith("thread-1", true);
     expect(markProcessing).toHaveBeenCalledWith("thread-1", false);
     expect(setActiveTurnId).toHaveBeenCalledWith("thread-1", null);
+    expect(dispatch).toHaveBeenCalledWith({
+      type: "upsertItem",
+      workspaceId: "ws-1",
+      threadId: "thread-1",
+      item: {
+        id: "user-message-thread-1-1",
+        kind: "message",
+        role: "user",
+        text: "hello",
+        images: undefined,
+      },
+      hasCustomName: false,
+      replaceItemId: "user-message-thread-1-1234",
+    });
+    expect(pushThreadErrorMessage).not.toHaveBeenCalled();
+    nowSpy.mockRestore();
+  });
+
+  it("recovers inactive ACP session sends by starting a replacement thread", async () => {
+    const markProcessing = vi.fn();
+    const setActiveTurnId = vi.fn();
+    const pushThreadErrorMessage = vi.fn();
+    const startThreadForWorkspace = vi.fn(async () => "thread-replacement");
+    vi.mocked(sendUserMessageService).mockRejectedValueOnce(
+      new Error("ACP session is not active for this workspace"),
+    );
+
+    const { result } = renderHook(() =>
+      useThreadMessaging({
+        activeWorkspace: workspace,
+        activeThreadId: "thread-stale",
+        accessMode: "current",
+        model: null,
+        effort: null,
+        collaborationMode: null,
+        reviewDeliveryMode: "inline",
+        steerEnabled: false,
+        customPrompts: [],
+        threadStatusById: {},
+        activeTurnIdByThread: {},
+        rateLimitsByWorkspace: {},
+        pendingInterruptsRef: { current: new Set<string>() },
+        dispatch: vi.fn(),
+        getCustomName: vi.fn(() => undefined),
+        markProcessing,
+        markReviewing: vi.fn(),
+        setActiveTurnId,
+        recordThreadActivity: vi.fn(),
+        safeMessageActivity: vi.fn(),
+        onDebug: vi.fn(),
+        pushThreadErrorMessage,
+        ensureThreadForActiveWorkspace: vi.fn(async () => "thread-stale"),
+        ensureThreadForWorkspace: vi.fn(async () => "thread-stale"),
+        startThreadForWorkspace,
+        refreshThread: vi.fn(async () => null),
+        forkThreadForWorkspace: vi.fn(async () => null),
+        updateThreadParent: vi.fn(),
+      }),
+    );
+
+    let sendResult: Awaited<ReturnType<typeof result.current.sendUserMessageToThread>>;
+    await act(async () => {
+      sendResult = await result.current.sendUserMessageToThread(
+        workspace,
+        "thread-stale",
+        "hello",
+        [],
+      );
+    });
+
+    expect(sendResult!).toEqual({ status: "sent" });
+    expect(startThreadForWorkspace).toHaveBeenCalledWith("ws-1", {
+      activate: true,
+      modelId: null,
+    });
+    expect(sendUserMessageService).toHaveBeenNthCalledWith(
+      1,
+      "ws-1",
+      "thread-stale",
+      "hello",
+      expect.any(Object),
+    );
+    expect(sendUserMessageService).toHaveBeenNthCalledWith(
+      2,
+      "ws-1",
+      "thread-replacement",
+      "hello",
+      expect.any(Object),
+    );
+    expect(markProcessing).toHaveBeenCalledWith("thread-stale", true);
+    expect(markProcessing).toHaveBeenCalledWith("thread-stale", false);
+    expect(markProcessing).toHaveBeenCalledWith("thread-replacement", true);
+    expect(setActiveTurnId).toHaveBeenCalledWith("thread-stale", null);
+    expect(setActiveTurnId).toHaveBeenCalledWith("thread-replacement", "turn-1");
     expect(pushThreadErrorMessage).not.toHaveBeenCalled();
   });
 
