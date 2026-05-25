@@ -26,6 +26,7 @@ import { useThreadTitleAutogeneration } from "./useThreadTitleAutogeneration";
 import { useDetachedReviewTracking } from "./useDetachedReviewTracking";
 import {
   archiveThread as archiveThreadService,
+  discardThread as discardThreadService,
   readThread as readThreadService,
   setThreadName as setThreadNameService,
 } from "@services/tauri";
@@ -897,7 +898,8 @@ export function useThreads({
         : summary?.name ?? "";
       const isEmptySession = isGenericEmptySession(summary, items);
       if (canDeleteGenericEmptySession(workspaceThreads, threadId, items)) {
-        dispatch({ type: "removeThread", workspaceId, threadId });
+        dispatch({ type: "hideThread", workspaceId, threadId });
+        void discardThreadService(workspaceId, threadId);
         return;
       }
       if (isEmptySession || !summary) {

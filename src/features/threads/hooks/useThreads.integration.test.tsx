@@ -6,6 +6,7 @@ import type { useAppServerEvents } from "@app/hooks/useAppServerEvents";
 import { useThreadRows } from "@app/hooks/useThreadRows";
 import {
   archiveThread,
+  discardThread,
   interruptTurn,
   listThreads,
   readThread,
@@ -42,6 +43,7 @@ vi.mock("@services/tauri", () => ({
   resumeThread: vi.fn(),
   readThread: vi.fn(),
   archiveThread: vi.fn(),
+  discardThread: vi.fn(),
   setThreadName: vi.fn(),
   getAccountRateLimits: vi.fn(),
   getAccountInfo: vi.fn(),
@@ -135,6 +137,48 @@ describe("useThreads UX integration", () => {
     if (assistantMerged?.kind === "message") {
       expect(assistantMerged.text).toBe("Hello world");
     }
+  });
+
+  it("discards and hides closed empty sessions so focus refresh does not resurrect them", async () => {
+    vi.mocked(startThread)
+      .mockResolvedValueOnce({ threadId: "empty-1" })
+      .mockResolvedValueOnce({ threadId: "empty-2" });
+    vi.mocked(listThreads).mockResolvedValue({
+      data: [
+        { id: "empty-1", name: "Session", preview: "Session", updatedAt: 10 },
+        { id: "empty-2", name: "Session", preview: "Session", updatedAt: 11 },
+      ],
+      nextCursor: null,
+    });
+
+    const { result } = renderHook(() =>
+      useThreads({
+        activeWorkspace: workspace,
+        onWorkspaceConnected: vi.fn(),
+      }),
+    );
+
+    await act(async () => {
+      await result.current.startThreadForWorkspace("ws-1");
+      await result.current.startThreadForWorkspace("ws-1");
+    });
+
+    act(() => {
+      result.current.removeThread("ws-1", "empty-1");
+    });
+
+    expect(vi.mocked(discardThread)).toHaveBeenCalledWith("ws-1", "empty-1");
+    expect(result.current.threadsByWorkspace["ws-1"]?.map((thread) => thread.id)).toEqual([
+      "empty-2",
+    ]);
+
+    await act(async () => {
+      await result.current.listThreadsForWorkspace(workspace, { preserveState: true });
+    });
+
+    expect(result.current.threadsByWorkspace["ws-1"]?.map((thread) => thread.id)).toEqual([
+      "empty-2",
+    ]);
   });
 
   it("applies runtime codex args before start and selection resume", async () => {
