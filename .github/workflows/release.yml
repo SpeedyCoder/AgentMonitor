@@ -45,7 +45,7 @@ jobs:
         run: npm ci
 
       - name: Bundle ACP adapters
-        run: ./scripts/bundle_acp_agents.sh || echo "ACP adapter bundling skipped (may be pre-bundled)"
+        run: ./scripts/bundle_acp_agents.sh
 
       - name: Import signing certificate
         env:
