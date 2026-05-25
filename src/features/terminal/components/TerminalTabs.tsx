@@ -2,6 +2,7 @@ export type TerminalTabsItem = {
   id: string;
   title: string;
   isProcessing?: boolean;
+  canClose?: boolean;
 };
 
 type TerminalTabsProps = {
@@ -53,7 +54,7 @@ export function TerminalTabs({
                 />
               ) : null}
               <span className="terminal-tab-label">{tab.title}</span>
-              {onCloseTab ? (
+              {onCloseTab && tab.canClose !== false ? (
                 <span
                   className="terminal-tab-close"
                   role="button"

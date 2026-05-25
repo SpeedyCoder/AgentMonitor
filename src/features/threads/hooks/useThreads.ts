@@ -39,6 +39,12 @@ import {
   extractThreadFromResponse,
 } from "@threads/utils/threadSummary";
 import { getSubagentDescendantThreadIds } from "@threads/utils/subagentTree";
+import { clampThreadName } from "@threads/utils/threadNaming";
+import {
+  canDeleteGenericEmptySession,
+  isGenericEmptySession,
+  isGenericSessionName,
+} from "@threads/utils/emptyThreadSession";
 
 type UseThreadsOptions = {
   activeWorkspace: WorkspaceInfo | null;
@@ -67,6 +73,19 @@ type UseThreadsOptions = {
     metadata: { modelId: string | null; effort: string | null },
   ) => void;
 };
+
+function titleFromConversationItems(items: typeof initialState.itemsByThread[string]) {
+  const message = items.find((item) => item.kind === "message" && item.role === "user");
+  if (message?.kind === "message") {
+    return clampThreadName(message.text);
+  }
+  const assistantMessage = items.find(
+    (item) => item.kind === "message" && item.role === "assistant",
+  );
+  return assistantMessage?.kind === "message"
+    ? clampThreadName(assistantMessage.text)
+    : null;
+}
 
 function buildWorkspaceThreadKey(workspaceId: string, threadId: string) {
   return `${workspaceId}:${threadId}`;
@@ -566,6 +585,7 @@ export function useThreads({
     resetWorkspaceThreads,
     listThreadsForWorkspaces,
     listThreadsForWorkspace,
+    listHistoricalThreadsForWorkspace,
     loadOlderThreadsForWorkspace,
     archiveThread,
   } = useThreadActions({
@@ -867,10 +887,44 @@ export function useThreads({
   const removeThread = useCallback(
     (workspaceId: string, threadId: string) => {
       unpinThread(workspaceId, threadId);
-      dispatch({ type: "removeThread", workspaceId, threadId });
-      void archiveThread(workspaceId, threadId);
+      const workspaceThreads = state.threadsByWorkspace[workspaceId] ?? [];
+      const summary = workspaceThreads.find(
+        (thread) => thread.id === threadId,
+      );
+      const items = state.itemsByThread[threadId] ?? [];
+      const persistedName = isGenericSessionName(summary?.name)
+        ? titleFromConversationItems(items) ?? summary?.name ?? ""
+        : summary?.name ?? "";
+      const isEmptySession = isGenericEmptySession(summary, items);
+      if (canDeleteGenericEmptySession(workspaceThreads, threadId, items)) {
+        dispatch({ type: "removeThread", workspaceId, threadId });
+        return;
+      }
+      if (isEmptySession || !summary) {
+        return;
+      }
+      const summaryForArchive = persistedName.trim()
+        ? { ...summary, name: persistedName }
+        : summary;
+      dispatch({ type: "archiveThreadLocally", workspaceId, thread: summaryForArchive });
+      void (async () => {
+        try {
+          if (persistedName.trim().length > 0 && !isGenericSessionName(persistedName)) {
+            await setThreadNameService(workspaceId, threadId, persistedName);
+          }
+        } finally {
+          await archiveThread(workspaceId, threadId);
+        }
+      })();
     },
-    [archiveThread, unpinThread],
+    [archiveThread, state.itemsByThread, state.threadsByWorkspace, unpinThread],
+  );
+
+  const restoreHistoricalThread = useCallback(
+    (workspaceId: string, threadId: string) => {
+      dispatch({ type: "restoreHistoricalThreadFirst", workspaceId, threadId });
+    },
+    [],
   );
 
   return {
@@ -880,7 +934,9 @@ export function useThreads({
     activeItems,
     approvals: state.approvals,
     userInputRequests: state.userInputRequests,
+    itemsByThread: state.itemsByThread,
     threadsByWorkspace: state.threadsByWorkspace,
+    historicalThreadsByWorkspace: state.historicalThreadsByWorkspace,
     threadParentById: state.threadParentById,
     isSubagentThread,
     threadStatusById: state.threadStatusById,
@@ -900,6 +956,7 @@ export function useThreads({
     refreshAccountInfo,
     interruptTurn,
     removeThread,
+    restoreHistoricalThread,
     pinThread,
     unpinThread,
     isThreadPinned,
@@ -911,6 +968,7 @@ export function useThreads({
     forkThreadForWorkspace,
     listThreadsForWorkspaces,
     listThreadsForWorkspace,
+    listHistoricalThreadsForWorkspace,
     refreshThread,
     resetWorkspaceThreads,
     loadOlderThreadsForWorkspace,

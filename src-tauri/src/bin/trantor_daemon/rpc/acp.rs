@@ -19,11 +19,15 @@ pub(super) async fn try_handle(
         "session/cancel" | "acp_turn_interrupt" => Some(handle_session_cancel(state, params).await),
         "acp_turn_steer" => Some(handle_turn_steer(state, params).await),
         "acp_list_threads" => Some(handle_list_threads(state, params).await),
+        "acp_list_historical_threads" => {
+            Some(handle_list_historical_threads(state, params).await)
+        }
         "acp_resume_thread" | "acp_read_thread" => Some(handle_read_thread(state, params).await),
         "acp_thread_live_subscribe" => Some(handle_live_subscribe(state, params).await),
         "acp_thread_live_unsubscribe" => Some(handle_live_unsubscribe(state, params).await),
         "acp_set_thread_name" => Some(handle_set_thread_name(state, params).await),
         "acp_archive_thread" => Some(handle_archive_thread(state, params).await),
+        "acp_discard_thread" => Some(handle_discard_thread(state, params).await),
         "acp_compact_thread" => Some(handle_compact_thread(state, params).await),
         "acp_fork_thread" => Some(Err("Forking ACP sessions is not supported".to_string())),
         _ => None,
@@ -132,12 +136,31 @@ async fn handle_list_threads(state: &DaemonState, params: &Value) -> Result<Valu
     }))
 }
 
+async fn handle_list_historical_threads(
+    state: &DaemonState,
+    params: &Value,
+) -> Result<Value, String> {
+    let workspace_id = parse_string(params, "workspaceId")?;
+    let threads: Vec<Value> = state
+        .acp_sessions
+        .list_archived_thread_summaries(&workspace_id)
+        .await
+        .into_iter()
+        .map(|summary| summary.to_list_item(&workspace_id))
+        .collect();
+    Ok(json!({
+        "data": threads,
+        "nextCursor": Value::Null,
+        "next_cursor": Value::Null,
+    }))
+}
+
 async fn handle_read_thread(state: &DaemonState, params: &Value) -> Result<Value, String> {
     let workspace_id = parse_string(params, "workspaceId")?;
     let thread_id = parse_string(params, "threadId")?;
     let summary = state
         .acp_sessions
-        .get_thread_summary(&workspace_id, &thread_id)
+        .get_thread_summary_including_archived(&workspace_id, &thread_id)
         .await
         .ok_or("ACP thread not found")?;
     let workspace = workspace_entry(state, &workspace_id).await?;
@@ -228,6 +251,16 @@ async fn handle_archive_thread(state: &DaemonState, params: &Value) -> Result<Va
     state
         .acp_sessions
         .archive_thread(&workspace_id, &thread_id)
+        .await?;
+    Ok(json!({}))
+}
+
+async fn handle_discard_thread(state: &DaemonState, params: &Value) -> Result<Value, String> {
+    let workspace_id = parse_string(params, "workspaceId")?;
+    let thread_id = parse_string(params, "threadId")?;
+    state
+        .acp_sessions
+        .discard_thread(&workspace_id, &thread_id)
         .await?;
     Ok(json!({}))
 }

@@ -28,7 +28,6 @@ const baseProps = {
   onSetThreadListSortKey: vi.fn(),
   threadListOrganizeMode: "by_project" as const,
   onSetThreadListOrganizeMode: vi.fn(),
-  onRefreshAllThreads: vi.fn(),
   activeWorkspaceId: null,
   activeThreadId: null,
   onOpenSettings: vi.fn(),
@@ -63,41 +62,13 @@ const baseProps = {
 };
 
 describe("Sidebar", () => {
-  it("opens thread sort menu from the header filter button", () => {
-    const onSetThreadListSortKey = vi.fn();
-    render(
-      <Sidebar
-        {...baseProps}
-        threadListSortKey="updated_at"
-        onSetThreadListSortKey={onSetThreadListSortKey}
-      />,
-    );
+  it("does not render the removed organize and sort threads button", () => {
+    render(<Sidebar {...baseProps} />);
 
-    const button = screen.getByRole("button", { name: "Organize and sort threads" });
+    expect(
+      screen.queryByRole("button", { name: "Organize and sort threads" }),
+    ).toBeNull();
     expect(screen.queryByRole("menu")).toBeNull();
-
-    fireEvent.click(button);
-    const option = screen.getByRole("menuitemradio", { name: "Created" });
-    fireEvent.click(option);
-
-    expect(onSetThreadListSortKey).toHaveBeenCalledWith("created_at");
-    expect(screen.queryByRole("menu")).toBeNull();
-  });
-
-  it("changes organize mode from the header filter menu", () => {
-    const onSetThreadListOrganizeMode = vi.fn();
-    render(
-      <Sidebar
-        {...baseProps}
-        threadListOrganizeMode="by_project"
-        onSetThreadListOrganizeMode={onSetThreadListOrganizeMode}
-      />,
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: "Organize and sort threads" }));
-    fireEvent.click(screen.getByRole("menuitemradio", { name: "Thread list" }));
-
-    expect(onSetThreadListOrganizeMode).toHaveBeenCalledWith("threads_only");
   });
 
   it("toggles project expansion from the project row without selecting project home", () => {
@@ -196,81 +167,6 @@ describe("Sidebar", () => {
     fireEvent.click(screen.getByRole("button", { name: "Open settings" }));
 
     expect(onOpenSettings).toHaveBeenCalledTimes(1);
-  });
-
-  it("refreshes all workspace threads from the header button", () => {
-    const onRefreshAllThreads = vi.fn();
-    render(
-      <Sidebar
-        {...baseProps}
-        workspaces={[
-          {
-            id: "ws-1",
-            name: "Workspace",
-            path: "/tmp/workspace",
-            connected: true,
-            settings: { sidebarCollapsed: false },
-          },
-        ]}
-        groupedWorkspaces={[
-          {
-            id: null,
-            name: "Workspaces",
-            workspaces: [
-              {
-                id: "ws-1",
-                name: "Workspace",
-                path: "/tmp/workspace",
-                connected: true,
-                settings: { sidebarCollapsed: false },
-              },
-            ],
-          },
-        ]}
-        onRefreshAllThreads={onRefreshAllThreads}
-      />,
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: "Refresh all project threads" }));
-    expect(onRefreshAllThreads).toHaveBeenCalledTimes(1);
-  });
-
-  it("spins the refresh icon while workspace threads are refreshing", () => {
-    render(
-      <Sidebar
-        {...baseProps}
-        workspaces={[
-          {
-            id: "ws-1",
-            name: "Workspace",
-            path: "/tmp/workspace",
-            connected: true,
-            settings: { sidebarCollapsed: false },
-          },
-        ]}
-        groupedWorkspaces={[
-          {
-            id: null,
-            name: "Workspaces",
-            workspaces: [
-              {
-                id: "ws-1",
-                name: "Workspace",
-                path: "/tmp/workspace",
-                connected: true,
-                settings: { sidebarCollapsed: false },
-              },
-            ],
-          },
-        ]}
-        threadListLoadingByWorkspace={{ "ws-1": true }}
-      />,
-    );
-
-    const refreshButton = screen.getByRole("button", { name: "Refresh all project threads" });
-    expect(refreshButton.getAttribute("aria-busy")).toBe("true");
-    const icon = refreshButton.querySelector("svg");
-    expect(icon?.getAttribute("class") ?? "").toContain("spinning");
   });
 
   it("renders worktrees nested under their project", () => {

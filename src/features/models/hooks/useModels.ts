@@ -22,6 +22,12 @@ type UseModelsOptions = {
 };
 
 const CONFIG_MODEL_DESCRIPTION = "Configured in CODEX_HOME/config.toml";
+const CLAUDE_REASONING_EFFORTS = ["low", "medium", "high", "xhigh"] as const;
+const CLAUDE_DEFAULT_REASONING_EFFORT = "none";
+const CLAUDE_REASONING_OPTIONS = CLAUDE_REASONING_EFFORTS.map((reasoningEffort) => ({
+  reasoningEffort,
+  description: "",
+}));
 const FALLBACK_CLAUDE_MODELS: ModelOption[] = [
   {
     id: "claude:default",
@@ -30,8 +36,8 @@ const FALLBACK_CLAUDE_MODELS: ModelOption[] = [
     providerModelId: "default",
     displayName: "Opus 4.7 · Claude",
     description: "Fallback Claude model while the Claude model list is unavailable.",
-    supportedReasoningEfforts: [],
-    defaultReasoningEffort: null,
+    supportedReasoningEfforts: CLAUDE_REASONING_OPTIONS,
+    defaultReasoningEffort: CLAUDE_DEFAULT_REASONING_EFFORT,
     isDefault: true,
   },
   {
@@ -41,8 +47,8 @@ const FALLBACK_CLAUDE_MODELS: ModelOption[] = [
     providerModelId: "sonnet",
     displayName: "Sonnet 4.6 · Claude",
     description: "Fallback Claude model while the Claude model list is unavailable.",
-    supportedReasoningEfforts: [],
-    defaultReasoningEffort: null,
+    supportedReasoningEfforts: CLAUDE_REASONING_OPTIONS,
+    defaultReasoningEffort: CLAUDE_DEFAULT_REASONING_EFFORT,
     isDefault: false,
   },
   {
@@ -52,8 +58,8 @@ const FALLBACK_CLAUDE_MODELS: ModelOption[] = [
     providerModelId: "haiku",
     displayName: "Haiku 4.5 · Claude",
     description: "Fallback Claude model while the Claude model list is unavailable.",
-    supportedReasoningEfforts: [],
-    defaultReasoningEffort: null,
+    supportedReasoningEfforts: CLAUDE_REASONING_OPTIONS,
+    defaultReasoningEffort: CLAUDE_DEFAULT_REASONING_EFFORT,
     isDefault: false,
   },
 ];
@@ -96,7 +102,20 @@ function canonicalClaudeAliasDisplayName(model: ModelOption) {
 function normalizeClaudeCatalog(models: ModelOption[]) {
   const normalized = models.map((model) => {
     const displayName = canonicalClaudeAliasDisplayName(model);
-    return displayName ? { ...model, displayName } : model;
+    const isClaude = harnessForModelId(model.id) === "claude" || model.runtime === "claude";
+    const withDisplayName = displayName ? { ...model, displayName } : model;
+    if (!isClaude) {
+      return withDisplayName;
+    }
+    return {
+      ...withDisplayName,
+      supportedReasoningEfforts:
+        withDisplayName.supportedReasoningEfforts.length > 0
+          ? withDisplayName.supportedReasoningEfforts
+          : CLAUDE_REASONING_OPTIONS,
+      defaultReasoningEffort:
+        withDisplayName.defaultReasoningEffort ?? CLAUDE_DEFAULT_REASONING_EFFORT,
+    };
   });
   const genericClaudeModels = normalized.filter(isGenericClaudeModel);
   if (genericClaudeModels.length === 0) {
@@ -228,13 +247,15 @@ export function useModels({
   }, [selectedModel]);
 
   const reasoningOptions = useMemo(() => {
-    const supported = selectedModel?.supportedReasoningEfforts.map(
-      (effort) => effort.reasoningEffort,
-    );
-    if (supported && supported.length > 0) {
-      return supported;
-    }
+    const supported = selectedModel?.supportedReasoningEfforts
+      .map((effort) => normalizeEffortValue(effort.reasoningEffort))
+      .filter((effort): effort is string => Boolean(effort));
     const defaultEffort = normalizeEffortValue(selectedModel?.defaultReasoningEffort);
+    if (supported && supported.length > 0) {
+      return defaultEffort && !supported.includes(defaultEffort)
+        ? [...supported, defaultEffort]
+        : supported;
+    }
     return defaultEffort ? [defaultEffort] : [];
   }, [selectedModel]);
 

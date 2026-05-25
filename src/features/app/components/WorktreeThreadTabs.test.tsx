@@ -95,4 +95,44 @@ describe("WorktreeThreadTabs", () => {
 
     expect(onStartThread).toHaveBeenCalledWith("worktree-1");
   });
+
+  it("invokes close for tabs that can close", () => {
+    const onCloseThread = vi.fn();
+    render(
+      <WorktreeThreadTabs
+        workspace={workspace}
+        threads={[
+          thread({ id: "empty", name: "New Agent", updatedAt: 100, createdAt: 100 }),
+          thread({ id: "other", name: "Other", updatedAt: 200, createdAt: 200 }),
+        ]}
+        threadStatusById={{}}
+        activeThreadId="empty"
+        onSelectThread={vi.fn()}
+        onStartThread={vi.fn()}
+        onCloseThread={onCloseThread}
+        canCloseThread={(_workspaceId, threadId) => threadId === "empty"}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Close New Agent" }));
+
+    expect(onCloseThread).toHaveBeenCalledWith("worktree-1", "empty");
+  });
+
+  it("hides close controls for protected tabs", () => {
+    render(
+      <WorktreeThreadTabs
+        workspace={workspace}
+        threads={[thread({ id: "empty", name: "New Agent", updatedAt: 100, createdAt: 100 })]}
+        threadStatusById={{}}
+        activeThreadId="empty"
+        onSelectThread={vi.fn()}
+        onStartThread={vi.fn()}
+        onCloseThread={vi.fn()}
+        canCloseThread={() => false}
+      />,
+    );
+
+    expect(screen.queryByRole("button", { name: "Close New Agent" })).toBeNull();
+  });
 });

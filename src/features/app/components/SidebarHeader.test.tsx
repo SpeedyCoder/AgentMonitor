@@ -17,11 +17,6 @@ import { SidebarHeader } from "./SidebarHeader";
 
 const baseProps = {
   onAddWorkspace: vi.fn(),
-  threadListSortKey: "updated_at" as const,
-  onSetThreadListSortKey: vi.fn(),
-  threadListOrganizeMode: "by_project" as const,
-  onSetThreadListOrganizeMode: vi.fn(),
-  onRefreshAllThreads: vi.fn(),
 };
 
 describe("SidebarHeader", () => {
@@ -30,7 +25,7 @@ describe("SidebarHeader", () => {
     vi.clearAllMocks();
   });
 
-  it("places add project next to the filter control on macOS when windowed", () => {
+  it("places add project in the actions on macOS when windowed", () => {
     isMacPlatformMock.mockReturnValue(true);
     useWindowFullscreenStateMock.mockReturnValue(false);
 
@@ -41,8 +36,6 @@ describe("SidebarHeader", () => {
     const actionButtons = within(actions as HTMLElement).getAllByRole("button");
     expect(actionButtons.map((button) => button.getAttribute("aria-label"))).toEqual([
       "Add project",
-      "Organize and sort threads",
-      "Refresh all project threads",
     ]);
   });
 

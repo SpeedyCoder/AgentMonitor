@@ -14,6 +14,11 @@ function statusEquals(previous: ThreadStatus, nextStatus: ThreadStatus) {
   );
 }
 
+function isGenericThreadName(name: string | null | undefined) {
+  const normalized = name?.trim() ?? "";
+  return normalized === "" || normalized === "Session" || normalized === "New Agent";
+}
+
 export function reduceThreadLifecycle(
   state: ThreadState,
   action: ThreadAction,
@@ -67,6 +72,12 @@ export function reduceThreadLifecycle(
         threadsByWorkspace: {
           ...state.threadsByWorkspace,
           [action.workspaceId]: [...list, thread],
+        },
+        historicalThreadsByWorkspace: {
+          ...state.historicalThreadsByWorkspace,
+          [action.workspaceId]: (
+            state.historicalThreadsByWorkspace[action.workspaceId] ?? []
+          ).filter((summary) => summary.id !== action.threadId),
         },
         threadStatusById: {
           ...state.threadStatusById,
@@ -216,6 +227,107 @@ export function reduceThreadLifecycle(
         activeThreadIdByWorkspace: {
           ...state.activeThreadIdByWorkspace,
           [action.workspaceId]: nextActive,
+        },
+      };
+    }
+    case "archiveThreadLocally": {
+      const list = state.threadsByWorkspace[action.workspaceId] ?? [];
+      const filtered = list.filter((thread) => thread.id !== action.thread.id);
+      const nextActive =
+        state.activeThreadIdByWorkspace[action.workspaceId] === action.thread.id
+          ? filtered[0]?.id ?? null
+          : state.activeThreadIdByWorkspace[action.workspaceId] ?? null;
+      const historical = state.historicalThreadsByWorkspace[action.workspaceId] ?? [];
+      const nextHistorical = [
+        { ...action.thread, updatedAt: Date.now() },
+        ...historical.filter((thread) => thread.id !== action.thread.id),
+      ];
+      return {
+        ...state,
+        threadsByWorkspace: {
+          ...state.threadsByWorkspace,
+          [action.workspaceId]: filtered,
+        },
+        historicalThreadsByWorkspace: {
+          ...state.historicalThreadsByWorkspace,
+          [action.workspaceId]: nextHistorical,
+        },
+        activeThreadIdByWorkspace: {
+          ...state.activeThreadIdByWorkspace,
+          [action.workspaceId]: nextActive,
+        },
+      };
+    }
+    case "setHistoricalThreads": {
+      const existingById = new Map(
+        (state.historicalThreadsByWorkspace[action.workspaceId] ?? []).map(
+          (thread) => [thread.id, thread] as const,
+        ),
+      );
+      const threads = action.threads.map((thread) => {
+        const existing = existingById.get(thread.id);
+        if (!existing) {
+          return thread;
+        }
+        return {
+          ...thread,
+          name:
+            isGenericThreadName(thread.name) && !isGenericThreadName(existing.name)
+              ? existing.name
+              : thread.name,
+          modelId: thread.modelId ?? existing.modelId,
+          effort: thread.effort ?? existing.effort,
+        };
+      });
+      return {
+        ...state,
+        historicalThreadsByWorkspace: {
+          ...state.historicalThreadsByWorkspace,
+          [action.workspaceId]: threads,
+        },
+      };
+    }
+    case "restoreHistoricalThreadFirst": {
+      const historical = state.historicalThreadsByWorkspace[action.workspaceId] ?? [];
+      const thread = historical.find((summary) => summary.id === action.threadId);
+      if (!thread) {
+        return state;
+      }
+      const activeThreads = state.threadsByWorkspace[action.workspaceId] ?? [];
+      const existingActive = activeThreads.find((summary) => summary.id === action.threadId);
+      const activeWithoutThread = activeThreads.filter(
+        (summary) => summary.id !== action.threadId,
+      );
+      const earliestCreatedAt = activeWithoutThread.reduce<number | null>(
+        (earliest, summary) => {
+          const timestamp = summary.createdAt ?? summary.updatedAt ?? 0;
+          return earliest === null ? timestamp : Math.min(earliest, timestamp);
+        },
+        null,
+      );
+      const restoredThread = {
+        ...(existingActive ?? thread),
+        ...thread,
+        createdAt:
+          earliestCreatedAt !== null
+            ? Math.min(thread.createdAt ?? thread.updatedAt ?? earliestCreatedAt, earliestCreatedAt - 1)
+            : (thread.createdAt ?? thread.updatedAt),
+      };
+      return {
+        ...state,
+        threadsByWorkspace: {
+          ...state.threadsByWorkspace,
+          [action.workspaceId]: [restoredThread, ...activeWithoutThread],
+        },
+        historicalThreadsByWorkspace: {
+          ...state.historicalThreadsByWorkspace,
+          [action.workspaceId]: historical.filter(
+            (summary) => summary.id !== action.threadId,
+          ),
+        },
+        activeThreadIdByWorkspace: {
+          ...state.activeThreadIdByWorkspace,
+          [action.workspaceId]: action.threadId,
         },
       };
     }
@@ -440,11 +552,18 @@ export function reduceThreadLifecycle(
         const activeThreadStillVisible = currentActiveThreadId
           ? visibleThreads.some((thread) => thread.id === currentActiveThreadId)
           : false;
+        const visibleIds = new Set(visibleThreads.map((thread) => thread.id));
         return {
           ...state,
           threadsByWorkspace: {
             ...state.threadsByWorkspace,
             [action.workspaceId]: visibleThreads,
+          },
+          historicalThreadsByWorkspace: {
+            ...state.historicalThreadsByWorkspace,
+            [action.workspaceId]: (
+              state.historicalThreadsByWorkspace[action.workspaceId] ?? []
+            ).filter((thread) => !visibleIds.has(thread.id)),
           },
           activeThreadIdByWorkspace: {
             ...state.activeThreadIdByWorkspace,
@@ -518,6 +637,12 @@ export function reduceThreadLifecycle(
         threadsByWorkspace: {
           ...state.threadsByWorkspace,
           [action.workspaceId]: reconciled,
+        },
+        historicalThreadsByWorkspace: {
+          ...state.historicalThreadsByWorkspace,
+          [action.workspaceId]: (
+            state.historicalThreadsByWorkspace[action.workspaceId] ?? []
+          ).filter((thread) => !includedIds.has(thread.id)),
         },
         threadSortKeyByWorkspace: {
           ...state.threadSortKeyByWorkspace,
