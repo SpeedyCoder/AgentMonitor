@@ -13,6 +13,25 @@ BIN_DIR="src-tauri/resources/bin"
 # Create binary directory
 mkdir -p "$BIN_DIR"
 
+require_file() {
+    local path="$1"
+    local description="$2"
+    if [ ! -f "$path" ]; then
+        echo "Error: missing $description: $path" >&2
+        exit 1
+    fi
+}
+
+require_executable() {
+    local path="$1"
+    local description="$2"
+    require_file "$path" "$description"
+    if [ ! -x "$path" ]; then
+        echo "Error: $description is not executable: $path" >&2
+        exit 1
+    fi
+}
+
 echo "Bundling ACP adapters..."
 
 # Detect platform
@@ -57,10 +76,7 @@ mkdir -p "$CODEX_BUNDLE_DIR"
 cp -R "$TMP_DIR/codex/node_modules" "$CODEX_BUNDLE_DIR/node_modules"
 
 CODEX_ENTRY="$CODEX_BUNDLE_DIR/node_modules/@zed-industries/codex-acp/bin/codex-acp.js"
-if [ ! -f "$CODEX_ENTRY" ]; then
-    echo "Error: expected Codex ACP entrypoint missing: $CODEX_ENTRY"
-    exit 1
-fi
+require_file "$CODEX_ENTRY" "Codex ACP entrypoint"
 
 CODEX_NATIVE_BIN=""
 if [ -n "$CODEX_NATIVE_PACKAGE" ]; then
@@ -128,10 +144,7 @@ mkdir -p "$CLAUDE_BUNDLE_DIR"
 cp -R "$TMP_DIR/claude/node_modules" "$CLAUDE_BUNDLE_DIR/node_modules"
 
 CLAUDE_ENTRY="$CLAUDE_BUNDLE_DIR/node_modules/@agentclientprotocol/claude-agent-acp/dist/index.js"
-if [ ! -f "$CLAUDE_ENTRY" ]; then
-    echo "Error: expected Claude ACP entrypoint missing: $CLAUDE_ENTRY"
-    exit 1
-fi
+require_file "$CLAUDE_ENTRY" "Claude ACP entrypoint"
 
 if [ "$OS" = "darwin" ] || [ "$OS" = "linux" ]; then
     CLAUDE_BIN="$BIN_DIR/claude-agent-acp"
@@ -170,6 +183,16 @@ else
 fi
 
 echo "✓ claude-agent-acp bundled"
+
+require_file "$CODEX_ENTRY" "Codex ACP entrypoint"
+require_file "$CLAUDE_ENTRY" "Claude ACP entrypoint"
+if [ "$OS" = "windows" ] || [ "$OS" = "mingw" ] || [ "$OS" = "msys" ] || [ "$OS" = "cygwin" ]; then
+    require_file "$CODEX_BIN" "Codex ACP launcher"
+    require_file "$CLAUDE_BIN" "Claude ACP launcher"
+else
+    require_executable "$CODEX_BIN" "Codex ACP launcher"
+    require_executable "$CLAUDE_BIN" "Claude ACP launcher"
+fi
 
 echo ""
 echo "ACP adapters bundled successfully in $BIN_DIR:"
