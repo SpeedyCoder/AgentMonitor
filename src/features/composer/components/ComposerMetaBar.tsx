@@ -1,10 +1,13 @@
 import type { CSSProperties } from "react";
-import { BrainCog, Feather, SlidersHorizontal, Zap } from "lucide-react";
+import { Bot, BrainCog, Feather, SlidersHorizontal, Zap } from "lucide-react";
 import type { AgentHarness } from "@/features/models/utils/modelRuntime";
-import type { ServiceTier, ThreadTokenUsage } from "../../../types";
+import type { AcpHarnessConfig, ServiceTier, ThreadTokenUsage } from "../../../types";
 import type { CodexArgsOption } from "../../threads/utils/codexArgsProfiles";
 import { formatModelDisplayLabel } from "@/features/models/utils/modelPresentation";
-import { harnessForModelId } from "@/features/models/utils/modelRuntime";
+import {
+  harnessForModelId,
+  isBuiltInAgentHarness,
+} from "@/features/models/utils/modelRuntime";
 
 type ComposerMetaBarProps = {
   disabled: boolean;
@@ -13,6 +16,7 @@ type ComposerMetaBarProps = {
   onSelectCollaborationMode: (id: string | null) => void;
   selectedHarness?: AgentHarness;
   onSelectHarness?: (harness: AgentHarness) => void;
+  customHarnesses?: AcpHarnessConfig[];
   harnessLocked?: boolean;
   models: { id: string; displayName: string; model: string }[];
   selectedModelId: string | null;
@@ -35,6 +39,7 @@ export function ComposerMetaBar({
   onSelectCollaborationMode,
   selectedHarness = "codex",
   onSelectHarness,
+  customHarnesses = [],
   harnessLocked = false,
   models,
   selectedModelId,
@@ -56,6 +61,8 @@ export function ComposerMetaBar({
     models.find((model) => model.id === selectedModelId) ?? null;
   const selectedModelLabel = selectedModel ? getModelLabel(selectedModel) : "No models";
   const selectedModelHarness = harnessForModelId(selectedModel?.id ?? selectedModelId);
+  const selectedCustomHarness = customHarnesses.find((harness) => harness.id === selectedHarness);
+  const isCustomHarness = !isBuiltInAgentHarness(selectedHarness);
   const modelSelectStyle = {
     "--composer-model-select-width": `${Math.max(selectedModelLabel.length + 2, 8)}ch`,
   } as CSSProperties;
@@ -85,7 +92,7 @@ export function ComposerMetaBar({
   return (
     <div className="composer-bar">
       <div className="composer-meta">
-        {collaborationModes.length > 0 && (
+        {!isCustomHarness && collaborationModes.length > 0 && (
           canUsePlanToggle ? (
             <div className="composer-select-wrap composer-plan-toggle-wrap">
               <label className="composer-plan-toggle" aria-label="Plan mode">
@@ -153,6 +160,8 @@ export function ComposerMetaBar({
           <span className="composer-icon composer-icon--model" aria-hidden>
             {selectedHarness === "claude" ? (
               <Feather size={16} strokeWidth={1.8} />
+            ) : selectedCustomHarness ? (
+              <Bot size={16} strokeWidth={1.8} />
             ) : (
               <svg viewBox="0 0 24 24" fill="none">
                 <path
@@ -193,11 +202,18 @@ export function ComposerMetaBar({
           >
             <option value="codex">Codex</option>
             <option value="claude">Claude</option>
+            {customHarnesses.map((harness) => (
+              <option key={harness.id} value={harness.id}>
+                {harness.name || harness.id}
+              </option>
+            ))}
           </select>
         </div>
         <div className="composer-select-wrap composer-select-wrap--model">
           <span className="composer-icon composer-icon--model" aria-hidden>
-            {selectedModelHarness === "claude" ? (
+            {isCustomHarness ? (
+              <Bot size={16} strokeWidth={1.8} />
+            ) : selectedModelHarness === "claude" ? (
               <Feather size={16} strokeWidth={1.8} />
             ) : (
               <svg viewBox="0 0 24 24" fill="none">
@@ -275,7 +291,7 @@ export function ComposerMetaBar({
             ))}
           </select>
         </div>
-        {codexArgsOptions.length > 1 && onSelectCodexArgsOverride && (
+        {!isCustomHarness && codexArgsOptions.length > 1 && onSelectCodexArgsOverride && (
           <div className="composer-select-wrap">
             <span className="composer-icon" aria-hidden>
               <SlidersHorizontal size={14} strokeWidth={1.8} />

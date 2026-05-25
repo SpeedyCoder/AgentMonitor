@@ -234,6 +234,47 @@ describe("threadCodexParamsSeed", () => {
     });
   });
 
+  it("keeps a custom no-thread harness instead of inferring from the last model", () => {
+    const resolved = resolveThreadCodexState({
+      workspaceId: "ws-1",
+      threadId: null,
+      defaultAccessMode: "current",
+      lastComposerModelId: "claude:sonnet",
+      lastComposerReasoningEffort: "medium",
+      stored: {
+        harness: "mistral-vibe",
+        modelId: null,
+        effort: null,
+        serviceTier: null,
+        accessMode: null,
+        collaborationModeId: null,
+        codexArgsOverride: null,
+        updatedAt: 100,
+      },
+      noThreadStored: null,
+      pendingSeed: null,
+    });
+
+    expect(resolved.preferredHarness).toBe("mistral-vibe");
+    expect(resolved.preferredModelId).toBe("sonnet");
+  });
+
+  it("uses workspace harness before inferring from the last composer model", () => {
+    const resolved = resolveThreadCodexState({
+      workspaceId: "ws-1",
+      threadId: null,
+      workspaceHarness: "mistral-vibe",
+      defaultAccessMode: "current",
+      lastComposerModelId: "claude:sonnet",
+      lastComposerReasoningEffort: "medium",
+      stored: null,
+      noThreadStored: null,
+      pendingSeed: null,
+    });
+
+    expect(resolved.preferredHarness).toBe("mistral-vibe");
+  });
+
   it("keeps explicit thread-scoped Fast off when no-thread scope is fast", () => {
     const resolved = resolveThreadCodexState({
       workspaceId: "ws-1",

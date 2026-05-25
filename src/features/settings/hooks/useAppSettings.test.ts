@@ -126,6 +126,59 @@ describe("useAppSettings", () => {
     expect(result.current.settings.uiScale).toBe(2.4);
   });
 
+  it("preserves multi-token custom ACP harness start commands", async () => {
+    getAppSettingsMock.mockResolvedValue(
+      ({
+        customAcpHarnesses: [
+          {
+            id: "cursor-agent",
+            name: "Cursor Agent",
+            icon: "terminal",
+            startCommand: "agent acp --stdio",
+            env: [],
+          },
+        ],
+      } as unknown) as AppSettings,
+    );
+    updateAppSettingsMock.mockImplementation(async (settings) => settings);
+
+    const { result } = renderHook(() => useAppSettings());
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.settings.customAcpHarnesses[0]?.startCommand).toBe(
+      "agent acp --stdio",
+    );
+
+    await act(async () => {
+      await result.current.saveSettings({
+        ...result.current.settings,
+        customAcpHarnesses: [
+          {
+            id: "cursor-agent",
+            name: "Cursor Agent",
+            icon: "terminal",
+            startCommand: "agent acp --stdio --flag value",
+            env: [],
+          },
+        ],
+      });
+    });
+
+    expect(updateAppSettingsMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        customAcpHarnesses: [
+          expect.objectContaining({
+            startCommand: "agent acp --stdio --flag value",
+          }),
+        ],
+      }),
+    );
+    expect(result.current.settings.customAcpHarnesses[0]?.startCommand).toBe(
+      "agent acp --stdio --flag value",
+    );
+  });
+
   it("surfaces doctor errors", async () => {
     getAppSettingsMock.mockResolvedValue({} as AppSettings);
     runCodexDoctorMock.mockRejectedValue(new Error("doctor fail"));

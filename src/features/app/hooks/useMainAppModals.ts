@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import type { ComponentType } from "react";
+import type { ComponentType, Dispatch, SetStateAction } from "react";
 import type {
   AppSettings,
   BranchInfo,
@@ -92,6 +92,7 @@ type UseMainAppModalsArgs = {
       groupId: string | null,
     ) => Promise<boolean | null>;
     appSettings: AppSettings;
+    setAppSettings: Dispatch<SetStateAction<AppSettings>>;
     openAppIconById: Record<string, string>;
     queueSaveSettings: (next: AppSettings) => Promise<unknown>;
     handleToggleAutomaticAppUpdateChecks: () => void;
@@ -166,6 +167,7 @@ function buildSettingsViewProps({
     appSettings: settings.appSettings,
     openAppIconById: settings.openAppIconById,
     onUpdateAppSettings: async (next) => {
+      settings.setAppSettings(next);
       await Promise.resolve(settings.queueSaveSettings(next));
     },
     onToggleAutomaticAppUpdateChecks:

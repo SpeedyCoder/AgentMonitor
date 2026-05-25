@@ -83,6 +83,7 @@ describe("useWorkspaceHome", () => {
     expect(startThreadForWorkspace).toHaveBeenCalledWith("wt-1", {
       activate: false,
       modelId: "gpt-5.1-max",
+      runtime: "codex",
     });
     expect(sendUserMessageToThread).toHaveBeenCalledWith(
       worktreeWorkspace,
@@ -131,6 +132,7 @@ describe("useWorkspaceHome", () => {
     expect(startThreadForWorkspace).toHaveBeenCalledWith("wt-1", {
       activate: false,
       modelId: "gpt-5.1-max",
+      runtime: "codex",
     });
     expect(sendUserMessageToThread).toHaveBeenCalledWith(
       worktreeWorkspace,
@@ -195,6 +197,7 @@ describe("useWorkspaceHome", () => {
     expect(startThreadForWorkspace).toHaveBeenCalledWith("wt-1", {
       activate: false,
       modelId: "sonnet-4.5",
+      runtime: "claude",
     });
     expect(sendUserMessageToThread).toHaveBeenCalledWith(
       worktreeWorkspace,
@@ -248,6 +251,126 @@ describe("useWorkspaceHome", () => {
       "Select at least one model to run in a worktree.",
     );
     expect(result.current.runs).toHaveLength(0);
+  });
+
+  it("starts custom harness worktree runs without model selections", async () => {
+    const addWorktreeAgent = vi.fn().mockResolvedValue(worktreeWorkspace);
+    const connectWorkspace = vi.fn().mockResolvedValue(undefined);
+    const startThreadForWorkspace = vi.fn().mockResolvedValue("thread-custom");
+    const sendUserMessageToThread = vi.fn().mockResolvedValue(undefined);
+    const seedThreadCodexParams = vi.fn();
+    vi.mocked(generateRunMetadata).mockResolvedValue({
+      title: "Custom run",
+      worktreeName: "feat/custom",
+    });
+
+    const { result } = renderHook(() =>
+      useWorkspaceHome({
+        activeWorkspace: workspace,
+        models: [],
+        selectedHarness: "my-harness",
+        selectedModelId: null,
+        seedThreadCodexParams,
+        addWorktreeAgent,
+        connectWorkspace,
+        startThreadForWorkspace,
+        sendUserMessageToThread,
+      }),
+    );
+
+    act(() => {
+      result.current.setRunMode("worktree");
+      result.current.setDraft("Hello custom");
+    });
+
+    await act(async () => {
+      await result.current.startRun();
+    });
+
+    expect(startThreadForWorkspace).toHaveBeenCalledWith("wt-1", {
+      activate: false,
+      modelId: null,
+      runtime: "my-harness",
+    });
+    expect(sendUserMessageToThread).toHaveBeenCalledWith(
+      worktreeWorkspace,
+      "thread-custom",
+      "Hello custom",
+      [],
+      expect.objectContaining({ model: null }),
+    );
+    expect(seedThreadCodexParams).toHaveBeenCalledWith("wt-1", "thread-custom", {
+      harness: "my-harness",
+      modelId: null,
+      effort: null,
+      serviceTier: undefined,
+    });
+  });
+
+  it("does not reuse a stale custom harness model after switching harnesses", async () => {
+    const customModels: ModelOption[] = [
+      {
+        id: "agent-b:model-b",
+        model: "model-b",
+        runtime: "agent-b",
+        providerModelId: "model-b",
+        displayName: "Model B",
+        description: "Agent B model",
+        supportedReasoningEfforts: [],
+        defaultReasoningEffort: null,
+        isDefault: true,
+      },
+    ];
+    const addWorktreeAgent = vi.fn();
+    const connectWorkspace = vi.fn().mockResolvedValue(undefined);
+    const startThreadForWorkspace = vi.fn().mockResolvedValue("thread-b");
+    const sendUserMessageToThread = vi.fn().mockResolvedValue(undefined);
+    const seedThreadCodexParams = vi.fn();
+    vi.mocked(generateRunMetadata).mockResolvedValue({
+      title: "Agent B run",
+      worktreeName: "feat/agent-b",
+    });
+
+    const { result } = renderHook(() =>
+      useWorkspaceHome({
+        activeWorkspace: worktreeWorkspace,
+        models: customModels,
+        selectedHarness: "agent-b",
+        selectedModelId: "agent-a:model-a",
+        seedThreadCodexParams,
+        addWorktreeAgent,
+        connectWorkspace,
+        startThreadForWorkspace,
+        sendUserMessageToThread,
+      }),
+    );
+
+    act(() => {
+      result.current.setDraft("Hello agent B");
+    });
+
+    await act(async () => {
+      await result.current.startRun();
+    });
+
+    expect(startThreadForWorkspace).toHaveBeenCalledWith("wt-1", {
+      activate: false,
+      modelId: null,
+      runtime: "agent-b",
+    });
+    expect(sendUserMessageToThread).toHaveBeenCalledWith(
+      worktreeWorkspace,
+      "thread-b",
+      "Hello agent B",
+      [],
+      expect.objectContaining({ model: null }),
+    );
+    expect(seedThreadCodexParams).toHaveBeenCalledWith("wt-1", "thread-b", {
+      harness: "agent-b",
+      modelId: null,
+      effort: null,
+      serviceTier: undefined,
+    });
   });
 
   it("captures partial failures for multi-instance worktree runs", async () => {

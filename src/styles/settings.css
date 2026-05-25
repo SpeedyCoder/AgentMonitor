@@ -91,6 +91,13 @@
   gap: 6px;
 }
 
+.settings-nav-group-heading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+}
+
 .settings-nav-group-label {
   padding: 0 10px;
   font-size: 11px;
@@ -98,6 +105,18 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-faint);
+  flex: 1;
+}
+
+.settings-nav-add {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+}
+
+.settings-nav-add svg {
+  width: 14px;
+  height: 14px;
 }
 
 .settings-sidebar-footer {

@@ -63,6 +63,29 @@ describe("useThreadCodexParams", () => {
     expect(persisted["ws-1:thread-prefixed"].modelId).toBe("gpt-5.4");
   });
 
+  it("preserves custom harness IDs", () => {
+    const { result } = renderHook(() => useThreadCodexParams());
+
+    act(() => {
+      result.current.patchThreadCodexParams("ws-1", "__no_thread__", {
+        harness: "mistral-vibe",
+        modelId: null,
+      });
+    });
+
+    expect(result.current.getThreadCodexParams("ws-1", "__no_thread__")).toEqual(
+      expect.objectContaining({
+        harness: "mistral-vibe",
+        modelId: null,
+      }),
+    );
+
+    const persisted = JSON.parse(
+      window.localStorage.getItem(STORAGE_KEY_THREAD_CODEX_PARAMS) ?? "{}",
+    ) as Record<string, { harness?: string }>;
+    expect(persisted["ws-1:__no_thread__"].harness).toBe("mistral-vibe");
+  });
+
   it("normalizes legacy prefixed persisted model IDs on read", () => {
     window.localStorage.setItem(
       STORAGE_KEY_THREAD_CODEX_PARAMS,

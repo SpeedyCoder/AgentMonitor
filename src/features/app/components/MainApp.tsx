@@ -7,6 +7,11 @@ import { usePullRequestComposer } from "@/features/git/hooks/usePullRequestCompo
 import { useAutoExitEmptyDiff } from "@/features/git/hooks/useAutoExitEmptyDiff";
 import { isMissingRepo } from "@/features/git/utils/repoErrors";
 import { useModels } from "@/features/models/hooks/useModels";
+import {
+  harnessForModelId,
+  isBuiltInAgentHarness,
+  providerModelIdForModelId,
+} from "@/features/models/utils/modelRuntime";
 import { NO_THREAD_SCOPE_SUFFIX } from "@/features/threads/utils/threadCodexParamsSeed";
 import { useCollaborationModes } from "@/features/collaboration/hooks/useCollaborationModes";
 import { useCollaborationModeSelection } from "@/features/collaboration/hooks/useCollaborationModeSelection";
@@ -302,8 +307,10 @@ export default function MainApp() {
     preferredEffort,
     selectionKey: threadCodexSelectionKey,
     allowedHarness: selectedHarness,
+    customHarnesses: appSettings.customAcpHarnesses,
   });
-  const isClaudeRuntime = selectedHarness === "claude";
+  const isCodexRuntime = selectedHarness === "codex";
+  const isBuiltInRuntime = isBuiltInAgentHarness(selectedHarness);
 
   const {
     collaborationModes,
@@ -353,6 +360,15 @@ export default function MainApp() {
     setSelectedCodexArgsOverride,
     persistThreadCodexParams,
   });
+  const handleSelectWorkspaceHarness = useCallback(
+    (harness: typeof selectedHarness) => {
+      handleSelectHarness(harness);
+      if (activeWorkspaceId) {
+        void updateWorkspaceSettings(activeWorkspaceId, { agentRuntime: harness });
+      }
+    },
+    [activeWorkspaceId, handleSelectHarness, updateWorkspaceSettings],
+  );
   const commitMessageModelId = useMemo(
     () => effectiveCommitMessageModelId(models, appSettings.commitMessageModelId),
     [models, appSettings.commitMessageModelId],
@@ -401,7 +417,7 @@ export default function MainApp() {
     onFocusComposer: () => composerInputRef.current?.focus(),
   });
   const { skills } = useSkills({
-    activeWorkspace: isClaudeRuntime ? null : activeWorkspace,
+    activeWorkspace: isCodexRuntime ? activeWorkspace : null,
     onDebug: addDebugEntry,
   });
   const {
@@ -413,8 +429,17 @@ export default function MainApp() {
     getWorkspacePromptsDir,
     getGlobalPromptsDir,
   } = useCustomPrompts({ activeWorkspace, onDebug: addDebugEntry });
-  const resolvedModel = selectedModel?.id ?? selectedModelId ?? preferredModelId ?? null;
-  const resolvedEffort = reasoningSupported ? selectedEffort : null;
+  const selectedModelMatchesHarness =
+    selectedModel !== null && selectedModel.runtime === selectedHarness;
+  const selectedModelIdMatchesHarness =
+    selectedModelId !== null && harnessForModelId(selectedModelId) === selectedHarness;
+  const resolvedModel = selectedModelMatchesHarness
+    ? selectedModel.providerModelId ?? null
+    : isBuiltInRuntime && selectedModelIdMatchesHarness
+      ? providerModelIdForModelId(selectedModelId)
+      : null;
+  const resolvedEffort =
+    selectedModelMatchesHarness && reasoningSupported ? selectedEffort : null;
 
   const {
     handleThreadCodexMetadataDetected,
@@ -422,7 +447,7 @@ export default function MainApp() {
     ensureWorkspaceRuntimeCodexArgs,
     getThreadArgsBadge,
   } = useMainAppThreadCodexState({
-    enabled: !isClaudeRuntime,
+    enabled: isCodexRuntime,
     appCodexArgs: appSettings.codexArgs,
     selectedCodexArgsOverride,
     getThreadCodexParams,
@@ -533,6 +558,20 @@ export default function MainApp() {
     threadSortKey: threadListSortKey,
     onThreadCodexMetadataDetected: handleThreadCodexMetadataDetected,
   });
+  useEffect(() => {
+    if (activeThreadId) {
+      return;
+    }
+    const workspaceHarness = activeWorkspace?.settings.agentRuntime?.trim();
+    if (workspaceHarness && workspaceHarness !== preferredHarness) {
+      setPreferredHarness(workspaceHarness);
+    }
+  }, [
+    activeThreadId,
+    activeWorkspace?.settings.agentRuntime,
+    preferredHarness,
+    setPreferredHarness,
+  ]);
   const harnessLocked =
     Boolean(activeThreadId) && isThreadScopedSelection && activeItems.length > 0;
   const { connectionState: remoteThreadConnectionState, reconnectLive } =
@@ -679,13 +718,14 @@ export default function MainApp() {
   const { apps } = useApps({
     activeWorkspace,
     activeThreadId,
-    enabled: appSettings.experimentalAppsEnabled && !isClaudeRuntime,
+    enabled: appSettings.experimentalAppsEnabled && isCodexRuntime,
     onDebug: addDebugEntry,
   });
 
   useThreadCodexSyncOrchestration({
     activeWorkspaceId,
     activeThreadId,
+    workspaceHarness: activeWorkspace?.settings.agentRuntime ?? null,
     appSettings: {
       defaultAccessMode: appSettings.defaultAccessMode,
       lastComposerModelId: appSettings.lastComposerModelId,
@@ -1037,6 +1077,7 @@ export default function MainApp() {
       deleteWorkspaceGroup,
       assignWorkspaceGroup,
       appSettings,
+      setAppSettings,
       openAppIconById,
       queueSaveSettings,
       handleToggleAutomaticAppUpdateChecks,
@@ -1106,7 +1147,7 @@ export default function MainApp() {
     settings: {
       steerEnabled: appSettings.steerEnabled,
       followUpMessageBehavior: appSettings.followUpMessageBehavior,
-      experimentalAppsEnabled: appSettings.experimentalAppsEnabled && !isClaudeRuntime,
+      experimentalAppsEnabled: appSettings.experimentalAppsEnabled && isCodexRuntime,
       pauseQueuedMessagesWhenResponseRequired:
         appSettings.pauseQueuedMessagesWhenResponseRequired,
     },
@@ -1518,7 +1559,8 @@ export default function MainApp() {
           runMode: workspaceRunMode,
           onRunModeChange: setWorkspaceRunMode,
           selectedHarness,
-          onSelectHarness: handleSelectHarness,
+          onSelectHarness: handleSelectWorkspaceHarness,
+          customHarnesses: appSettings.customAcpHarnesses,
           models,
           selectedModelId,
           onSelectModel: handleSelectModel,
@@ -1539,7 +1581,7 @@ export default function MainApp() {
           threadStatusById,
           onSelectInstance: handleSelectWorkspaceInstance,
           skills,
-          appsEnabled: appSettings.experimentalAppsEnabled && !isClaudeRuntime,
+          appsEnabled: appSettings.experimentalAppsEnabled && isCodexRuntime,
           apps,
           prompts,
           files,
@@ -1582,7 +1624,7 @@ export default function MainApp() {
       showMessageFilePath: appSettings.showMessageFilePath,
       openAppTargets: appSettings.openAppTargets,
       selectedOpenAppId: appSettings.selectedOpenAppId,
-      experimentalAppsEnabled: appSettings.experimentalAppsEnabled && !isClaudeRuntime,
+      experimentalAppsEnabled: appSettings.experimentalAppsEnabled && isCodexRuntime,
       followUpMessageBehavior: appSettings.followUpMessageBehavior,
       composerFollowUpHintEnabled: appSettings.composerFollowUpHintEnabled,
       dictationEnabled: appSettings.dictationEnabled,
@@ -1678,7 +1720,8 @@ export default function MainApp() {
     launchScriptState,
     launchScriptsState,
     selectedHarness,
-    onSelectHarness: handleSelectHarness,
+    onSelectHarness: handleSelectWorkspaceHarness,
+    customHarnesses: appSettings.customAcpHarnesses,
     harnessLocked,
     models,
     selectedModelId,
@@ -1826,6 +1869,7 @@ export default function MainApp() {
       void (async () => {
         const threadId = await startThreadForWorkspace(workspaceId, {
           modelId: resolvedModel,
+          runtime: selectedHarness,
         });
         const resolvedThreadId = threadId
           ? await resolvePendingThreadId(threadId)
@@ -1853,6 +1897,7 @@ export default function MainApp() {
       <WorktreeThreadHistory
         workspace={activeWorkspace}
         threads={activeWorkspaceHistoricalThreads}
+        customHarnesses={appSettings.customAcpHarnesses}
         onSelectThread={(workspaceId, threadId) => {
           restoreHistoricalThread(workspaceId, threadId);
           setThreadHistoryWorkspaceId(null);

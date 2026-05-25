@@ -1,12 +1,14 @@
 use agent_client_protocol::{
     on_receive_notification, on_receive_request, Agent, Client, ConnectionTo, Responder,
+    UntypedMessage,
 };
 use agent_client_protocol_schema::{
-    CancelNotification, ContentBlock, ContentChunk, EnvVariable, ImageContent, InitializeRequest,
-    LoadSessionRequest, LoadSessionResponse, McpServer, McpServerStdio, NewSessionRequest,
-    NewSessionResponse, PermissionOptionId, PromptRequest, ProtocolVersion,
+    CancelNotification, ContentBlock, ContentChunk, EnvVariable, ImageContent, Implementation,
+    InitializeRequest, LoadSessionRequest, LoadSessionResponse, McpServer, McpServerStdio,
+    NewSessionRequest, NewSessionResponse, PermissionOptionId, PromptRequest, ProtocolVersion,
     RequestPermissionOutcome, RequestPermissionRequest, RequestPermissionResponse,
-    SelectedPermissionOutcome, SessionId, SessionNotification, SessionUpdate, TextContent,
+    SelectedPermissionOutcome, SessionId, SessionNotification, SessionUpdate,
+    SetSessionConfigOptionRequest, TextContent,
 };
 use agent_client_protocol_tokio::AcpAgent;
 use base64::Engine;
@@ -24,23 +26,61 @@ use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 use tokio::time::timeout;
 
-use crate::types::AgentRuntime;
+use crate::types::{AcpHarnessConfig, AgentRuntime};
 
 const ACP_STARTUP_TIMEOUT: Duration = Duration::from_secs(30);
+const ACP_CLIENT_NAME: &str = "trantor";
+
+fn initialize_request() -> InitializeRequest {
+    InitializeRequest::new(ProtocolVersion::V1)
+        .client_info(Implementation::new(ACP_CLIENT_NAME, env!("CARGO_PKG_VERSION")))
+}
 
 #[derive(Clone, Debug)]
 pub(crate) struct AgentConfig {
     pub(crate) runtime: AgentRuntime,
+    pub(crate) name: String,
     pub(crate) path: PathBuf,
+    pub(crate) args: Vec<String>,
     pub(crate) env: HashMap<String, String>,
 }
 
 impl AgentConfig {
-    pub(crate) fn resolve(runtime: AgentRuntime, api_key: Option<String>) -> Self {
-        let path = resolve_agent_path(&runtime);
+    pub(crate) fn resolve(
+        runtime: AgentRuntime,
+        api_key: Option<String>,
+        custom_harnesses: &[AcpHarnessConfig],
+    ) -> Result<Self, String> {
+        let custom_harness = match &runtime {
+            AgentRuntime::Custom(id) => custom_harnesses.iter().find(|harness| harness.id == *id),
+            _ => None,
+        };
+        let (name, path, args) = if let Some(harness) = custom_harness {
+            let mut parts = shell_words::split(harness.start_command.trim())
+                .map_err(|err| format!("Failed to parse ACP harness command: {err}"))?;
+            if parts.is_empty() {
+                return Err(format!(
+                    "ACP harness `{}` has an empty start command",
+                    harness.name
+                ));
+            }
+            let command = parts.remove(0);
+            (harness.id.clone(), PathBuf::from(command), parts)
+        } else if matches!(runtime, AgentRuntime::Custom(_)) {
+            return Err(format!(
+                "ACP harness `{}` is not configured",
+                runtime.as_id()
+            ));
+        } else {
+            (
+                agent_runtime_name(&runtime).to_string(),
+                resolve_agent_path(&runtime),
+                Vec::new(),
+            )
+        };
         let mut env = HashMap::new();
 
-        match runtime {
+        match &runtime {
             AgentRuntime::Codex => {
                 if let Some(key) = api_key.filter(|key| !key.trim().is_empty()) {
                     env.insert("OPENAI_API_KEY".to_string(), key);
@@ -51,9 +91,25 @@ impl AgentConfig {
                     env.insert("ANTHROPIC_API_KEY".to_string(), key);
                 }
             }
+            AgentRuntime::Custom(_) => {
+                if let Some(harness) = custom_harness {
+                    for entry in &harness.env {
+                        let name = entry.name.trim();
+                        if !name.is_empty() {
+                            env.insert(name.to_string(), entry.value.clone());
+                        }
+                    }
+                }
+            }
         }
 
-        Self { runtime, path, env }
+        Ok(Self {
+            runtime,
+            name,
+            path,
+            args,
+            env,
+        })
     }
 
     pub(crate) fn is_available(&self) -> bool {
@@ -86,7 +142,9 @@ impl AgentConfig {
             .map(|(name, value)| EnvVariable::new(name.clone(), value.clone()))
             .collect();
         let server = McpServer::Stdio(
-            McpServerStdio::new(agent_runtime_name(&self.runtime), self.path.clone()).env(env),
+            McpServerStdio::new(&self.name, self.path.clone())
+                .args(self.args.clone())
+                .env(env),
         );
         AcpAgent::new(server)
     }
@@ -96,7 +154,33 @@ fn agent_runtime_name(runtime: &AgentRuntime) -> &'static str {
     match runtime {
         AgentRuntime::Codex => "codex-acp",
         AgentRuntime::Claude => "claude-agent-acp",
+        AgentRuntime::Custom(_) => "custom-acp",
     }
+}
+
+fn find_config_id_by_category(options: &[Value], category: &str) -> Option<String> {
+    options.iter().find_map(|option| {
+        let object = option.as_object()?;
+        let option_category = object
+            .get("category")
+            .and_then(Value::as_str)
+            .or_else(|| object.get("id").and_then(Value::as_str))?;
+        if option_category != category {
+            return None;
+        }
+        object
+            .get("id")
+            .and_then(Value::as_str)
+            .map(str::to_string)
+    })
+}
+
+fn config_options_from_value(value: &Value) -> Option<Vec<Value>> {
+    value
+        .get("configOptions")
+        .or_else(|| value.get("config_options"))
+        .and_then(Value::as_array)
+        .cloned()
 }
 
 fn resolve_agent_path(runtime: &AgentRuntime) -> PathBuf {
@@ -109,6 +193,7 @@ fn resolve_agent_path(runtime: &AgentRuntime) -> PathBuf {
             "claude-agent-acp",
         ],
         (AgentRuntime::Claude, false) => &["claude-agent-acp"],
+        (AgentRuntime::Custom(_), _) => &[],
     };
 
     for bin_name in bin_names {
@@ -295,7 +380,7 @@ async fn create_session_on_connection(
     connection: Arc<Mutex<ConnectionTo<Agent>>>,
     cwd: PathBuf,
     mcp_servers: Vec<McpServer>,
-) -> Result<SessionId, String> {
+) -> Result<(SessionId, Vec<Value>), String> {
     let mut new_session_req = NewSessionRequest::new(cwd);
     new_session_req.mcp_servers = mcp_servers;
     let cx = connection.lock().await;
@@ -304,7 +389,13 @@ async fn create_session_on_connection(
         .block_task()
         .await
         .map_err(|e| format!("Failed to create ACP session: {e}"))?;
-    Ok(response.session_id)
+    let config_options = response
+        .config_options
+        .as_ref()
+        .and_then(|options| serde_json::to_value(options).ok())
+        .and_then(|value| value.as_array().cloned())
+        .unwrap_or_default();
+    Ok((response.session_id, config_options))
 }
 
 #[derive(Clone)]
@@ -331,6 +422,7 @@ pub(crate) struct SessionManager {
     agent_runtimes: Arc<Mutex<HashMap<String, AgentRuntime>>>,
     tasks: Arc<Mutex<HashMap<String, JoinHandle<()>>>>,
     message_streams: Arc<StdMutex<HashMap<String, AcpMessageStreamState>>>,
+    session_config_options: Arc<Mutex<HashMap<String, Vec<Value>>>>,
     summaries: Arc<Mutex<HashMap<String, Vec<AcpThreadSummary>>>>,
     summaries_path: Option<PathBuf>,
 }
@@ -355,19 +447,28 @@ impl SessionManager {
         cwd: PathBuf,
         runtime: AgentRuntime,
         api_key: Option<String>,
+        custom_harnesses: Vec<AcpHarnessConfig>,
         mcp_servers: Vec<McpServer>,
         emit_event: AcpEventEmitter,
     ) -> Result<SessionId, String> {
         if let Some(connection) = self.reusable_connection(&workspace_id, &runtime).await {
             match create_session_on_connection(connection, cwd.clone(), mcp_servers.clone()).await {
-                Ok(session_id) => {
+                Ok((session_id, config_options)) => {
                     self.session_ids
                         .lock()
                         .await
                         .insert(workspace_id.clone(), session_id.clone());
+                    self.session_config_options
+                        .lock()
+                        .await
+                        .insert(workspace_id.clone(), config_options);
                     self.upsert_summary(
                         &workspace_id,
-                        AcpThreadSummary::new(session_id.to_string(), "Session".to_string()),
+                        AcpThreadSummary::new(
+                            session_id.to_string(),
+                            "Session".to_string(),
+                            Some(runtime.as_id().to_string()),
+                        ),
                     )
                     .await?;
                     return Ok(session_id);
@@ -378,7 +479,7 @@ impl SessionManager {
             }
         }
 
-        let agent_config = AgentConfig::resolve(runtime.clone(), api_key);
+        let agent_config = AgentConfig::resolve(runtime.clone(), api_key, &custom_harnesses)?;
 
         if !agent_config.is_available() {
             let release_hint = match runtime {
@@ -388,10 +489,13 @@ impl SessionManager {
                 AgentRuntime::Claude => {
                     "claude-agent-acp requires Node.js. Packaged releases must bundle a Node runtime in the resource bin directory or declare Node.js as a release prerequisite."
                 }
+                AgentRuntime::Custom(_) => {
+                    "Please ensure the custom ACP harness command is installed and available on PATH."
+                }
             };
             return Err(format!(
                 "{} adapter not available. {release_hint}",
-                agent_runtime_name(&runtime),
+                runtime.as_id(),
             ));
         }
 
@@ -450,7 +554,7 @@ impl SessionManager {
 
         let agent = agent_config.to_connectable();
         let (ready_tx, ready_rx) =
-            oneshot::channel::<Result<(SessionId, ConnectionTo<Agent>), String>>();
+            oneshot::channel::<Result<(SessionId, ConnectionTo<Agent>, Vec<Value>), String>>();
         let ready_tx = Arc::new(StdMutex::new(Some(ready_tx)));
         let ready_tx_for_connection = ready_tx.clone();
         let ready_tx_for_failure = ready_tx.clone();
@@ -458,7 +562,7 @@ impl SessionManager {
         let task = tokio::spawn(async move {
             let result = client
                 .connect_with(agent, async move |cx: ConnectionTo<Agent>| {
-                    cx.send_request(InitializeRequest::new(ProtocolVersion::V1))
+                    cx.send_request(initialize_request())
                         .block_task()
                         .await
                         .map_err(agent_client_protocol::Error::into_internal_error)?;
@@ -472,12 +576,18 @@ impl SessionManager {
                         .map_err(agent_client_protocol::Error::into_internal_error)?;
 
                     let session_id = response.session_id.clone();
+                    let config_options = response
+                        .config_options
+                        .as_ref()
+                        .and_then(|options| serde_json::to_value(options).ok())
+                        .and_then(|value| value.as_array().cloned())
+                        .unwrap_or_default();
                     if let Some(tx) = ready_tx_for_connection
                         .lock()
                         .ok()
                         .and_then(|mut tx| tx.take())
                     {
-                        let _ = tx.send(Ok((session_id, cx.clone())));
+                        let _ = tx.send(Ok((session_id, cx.clone(), config_options)));
                     }
 
                     std::future::pending::<Result<(), agent_client_protocol::Error>>().await
@@ -502,7 +612,7 @@ impl SessionManager {
                 ACP_STARTUP_TIMEOUT.as_secs()
             )
         })?;
-        let (session_id, connection) = ready_result.map_err(|_| {
+        let (session_id, connection, config_options) = ready_result.map_err(|_| {
             task.abort();
             "Failed to create ACP connection: connection task exited".to_string()
         })??;
@@ -514,6 +624,11 @@ impl SessionManager {
 
         conns.insert(workspace_id.clone(), Arc::new(Mutex::new(connection)));
         ids.insert(workspace_id.clone(), session_id.clone());
+        self.session_config_options
+            .lock()
+            .await
+            .insert(workspace_id.clone(), config_options);
+        let runtime_id = runtime.as_id().to_string();
         runtimes.insert(workspace_id.clone(), runtime);
         let old_task = tasks.insert(workspace_id.clone(), task);
         if let Some(old_task) = old_task {
@@ -522,7 +637,11 @@ impl SessionManager {
 
         self.upsert_summary(
             &workspace_id,
-            AcpThreadSummary::new(session_id.to_string(), "Session".to_string()),
+            AcpThreadSummary::new(
+                session_id.to_string(),
+                "Session".to_string(),
+                Some(runtime_id),
+            ),
         )
         .await?;
 
@@ -536,6 +655,7 @@ impl SessionManager {
         cwd: PathBuf,
         runtime: AgentRuntime,
         api_key: Option<String>,
+        custom_harnesses: Vec<AcpHarnessConfig>,
         mcp_servers: Vec<McpServer>,
         emit_event: AcpEventEmitter,
     ) -> Result<(), String> {
@@ -548,7 +668,7 @@ impl SessionManager {
         }
 
         let session_id = SessionId::new(thread_id.clone());
-        let agent_config = AgentConfig::resolve(runtime.clone(), api_key);
+        let agent_config = AgentConfig::resolve(runtime.clone(), api_key, &custom_harnesses)?;
 
         if !agent_config.is_available() {
             let release_hint = match runtime {
@@ -558,10 +678,13 @@ impl SessionManager {
                 AgentRuntime::Claude => {
                     "claude-agent-acp requires Node.js. Packaged releases must bundle a Node runtime in the resource bin directory or declare Node.js as a release prerequisite."
                 }
+                AgentRuntime::Custom(_) => {
+                    "Please ensure the custom ACP harness command is installed and available on PATH."
+                }
             };
             return Err(format!(
                 "{} adapter not available. {release_hint}",
-                agent_runtime_name(&runtime),
+                runtime.as_id(),
             ));
         }
 
@@ -621,7 +744,8 @@ impl SessionManager {
             );
 
         let agent = agent_config.to_connectable();
-        let (ready_tx, ready_rx) = oneshot::channel::<Result<ConnectionTo<Agent>, String>>();
+        let (ready_tx, ready_rx) =
+            oneshot::channel::<Result<(ConnectionTo<Agent>, Vec<Value>), String>>();
         let ready_tx = Arc::new(StdMutex::new(Some(ready_tx)));
         let ready_tx_for_connection = ready_tx.clone();
         let ready_tx_for_failure = ready_tx.clone();
@@ -631,9 +755,7 @@ impl SessionManager {
             let result = client
                 .connect_with(agent, async move |cx: ConnectionTo<Agent>| {
                     let init_response = cx
-                        .send_request::<InitializeRequest>(InitializeRequest::new(
-                            ProtocolVersion::V1,
-                        ))
+                        .send_request::<InitializeRequest>(initialize_request())
                         .block_task()
                         .await
                         .map_err(agent_client_protocol::Error::into_internal_error)?;
@@ -647,11 +769,18 @@ impl SessionManager {
                     let mut load_session_req =
                         LoadSessionRequest::new(session_id_for_connection, cwd);
                     load_session_req.mcp_servers = mcp_servers;
-                    cx.send_request::<LoadSessionRequest>(load_session_req)
+                    let response = cx
+                        .send_request::<LoadSessionRequest>(load_session_req)
                         .block_task()
                         .await
-                        .map(|_: LoadSessionResponse| ())
                         .map_err(agent_client_protocol::Error::into_internal_error)?;
+                    let response: LoadSessionResponse = response;
+                    let config_options = response
+                        .config_options
+                        .as_ref()
+                        .and_then(|options| serde_json::to_value(options).ok())
+                        .and_then(|value| value.as_array().cloned())
+                        .unwrap_or_default();
                     is_history_replay.store(false, Ordering::SeqCst);
 
                     if let Some(tx) = ready_tx_for_connection
@@ -659,7 +788,7 @@ impl SessionManager {
                         .ok()
                         .and_then(|mut tx| tx.take())
                     {
-                        let _ = tx.send(Ok(cx.clone()));
+                        let _ = tx.send(Ok((cx.clone(), config_options)));
                     }
 
                     std::future::pending::<Result<(), agent_client_protocol::Error>>().await
@@ -684,7 +813,7 @@ impl SessionManager {
                 ACP_STARTUP_TIMEOUT.as_secs()
             )
         })?;
-        let connection = ready_result.map_err(|_| {
+        let (connection, config_options) = ready_result.map_err(|_| {
             task.abort();
             "Failed to load ACP session: connection task exited".to_string()
         })??;
@@ -696,12 +825,161 @@ impl SessionManager {
 
         conns.insert(workspace_id.clone(), Arc::new(Mutex::new(connection)));
         ids.insert(workspace_id.clone(), session_id);
+        self.session_config_options
+            .lock()
+            .await
+            .insert(workspace_id.clone(), config_options);
         runtimes.insert(workspace_id.clone(), runtime);
         let old_task = tasks.insert(workspace_id, task);
         if let Some(old_task) = old_task {
             old_task.abort();
         }
 
+        Ok(())
+    }
+
+    pub(crate) async fn discover_session_config(
+        &self,
+        cwd: PathBuf,
+        runtime: AgentRuntime,
+        api_key: Option<String>,
+        custom_harnesses: Vec<AcpHarnessConfig>,
+        mcp_servers: Vec<McpServer>,
+    ) -> Result<Vec<Value>, String> {
+        let agent_config = AgentConfig::resolve(runtime.clone(), api_key, &custom_harnesses)?;
+        if !agent_config.is_available() {
+            return Err(format!(
+                "{} adapter not available. Please ensure the ACP harness command is installed and available on PATH.",
+                runtime.as_id(),
+            ));
+        }
+
+        let client = Client.builder().name("trantor-client");
+        let agent = agent_config.to_connectable();
+        let (ready_tx, ready_rx) = oneshot::channel::<Result<Vec<Value>, String>>();
+        let ready_tx = Arc::new(StdMutex::new(Some(ready_tx)));
+        let ready_tx_for_connection = ready_tx.clone();
+        let ready_tx_for_failure = ready_tx.clone();
+
+        let task = tokio::spawn(async move {
+            let result = client
+                .connect_with(agent, async move |cx: ConnectionTo<Agent>| {
+                    cx.send_request(initialize_request())
+                        .block_task()
+                        .await
+                        .map_err(agent_client_protocol::Error::into_internal_error)?;
+
+                    let mut new_session_req = NewSessionRequest::new(cwd);
+                    new_session_req.mcp_servers = mcp_servers;
+                    let response: NewSessionResponse = cx
+                        .send_request::<NewSessionRequest>(new_session_req)
+                        .block_task()
+                        .await
+                        .map_err(agent_client_protocol::Error::into_internal_error)?;
+
+                    let config_options = response
+                        .config_options
+                        .as_ref()
+                        .and_then(|options| serde_json::to_value(options).ok())
+                        .and_then(|value| value.as_array().cloned())
+                        .unwrap_or_default();
+                    if let Some(tx) = ready_tx_for_connection
+                        .lock()
+                        .ok()
+                        .and_then(|mut tx| tx.take())
+                    {
+                        let _ = tx.send(Ok(config_options));
+                    }
+
+                    std::future::pending::<Result<(), agent_client_protocol::Error>>().await
+                })
+                .await;
+
+            if let Err(err) = result {
+                if let Some(tx) = ready_tx_for_failure
+                    .lock()
+                    .ok()
+                    .and_then(|mut tx| tx.take())
+                {
+                    let _ = tx.send(Err(format!("Failed to discover ACP config: {err}")));
+                }
+            }
+        });
+
+        let ready_result = timeout(ACP_STARTUP_TIMEOUT, ready_rx).await.map_err(|_| {
+            task.abort();
+            format!(
+                "Timed out discovering ACP config after {} seconds",
+                ACP_STARTUP_TIMEOUT.as_secs()
+            )
+        })?;
+        task.abort();
+        ready_result.map_err(|_| "Failed to discover ACP config: connection task exited".to_string())?
+    }
+
+    pub(crate) async fn set_common_session_config(
+        &self,
+        workspace_id: &str,
+        model: Option<&str>,
+        effort: Option<&str>,
+    ) -> Result<(), String> {
+        if let Some(model) = model.filter(|value| !value.trim().is_empty()) {
+            self.set_session_config_by_category(workspace_id, "model", model.trim())
+                .await?;
+        }
+        if let Some(effort) = effort.filter(|value| !value.trim().is_empty()) {
+            self.set_session_config_by_category(workspace_id, "thought_level", effort.trim())
+                .await?;
+        }
+        Ok(())
+    }
+
+    async fn set_session_config_by_category(
+        &self,
+        workspace_id: &str,
+        category: &str,
+        value: &str,
+    ) -> Result<(), String> {
+        let config_id = {
+            let config_options = self.session_config_options.lock().await;
+            let Some(options) = config_options.get(workspace_id) else {
+                return Ok(());
+            };
+            find_config_id_by_category(options, category)
+        };
+        let Some(config_id) = config_id else {
+            return Ok(());
+        };
+        let connection = self
+            .connections
+            .lock()
+            .await
+            .get(workspace_id)
+            .cloned()
+            .ok_or("No ACP connection for workspace")?;
+        let session_id = self
+            .session_ids
+            .lock()
+            .await
+            .get(workspace_id)
+            .cloned()
+            .ok_or("No ACP session for workspace")?;
+        let cx = connection.lock().await;
+        let request = SetSessionConfigOptionRequest::new(session_id, config_id, value.to_string());
+        let response: Value = cx
+            .send_request::<UntypedMessage>(
+                UntypedMessage::new("session/set_config_option", request)
+                    .map_err(|e| format!("Failed to encode ACP session config request: {e}"))?,
+            )
+            .block_task()
+            .await
+            .map_err(|e| format!("Failed to set ACP session config: {e}"))?;
+        if let Some(config_options) = config_options_from_value(&response) {
+            self.session_config_options
+                .lock()
+                .await
+                .insert(workspace_id.to_string(), config_options);
+        }
         Ok(())
     }
 
@@ -930,6 +1208,9 @@ impl SessionManager {
             if summary.name != "Session" || existing.name == "Session" {
                 existing.name = summary.name;
             }
+            if summary.runtime.is_some() {
+                existing.runtime = summary.runtime;
+            }
             existing.updated_at = summary.updated_at;
             existing.archived = false;
         } else {
@@ -959,7 +1240,7 @@ async fn persist_summary_title(
         .iter_mut()
         .find(|summary| summary.id == thread_id)
     else {
-        workspace_summaries.insert(0, AcpThreadSummary::new(thread_id.to_string(), title));
+        workspace_summaries.insert(0, AcpThreadSummary::new(thread_id.to_string(), title, None));
         return write_summaries(summaries_path, &summaries);
     };
     summary.name = title;
@@ -989,17 +1270,20 @@ pub(crate) struct AcpThreadSummary {
     pub(crate) created_at: i64,
     pub(crate) updated_at: i64,
     #[serde(default)]
+    pub(crate) runtime: Option<String>,
+    #[serde(default)]
     pub(crate) archived: bool,
 }
 
 impl AcpThreadSummary {
-    fn new(id: String, name: String) -> Self {
+    fn new(id: String, name: String, runtime: Option<String>) -> Self {
         let now = now_ms();
         Self {
             id,
             name,
             created_at: now,
             updated_at: now,
+            runtime,
             archived: false,
         }
     }
@@ -1013,6 +1297,7 @@ impl AcpThreadSummary {
             "workspace_id": workspace_id,
             "createdAt": self.created_at,
             "updatedAt": self.updated_at,
+            "runtime": self.runtime,
         })
     }
 
@@ -1025,6 +1310,7 @@ impl AcpThreadSummary {
             "resumable": true,
             "createdAt": self.created_at,
             "updatedAt": self.updated_at,
+            "runtime": self.runtime,
         })
     }
 }
@@ -1560,6 +1846,89 @@ mod tests {
         std::fs::remove_dir_all(temp_dir).unwrap();
     }
 
+    #[test]
+    fn custom_agent_config_parses_start_command_and_env() {
+        let config = AgentConfig::resolve(
+            AgentRuntime::Custom("my-harness".to_string()),
+            None,
+            &[AcpHarnessConfig {
+                id: "my-harness".to_string(),
+                name: "My Harness".to_string(),
+                icon: "bot".to_string(),
+                start_command: "npx -y \"my acp\" --stdio".to_string(),
+                env: vec![crate::types::AcpHarnessEnvVar {
+                    name: "TOKEN".to_string(),
+                    value: "secret".to_string(),
+                }],
+                models: Vec::new(),
+                thinking_levels: Vec::new(),
+            }],
+        )
+        .unwrap();
+
+        assert_eq!(config.name, "my-harness");
+        assert_eq!(config.path, PathBuf::from("npx"));
+        assert_eq!(config.args, vec!["-y", "my acp", "--stdio"]);
+        assert_eq!(config.env.get("TOKEN").map(String::as_str), Some("secret"));
+    }
+
+    #[test]
+    fn custom_agent_config_rejects_missing_harness() {
+        let error = AgentConfig::resolve(AgentRuntime::Custom("missing".to_string()), None, &[])
+            .unwrap_err();
+
+        assert!(error.contains("not configured"));
+    }
+
+    #[test]
+    fn config_lookup_prefers_semantic_category() {
+        let options = vec![
+            json!({
+                "id": "thinking",
+                "name": "Thinking",
+                "category": "thought_level",
+                "type": "select",
+                "currentValue": "medium",
+                "options": [{ "value": "medium", "name": "Medium" }]
+            }),
+            json!({
+                "id": "model",
+                "name": "Model",
+                "type": "select",
+                "currentValue": "large",
+                "options": [{ "value": "large", "name": "Large" }]
+            }),
+        ];
+
+        assert_eq!(
+            find_config_id_by_category(&options, "thought_level").as_deref(),
+            Some("thinking"),
+        );
+        assert_eq!(
+            find_config_id_by_category(&options, "model").as_deref(),
+            Some("model"),
+        );
+    }
+
+    #[test]
+    fn config_options_from_value_accepts_empty_response() {
+        assert!(config_options_from_value(&json!({})).is_none());
+        assert_eq!(
+            config_options_from_value(&json!({ "configOptions": [{ "id": "model" }] }))
+                .unwrap(),
+            vec![json!({ "id": "model" })],
+        );
+    }
+
+    #[test]
+    fn initialize_request_includes_client_info() {
+        let request = initialize_request();
+        let client_info = request.client_info.expect("client info");
+
+        assert_eq!(client_info.name, ACP_CLIENT_NAME);
+        assert!(!client_info.version.trim().is_empty());
+    }
+
     #[tokio::test]
     async fn session_title_updates_are_persisted_to_summaries() {
         let temp_dir =
@@ -1571,7 +1940,7 @@ mod tests {
         manager
             .upsert_summary(
                 "workspace-1",
-                AcpThreadSummary::new("thread-1".to_string(), "Session".to_string()),
+                AcpThreadSummary::new("thread-1".to_string(), "Session".to_string(), None),
             )
             .await
             .unwrap();
@@ -1588,11 +1957,45 @@ mod tests {
         let reloaded = SessionManager::with_summaries_path(path);
         assert_eq!(
             reloaded
-                .get_thread_summary("workspace-1", "thread-1")
+                .get_thread_summary_including_archived("workspace-1", "thread-1")
                 .await
                 .unwrap()
                 .name,
             "Investigate build"
+        );
+
+        std::fs::remove_dir_all(temp_dir).unwrap();
+    }
+
+    #[tokio::test]
+    async fn acp_summary_persists_runtime() {
+        let temp_dir =
+            std::env::temp_dir().join(format!("trantor-acp-runtime-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&temp_dir).unwrap();
+        let path = temp_dir.join("acp_threads.json");
+
+        let manager = SessionManager::with_summaries_path(path.clone());
+        manager
+            .upsert_summary(
+                "workspace-1",
+                AcpThreadSummary::new(
+                    "thread-1".to_string(),
+                    "Session".to_string(),
+                    Some("my-harness".to_string()),
+                ),
+            )
+            .await
+            .unwrap();
+
+        let reloaded = SessionManager::with_summaries_path(path);
+        assert_eq!(
+            reloaded
+                .get_thread_summary_including_archived("workspace-1", "thread-1")
+                .await
+                .unwrap()
+                .runtime
+                .as_deref(),
+            Some("my-harness")
         );
 
         std::fs::remove_dir_all(temp_dir).unwrap();
@@ -1630,7 +2033,7 @@ mod tests {
             .unwrap();
         assert_eq!(
             manager
-                .get_thread_summary("workspace-1", "thread-1")
+                .get_thread_summary_including_archived("workspace-1", "thread-1")
                 .await
                 .unwrap()
                 .name,

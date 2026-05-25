@@ -95,6 +95,7 @@ export function buildThreadSummaryFromThread({
     ? customName
     : clampThreadName(preview) ?? fallbackName;
   const metadata = extractThreadCodexMetadata(thread);
+  const runtime = asString(thread.runtime ?? thread.agentRuntime ?? thread.agent_runtime);
   if (shouldHideSubagentThreadFromSidebar(thread.source)) {
     return null;
   }
@@ -108,6 +109,7 @@ export function buildThreadSummaryFromThread({
     name,
     updatedAt: getThreadTimestamp(thread),
     createdAt: getThreadCreatedTimestamp(thread),
+    ...(runtime ? { runtime } : {}),
     ...(metadata.modelId ? { modelId: metadata.modelId } : {}),
     ...(metadata.effort ? { effort: metadata.effort } : {}),
     ...(isSubagent ? { isSubagent: true } : {}),

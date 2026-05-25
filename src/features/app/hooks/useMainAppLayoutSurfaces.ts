@@ -136,6 +136,7 @@ type UseMainAppLayoutSurfacesArgs = {
   launchScriptsState: WorkspaceLaunchScriptsState | undefined;
   selectedHarness: ComposerProps["selectedHarness"];
   onSelectHarness: ComposerProps["onSelectHarness"];
+  customHarnesses: ComposerProps["customHarnesses"];
   harnessLocked: NonNullable<ComposerProps["harnessLocked"]>;
   models: ComposerProps["models"];
   selectedModelId: ComposerProps["selectedModelId"];
@@ -275,6 +276,7 @@ function buildPrimarySurface({
   launchScriptsState,
   selectedHarness,
   onSelectHarness,
+  customHarnesses,
   harnessLocked,
   models,
   selectedModelId,
@@ -468,6 +470,7 @@ function buildPrimarySurface({
           onSelectCollaborationMode,
           selectedHarness,
           onSelectHarness,
+          customHarnesses,
           harnessLocked,
           models,
           selectedModelId,
@@ -973,6 +976,7 @@ export function useMainAppLayoutSurfaces({
   launchScriptsState,
   selectedHarness,
   onSelectHarness,
+  customHarnesses,
   harnessLocked,
   models,
   selectedModelId,
@@ -1115,6 +1119,7 @@ export function useMainAppLayoutSurfaces({
     launchScriptsState,
     selectedHarness,
     onSelectHarness,
+    customHarnesses,
     harnessLocked,
     models,
     selectedModelId,

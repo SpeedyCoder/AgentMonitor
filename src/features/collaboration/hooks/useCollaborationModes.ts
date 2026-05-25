@@ -5,6 +5,7 @@ import type {
   WorkspaceInfo,
 } from "../../../types";
 import type { AgentHarness } from "../../models/utils/modelRuntime";
+import { isBuiltInAgentHarness } from "../../models/utils/modelRuntime";
 import { getCollaborationModes } from "../../../services/tauri";
 
 type UseCollaborationModesOptions = {
@@ -128,7 +129,9 @@ export function useCollaborationModes({
   );
 
   const refreshModes = useCallback(async () => {
-    if (!workspaceId || !isConnected || !enabled) {
+    if (!workspaceId || !isConnected || !enabled || !isBuiltInAgentHarness(runtime)) {
+      setModes([]);
+      setSelectedModeId(null);
       return;
     }
     if (inFlight.current) {

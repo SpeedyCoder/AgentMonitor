@@ -11,10 +11,19 @@ use crate::shared::acp_core::{content_from_text_and_images, AcpAppEvent, Workspa
 use crate::state::AppState;
 use crate::types::AgentRuntime;
 
+fn runtime_api_key(settings: &crate::types::AppSettings, runtime: &AgentRuntime) -> Option<String> {
+    match runtime {
+        AgentRuntime::Codex => settings.codex_api_key.clone(),
+        AgentRuntime::Claude => settings.claude_api_key.clone(),
+        AgentRuntime::Custom(_) => None,
+    }
+}
+
 /// Start a new ACP session/thread for a workspace
 #[tauri::command]
 pub async fn acp_start_thread(
     workspace_id: String,
+    runtime: Option<String>,
     state: State<'_, AppState>,
     app: AppHandle,
 ) -> Result<Value, String> {
@@ -23,7 +32,7 @@ pub async fn acp_start_thread(
             &*state,
             app,
             "acp_start_thread",
-            json!({ "workspaceId": workspace_id }),
+            json!({ "workspaceId": workspace_id, "runtime": runtime }),
         )
         .await;
     }
@@ -32,15 +41,13 @@ pub async fn acp_start_thread(
     let workspace = workspaces.get(&workspace_id).ok_or("Workspace not found")?;
 
     let settings = state.app_settings.lock().await;
-    let runtime = workspace
-        .settings
-        .agent_runtime
-        .clone()
-        .unwrap_or(AgentRuntime::Codex);
-    let api_key = match runtime {
-        AgentRuntime::Codex => settings.codex_api_key.clone(),
-        AgentRuntime::Claude => settings.claude_api_key.clone(),
-    };
+    let runtime = runtime
+        .as_deref()
+        .map(AgentRuntime::from_id)
+        .or_else(|| workspace.settings.agent_runtime.clone())
+        .unwrap_or_default();
+    let api_key = runtime_api_key(&settings, &runtime);
+    let custom_harnesses = settings.custom_acp_harnesses.clone();
 
     let cwd = PathBuf::from(&workspace.path);
     let mcp_config = WorkspaceMcpConfig::default();
@@ -63,6 +70,7 @@ pub async fn acp_start_thread(
             cwd,
             runtime,
             api_key,
+            custom_harnesses,
             mcp_servers,
             emit_event,
         )
@@ -75,12 +83,48 @@ pub async fn acp_start_thread(
     }))
 }
 
+#[tauri::command]
+pub async fn acp_session_config(
+    workspace_id: String,
+    runtime: String,
+    state: State<'_, AppState>,
+    app: AppHandle,
+) -> Result<Value, String> {
+    if remote_backend::is_remote_mode(&*state).await {
+        return remote_backend::call_remote(
+            &*state,
+            app,
+            "acp_session_config",
+            json!({ "workspaceId": workspace_id, "runtime": runtime }),
+        )
+        .await;
+    }
+
+    let workspaces = state.workspaces.lock().await;
+    let workspace = workspaces.get(&workspace_id).ok_or("Workspace not found")?;
+    let settings = state.app_settings.lock().await;
+    let runtime = AgentRuntime::from_id(runtime.trim());
+    let api_key = runtime_api_key(&settings, &runtime);
+    let custom_harnesses = settings.custom_acp_harnesses.clone();
+    let cwd = PathBuf::from(&workspace.path);
+    let mcp_servers = WorkspaceMcpConfig::default().to_acp_servers(&cwd);
+
+    let config_options = state
+        .acp_sessions
+        .discover_session_config(cwd, runtime, api_key, custom_harnesses, mcp_servers)
+        .await?;
+
+    Ok(json!({ "configOptions": config_options }))
+}
+
 /// Send a user message to an ACP session
 #[tauri::command]
 pub async fn acp_send_user_message(
     workspace_id: String,
     thread_id: String,
     text: String,
+    model: Option<String>,
+    effort: Option<String>,
     images: Option<Vec<String>>,
     state: State<'_, AppState>,
     app: AppHandle,
@@ -101,6 +145,11 @@ pub async fn acp_send_user_message(
     }
 
     let content = content_from_text_and_images(text, images.unwrap_or_default())?;
+
+    state
+        .acp_sessions
+        .set_common_session_config(&workspace_id, model.as_deref(), effort.as_deref())
+        .await?;
 
     let stream_ids = state
         .acp_sessions
@@ -258,15 +307,20 @@ async fn load_thread_for_workspace(
     let workspaces = state.workspaces.lock().await;
     let workspace = workspaces.get(workspace_id).ok_or("Workspace not found")?;
     let settings = state.app_settings.lock().await;
-    let runtime = workspace
-        .settings
-        .agent_runtime
-        .clone()
-        .unwrap_or(AgentRuntime::Codex);
-    let api_key = match runtime {
-        AgentRuntime::Codex => settings.codex_api_key.clone(),
-        AgentRuntime::Claude => settings.claude_api_key.clone(),
-    };
+    let runtime = workspace.settings.agent_runtime.clone().unwrap_or_else(|| {
+        summary
+            .runtime
+            .as_deref()
+            .map(AgentRuntime::from_id)
+            .unwrap_or_default()
+    });
+    let runtime = summary
+        .runtime
+        .as_deref()
+        .map(AgentRuntime::from_id)
+        .unwrap_or(runtime);
+    let api_key = runtime_api_key(&settings, &runtime);
+    let custom_harnesses = settings.custom_acp_harnesses.clone();
     let cwd = PathBuf::from(&workspace.path);
     drop(settings);
     drop(workspaces);
@@ -292,6 +346,7 @@ async fn load_thread_for_workspace(
             cwd,
             runtime,
             api_key,
+            custom_harnesses,
             mcp_servers,
             emit_event,
         )

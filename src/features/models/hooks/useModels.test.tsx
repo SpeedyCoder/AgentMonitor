@@ -2,12 +2,11 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { WorkspaceInfo } from "../../../types";
-import { getConfigModel, getModelList } from "../../../services/tauri";
-import { useModels } from "./useModels";
+import { getAcpSessionConfig } from "../../../services/tauri";
+import { clearAcpHarnessModelCacheForTests, useModels } from "./useModels";
 
 vi.mock("../../../services/tauri", () => ({
-  getModelList: vi.fn(),
-  getConfigModel: vi.fn(),
+  getAcpSessionConfig: vi.fn(),
 }));
 
 const workspace: WorkspaceInfo = {
@@ -18,291 +17,186 @@ const workspace: WorkspaceInfo = {
   settings: { sidebarCollapsed: false },
 };
 
+const secondWorkspace: WorkspaceInfo = {
+  ...workspace,
+  id: "workspace-2",
+  name: "Trantor Two",
+};
+
+function configResponse(
+  models: Array<{ value: string; name?: string; description?: string }>,
+  currentValue = models[0]?.value ?? "",
+  thinking: Array<{ value: string; name?: string; description?: string }> = [],
+  currentThinking = thinking[0]?.value ?? "",
+) {
+  return {
+    configOptions: [
+      {
+        id: "model",
+        name: "Model",
+        category: "model",
+        type: "select",
+        currentValue,
+        options: models.map((model) => ({
+          value: model.value,
+          name: model.name ?? model.value,
+          description: model.description ?? "",
+        })),
+      },
+      {
+        id: "thinking",
+        name: "Thinking",
+        category: "thought_level",
+        type: "select",
+        currentValue: currentThinking,
+        options: thinking.map((level) => ({
+          value: level.value,
+          name: level.name ?? level.value,
+          description: level.description ?? "",
+        })),
+      },
+    ],
+  };
+}
+
+function mockAcpConfigByRuntime(configs: Record<string, unknown>) {
+  vi.mocked(getAcpSessionConfig).mockImplementation(async (_workspaceId, runtime) => {
+    if (runtime in configs) {
+      return configs[runtime];
+    }
+    throw new Error(`No ACP config for ${runtime}`);
+  });
+}
+
 describe("useModels", () => {
   afterEach(() => {
     vi.clearAllMocks();
+    clearAcpHarnessModelCacheForTests();
   });
 
-  it("uses model/list when the config model is missing from a non-empty response", async () => {
-    vi.mocked(getModelList).mockResolvedValueOnce({
-      result: {
-        data: [
-          {
-            id: "remote-1",
-            model: "gpt-5.1",
-            displayName: "GPT-5.1",
-            supportedReasoningEfforts: [],
-            defaultReasoningEffort: null,
-            isDefault: true,
-          },
+  it("loads Codex models and reasoning efforts from ACP config options", async () => {
+    mockAcpConfigByRuntime({
+      codex: configResponse(
+        [
+          { value: "gpt-5.1", name: "GPT-5.1" },
+          { value: "gpt-5.2", name: "GPT-5.2" },
         ],
-      },
-    });
-    vi.mocked(getConfigModel).mockResolvedValueOnce("custom-model");
-
-    const { result } = renderHook(() =>
-      useModels({ activeWorkspace: workspace }),
-    );
-
-    await waitFor(() => expect(result.current.models.length).toBeGreaterThan(0));
-
-    expect(getConfigModel).toHaveBeenCalledWith("workspace-1");
-    expect(result.current.models.map((model) => model.model)).toEqual(["gpt-5.1"]);
-    expect(result.current.selectedModel?.model).toBe("gpt-5.1");
-    expect(result.current.reasoningSupported).toBe(false);
-  });
-
-  it("adds the config model when model/list has no usable models", async () => {
-    vi.mocked(getModelList).mockResolvedValueOnce({
-      result: {
-        data: [],
-      },
-    });
-    vi.mocked(getConfigModel).mockResolvedValueOnce("custom-model");
-
-    const { result } = renderHook(() =>
-      useModels({ activeWorkspace: workspace }),
-    );
-
-    await waitFor(() => expect(result.current.models.length).toBeGreaterThan(0));
-
-    expect(result.current.models[0]).toMatchObject({
-      id: "codex:custom-model",
-      model: "custom-model",
-      runtime: "codex",
-    });
-    expect(result.current.selectedModel?.model).toBe("custom-model");
-  });
-
-  it("prefers the provider entry when the config model matches by slug", async () => {
-    vi.mocked(getModelList).mockResolvedValueOnce({
-      result: {
-        data: [
-          {
-            id: "provider-id",
-            model: "custom-model",
-            displayName: "Provider Custom",
-            supportedReasoningEfforts: [
-              { reasoningEffort: "medium", description: "Medium" },
-              { reasoningEffort: "high", description: "High" },
-            ],
-            defaultReasoningEffort: "medium",
-            isDefault: false,
-          },
+        "gpt-5.2",
+        [
+          { value: "low", name: "Low" },
+          { value: "high", name: "High" },
         ],
-      },
+        "high",
+      ),
     });
-    vi.mocked(getConfigModel).mockResolvedValueOnce("custom-model");
 
     const { result } = renderHook(() =>
-      useModels({ activeWorkspace: workspace }),
+      useModels({ activeWorkspace: workspace, allowedHarness: "codex" }),
     );
 
-    await waitFor(() => expect(result.current.selectedModelId).toBe("provider-id"));
+    await waitFor(() => expect(result.current.selectedModelId).toBe("codex:gpt-5.2"));
 
-    expect(result.current.models).toHaveLength(1);
-    expect(result.current.selectedModel?.id).toBe("provider-id");
+    expect(result.current.models.map((model) => model.id)).toEqual([
+      "codex:gpt-5.1",
+      "codex:gpt-5.2",
+    ]);
     expect(result.current.reasoningSupported).toBe(true);
+    expect(result.current.reasoningOptions).toEqual(["low", "high"]);
+    expect(result.current.selectedEffort).toBe("high");
   });
 
-  it("does not select an upgrade-gated config model", async () => {
-    vi.mocked(getModelList).mockResolvedValueOnce({
-      result: {
-        data: [
-          {
-            id: "codex:gpt-5.5",
-            model: "gpt-5.5",
-            displayName: "GPT-5.5",
-            upgrade: "latest-codex",
-          },
-          {
-            id: "codex:gpt-5.4",
-            model: "gpt-5.4",
-            displayName: "GPT-5.4",
-            supportedReasoningEfforts: [],
-            defaultReasoningEffort: null,
-            isDefault: true,
-          },
-        ],
-      },
+  it("loads Claude models from ACP instead of the fallback catalog", async () => {
+    mockAcpConfigByRuntime({
+      claude: configResponse([
+        { value: "sonnet-4.5", name: "Sonnet 4.5" },
+        { value: "opus-4.7", name: "Opus 4.7" },
+      ], "sonnet-4.5"),
     });
-    vi.mocked(getConfigModel).mockResolvedValueOnce("gpt-5.5");
 
     const { result } = renderHook(() =>
-      useModels({ activeWorkspace: workspace }),
+      useModels({ activeWorkspace: workspace, allowedHarness: "claude" }),
     );
 
-    await waitFor(() => expect(result.current.selectedModel?.model).toBe("gpt-5.4"));
+    await waitFor(() => expect(result.current.selectedModelId).toBe("claude:sonnet-4.5"));
 
-    expect(result.current.models.map((model) => model.model)).toEqual(["gpt-5.4"]);
+    expect(result.current.models.map((model) => model.id)).toEqual([
+      "claude:sonnet-4.5",
+      "claude:opus-4.7",
+    ]);
+    expect(result.current.models.map((model) => model.displayName)).toEqual([
+      "Sonnet 4.5",
+      "Opus 4.7",
+    ]);
   });
 
-  it("keeps the selected reasoning effort when switching models", async () => {
-    vi.mocked(getModelList).mockResolvedValueOnce({
-      result: {
-        data: [
-          {
-            id: "remote-1",
-            model: "gpt-5.1",
-            displayName: "GPT-5.1",
-            supportedReasoningEfforts: [
-              { reasoningEffort: "low", description: "Low" },
-              { reasoningEffort: "medium", description: "Medium" },
-            ],
-            defaultReasoningEffort: "medium",
-            isDefault: true,
-          },
-        ],
-      },
-    });
-    vi.mocked(getConfigModel).mockResolvedValueOnce("custom-model");
+  it("falls back to Claude catalog when ACP config is unavailable", async () => {
+    mockAcpConfigByRuntime({});
 
     const { result } = renderHook(() =>
-      useModels({ activeWorkspace: workspace }),
+      useModels({ activeWorkspace: workspace, allowedHarness: "claude" }),
     );
 
-    await waitFor(() => expect(result.current.models.length).toBe(1));
+    await waitFor(() =>
+      expect(result.current.models.map((model) => model.id)).toEqual([
+        "claude:default",
+        "claude:sonnet",
+        "claude:haiku",
+      ]),
+    );
+    expect(result.current.reasoningSupported).toBe(true);
+    expect(result.current.reasoningOptions).toEqual([
+      "low",
+      "medium",
+      "high",
+      "xhigh",
+      "none",
+    ]);
+  });
+
+  it("keeps a manually selected reasoning effort when switching models", async () => {
+    mockAcpConfigByRuntime({
+      codex: configResponse(
+        [{ value: "gpt-5.1", name: "GPT-5.1" }],
+        "gpt-5.1",
+        [
+          { value: "low", name: "Low" },
+          { value: "medium", name: "Medium" },
+        ],
+        "medium",
+      ),
+    });
+
+    const { result } = renderHook(() =>
+      useModels({ activeWorkspace: workspace, allowedHarness: "codex" }),
+    );
+
+    await waitFor(() => expect(result.current.selectedModelId).toBe("codex:gpt-5.1"));
 
     act(() => {
       result.current.setSelectedEffort("high");
-      result.current.setSelectedModelId("remote-1");
+      result.current.setSelectedModelId("codex:gpt-5.1");
     });
 
     await waitFor(() => {
-      expect(result.current.selectedModelId).toBe("remote-1");
+      expect(result.current.selectedModelId).toBe("codex:gpt-5.1");
       expect(result.current.selectedEffort).toBe("high");
     });
   });
 
-  it("keeps Claude options visible when preferred model is Codex", async () => {
-    vi.mocked(getModelList).mockResolvedValueOnce({
-      result: {
-        data: [
-          {
-            id: "codex:gpt-5.1",
-            model: "gpt-5.1",
-            runtime: "codex",
-            displayName: "GPT-5.1",
-            supportedReasoningEfforts: [],
-            defaultReasoningEffort: null,
-            isDefault: true,
-          },
-          {
-            id: "claude:sonnet-4",
-            model: "sonnet-4",
-            runtime: "claude",
-            displayName: "Claude Sonnet 4",
-            supportedReasoningEfforts: [],
-            defaultReasoningEffort: null,
-            isDefault: false,
-          },
-        ],
-      },
+  it("filters to the active harness and reuses cached ACP config when switching", async () => {
+    mockAcpConfigByRuntime({
+      codex: configResponse([{ value: "gpt-5.1", name: "GPT-5.1" }], "gpt-5.1"),
+      claude: configResponse([{ value: "sonnet-4.5", name: "Sonnet 4.5" }], "sonnet-4.5"),
     });
-    vi.mocked(getConfigModel).mockResolvedValueOnce(null);
-
-    const { result } = renderHook(() =>
-      useModels({
-        activeWorkspace: workspace,
-        preferredModelId: "codex:gpt-5.1",
-      }),
-    );
-
-    await waitFor(() => expect(result.current.models.length).toBe(2));
-
-    expect(result.current.models.map((model) => model.id)).toEqual([
-      "codex:gpt-5.1",
-      "claude:sonnet-4",
-    ]);
-  });
-
-  it("filters to the active thread provider when allowedRuntime is set", async () => {
-    vi.mocked(getModelList).mockResolvedValueOnce({
-      result: {
-        data: [
-          {
-            id: "codex:gpt-5.1",
-            model: "gpt-5.1",
-            runtime: "codex",
-            displayName: "GPT-5.1",
-            supportedReasoningEfforts: [],
-            defaultReasoningEffort: null,
-            isDefault: true,
-          },
-          {
-            id: "claude:sonnet-4.5",
-            model: "sonnet-4.5",
-            runtime: "claude",
-            displayName: "Sonnet 4.5 · Claude",
-            supportedReasoningEfforts: [],
-            defaultReasoningEffort: null,
-            isDefault: false,
-          },
-          {
-            id: "claude:sonnet-4.6",
-            model: "sonnet-4.6",
-            runtime: "claude",
-            displayName: "Sonnet 4.6 · Claude",
-            supportedReasoningEfforts: [],
-            defaultReasoningEffort: null,
-            isDefault: false,
-          },
-        ],
-      },
-    });
-    vi.mocked(getConfigModel).mockResolvedValueOnce(null);
-
-    const { result } = renderHook(() =>
-      useModels({
-        activeWorkspace: workspace,
-        preferredModelId: "claude:sonnet-4.5",
-        allowedRuntime: "claude",
-      }),
-    );
-
-    await waitFor(() => expect(result.current.models.length).toBe(2));
-
-    expect(result.current.models.map((model) => model.id)).toEqual([
-      "claude:sonnet-4.5",
-      "claude:sonnet-4.6",
-    ]);
-  });
-
-  it("re-filters cached models immediately when the allowed harness changes", async () => {
-    vi.mocked(getModelList).mockResolvedValueOnce({
-      result: {
-        data: [
-          {
-            id: "codex:gpt-5.1",
-            model: "gpt-5.1",
-            runtime: "codex",
-            displayName: "GPT-5.1",
-            supportedReasoningEfforts: [],
-            defaultReasoningEffort: null,
-            isDefault: true,
-          },
-          {
-            id: "claude:sonnet-4.5",
-            model: "sonnet-4.5",
-            runtime: "claude",
-            displayName: "Sonnet 4.5 · Claude",
-            supportedReasoningEfforts: [],
-            defaultReasoningEffort: null,
-            isDefault: false,
-          },
-        ],
-      },
-    });
-    vi.mocked(getConfigModel).mockResolvedValueOnce(null);
 
     const { result, rerender } = renderHook(
-      ({ allowedHarness }: { allowedHarness: "codex" | "claude" | null }) =>
+      ({ allowedHarness }: { allowedHarness: "codex" | "claude" }) =>
         useModels({
           activeWorkspace: workspace,
           allowedHarness,
         }),
       {
-        initialProps: { allowedHarness: "codex" as "codex" | "claude" | null },
+        initialProps: { allowedHarness: "codex" as "codex" | "claude" },
       },
     );
 
@@ -316,125 +210,146 @@ describe("useModels", () => {
       "claude:sonnet-4.5",
     ]));
 
-    expect(getModelList).toHaveBeenCalledTimes(1);
+    rerender({ allowedHarness: "codex" });
+
+    await waitFor(() => expect(result.current.models.map((model) => model.id)).toEqual([
+      "codex:gpt-5.1",
+    ]));
+
+    expect(getAcpSessionConfig).toHaveBeenCalledWith("workspace-1", "codex");
+    expect(getAcpSessionConfig).toHaveBeenCalledWith("workspace-1", "claude");
+    expect(vi.mocked(getAcpSessionConfig).mock.calls.filter((call) => call[1] === "codex"))
+      .toHaveLength(1);
   });
 
-  it("falls back to Claude catalog when the backend returns no Claude models", async () => {
-    vi.mocked(getModelList).mockResolvedValueOnce({
-      result: {
-        data: [
-          {
-            id: "codex:gpt-5.1",
-            model: "gpt-5.1",
-            runtime: "codex",
-            displayName: "GPT-5.1",
-            supportedReasoningEfforts: [],
-            defaultReasoningEffort: null,
-            isDefault: true,
-          },
-        ],
-      },
+  it("reuses cached ACP config across workspaces for the same harness", async () => {
+    mockAcpConfigByRuntime({
+      codex: configResponse([{ value: "gpt-5.1", name: "GPT-5.1" }], "gpt-5.1"),
     });
-    vi.mocked(getConfigModel).mockResolvedValueOnce(null);
 
-    const { result } = renderHook(() =>
-      useModels({
-        activeWorkspace: workspace,
-        allowedHarness: "claude",
-      }),
+    const { result, rerender } = renderHook(
+      ({ activeWorkspace }: { activeWorkspace: WorkspaceInfo }) =>
+        useModels({
+          activeWorkspace,
+          allowedHarness: "codex",
+        }),
+      {
+        initialProps: { activeWorkspace: workspace },
+      },
+    );
+
+    await waitFor(() => expect(result.current.selectedModelId).toBe("codex:gpt-5.1"));
+
+    rerender({ activeWorkspace: secondWorkspace });
+
+    await waitFor(() => expect(result.current.models.map((model) => model.id)).toEqual([
+      "codex:gpt-5.1",
+    ]));
+
+    expect(vi.mocked(getAcpSessionConfig).mock.calls.filter((call) => call[1] === "codex"))
+      .toHaveLength(1);
+  });
+
+  it("prefetches newly configured custom harnesses and uses their ACP config", async () => {
+    mockAcpConfigByRuntime({
+      codex: configResponse([{ value: "gpt-5.1", name: "GPT-5.1" }], "gpt-5.1"),
+      "mistral-vibe": configResponse(
+        [{ value: "mistral-large-latest", name: "Large" }],
+        "mistral-large-latest",
+        [
+          { value: "low", name: "Low" },
+          { value: "medium", name: "Medium" },
+          { value: "high", name: "High" },
+        ],
+        "medium",
+      ),
+    });
+
+    const customHarnesses = [
+      {
+        id: "mistral-vibe",
+        name: "Mistral Vibe",
+        icon: "bot",
+        startCommand: "vibe-acp",
+        env: [],
+      },
+    ];
+
+    const { result, rerender } = renderHook(
+      ({ allowedHarness }: { allowedHarness: string }) =>
+        useModels({
+          activeWorkspace: workspace,
+          allowedHarness,
+          customHarnesses,
+        }),
+      {
+        initialProps: { allowedHarness: "codex" },
+      },
     );
 
     await waitFor(() =>
-      expect(result.current.models.map((model) => model.id)).toEqual([
-        "claude:default",
-        "claude:sonnet",
-        "claude:haiku",
-      ]),
+      expect(getAcpSessionConfig).toHaveBeenCalledWith("workspace-1", "mistral-vibe"),
     );
-    expect(result.current.reasoningSupported).toBe(true);
-    expect(result.current.reasoningOptions).toEqual([
-      "low",
-      "medium",
-      "high",
-      "xhigh",
-      "none",
-    ]);
-    expect(result.current.selectedEffort).toBe("none");
-  });
 
-  it("shows versioned names while keeping Claude alias provider ids", async () => {
-    vi.mocked(getModelList).mockResolvedValueOnce({
-      result: {
-        data: [
-          {
-            id: "claude:default",
-            model: "default",
-            runtime: "claude",
-            providerModelId: "default",
-            displayName: "Default (recommended) · Claude",
-            description: "Opus 4.7 with 1M context · Most capable for complex work",
-            supportedReasoningEfforts: [],
-            defaultReasoningEffort: null,
-            isDefault: true,
-          },
-          {
-            id: "claude:sonnet",
-            model: "sonnet",
-            runtime: "claude",
-            providerModelId: "sonnet",
-            displayName: "Sonnet · Claude",
-            description: "Sonnet 4.6 · Best for everyday tasks",
-            supportedReasoningEfforts: [],
-            defaultReasoningEffort: null,
-            isDefault: false,
-          },
-          {
-            id: "claude:haiku",
-            model: "haiku",
-            runtime: "claude",
-            providerModelId: "haiku",
-            displayName: "Haiku · Claude",
-            description: "Haiku 4.5 · Fastest for quick answers",
-            supportedReasoningEfforts: [],
-            defaultReasoningEffort: null,
-            isDefault: false,
-          },
-        ],
-      },
-    });
-    vi.mocked(getConfigModel).mockResolvedValueOnce(null);
-
-    const { result } = renderHook(() =>
-      useModels({
-        activeWorkspace: workspace,
-        allowedHarness: "claude",
-      }),
-    );
+    rerender({ allowedHarness: "mistral-vibe" });
 
     await waitFor(() =>
-      expect(result.current.models.map((model) => model.id)).toEqual([
-        "claude:default",
-        "claude:sonnet",
-        "claude:haiku",
-      ]),
+      expect(result.current.selectedModelId).toBe("mistral-vibe:mistral-large-latest"),
     );
-    expect(result.current.models.map((model) => model.displayName)).toEqual([
-      "Opus 4.7 · Claude",
-      "Sonnet 4.6 · Claude",
-      "Haiku 4.5 · Claude",
+    expect(result.current.models).toEqual([
+      expect.objectContaining({
+        id: "mistral-vibe:mistral-large-latest",
+        providerModelId: "mistral-large-latest",
+        runtime: "mistral-vibe",
+        displayName: "Large",
+      }),
     ]);
-    expect(result.current.models.map((model) => model.providerModelId)).toEqual([
-      "default",
-      "sonnet",
-      "haiku",
-    ]);
-    expect(result.current.selectedModelId).toBe("claude:default");
-    expect(result.current.reasoningOptions).toEqual([
-      "low",
-      "medium",
-      "high",
-      "xhigh",
-      "none",
-    ]);
+    expect(result.current.reasoningOptions).toEqual(["low", "medium", "high"]);
+  });
+
+  it("keeps model selections isolated between multiple custom harnesses", async () => {
+    mockAcpConfigByRuntime({
+      "agent-a": configResponse([{ value: "model-a", name: "Model A" }], "model-a"),
+      "agent-b": configResponse([{ value: "model-b", name: "Model B" }], "model-b"),
+    });
+
+    const customHarnesses = [
+      {
+        id: "agent-a",
+        name: "Agent A",
+        icon: "bot",
+        startCommand: "agent-a acp",
+        env: [],
+      },
+      {
+        id: "agent-b",
+        name: "Agent B",
+        icon: "bot",
+        startCommand: "agent-b acp",
+        env: [],
+      },
+    ];
+
+    const { result, rerender } = renderHook(
+      ({ allowedHarness }: { allowedHarness: string }) =>
+        useModels({
+          activeWorkspace: workspace,
+          allowedHarness,
+          customHarnesses,
+        }),
+      {
+        initialProps: { allowedHarness: "agent-a" },
+      },
+    );
+
+    await waitFor(() => expect(result.current.selectedModelId).toBe("agent-a:model-a"));
+    expect(result.current.models.map((model) => model.id)).toEqual(["agent-a:model-a"]);
+
+    rerender({ allowedHarness: "agent-b" });
+
+    await waitFor(() => expect(result.current.selectedModelId).toBe("agent-b:model-b"));
+    expect(result.current.models.map((model) => model.id)).toEqual(["agent-b:model-b"]);
+    expect(getAcpSessionConfig).toHaveBeenCalledWith("workspace-1", "agent-a");
+    expect(getAcpSessionConfig).toHaveBeenCalledWith("workspace-1", "agent-b");
   });
 });

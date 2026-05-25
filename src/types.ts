@@ -1,4 +1,25 @@
-export type AgentRuntime = "codex" | "claude";
+export type BuiltInAgentRuntime = "codex" | "claude";
+export type AgentRuntime = BuiltInAgentRuntime | (string & {});
+
+export type AcpHarnessEnvVar = {
+  name: string;
+  value: string;
+};
+
+export type AcpHarnessModelConfig = {
+  id: string;
+  name?: string | null;
+};
+
+export type AcpHarnessConfig = {
+  id: string;
+  name: string;
+  icon: string;
+  startCommand: string;
+  env: AcpHarnessEnvVar[];
+  models?: AcpHarnessModelConfig[];
+  thinkingLevels?: string[];
+};
 
 export type WorkspaceSettings = {
   sidebarCollapsed: boolean;
@@ -148,6 +169,7 @@ export type ThreadSummary = {
   name: string;
   updatedAt: number;
   createdAt?: number;
+  runtime?: AgentRuntime | null;
   modelId?: string | null;
   effort?: string | null;
   isSubagent?: boolean;
@@ -242,6 +264,7 @@ export type AppSettings = {
   codexArgs: string | null;
   claudeCliPath: string | null;
   claudeAdapterPath: string | null;
+  customAcpHarnesses: AcpHarnessConfig[];
   backendMode: BackendMode;
   remoteBackendProvider: RemoteBackendProvider;
   remoteBackendHost: string;
@@ -679,7 +702,7 @@ export type AppMention = {
 export type ModelOption = {
   id: string;
   model: string;
-  runtime?: "codex" | "claude";
+  runtime?: AgentRuntime;
   providerModelId?: string | null;
   displayName: string;
   description: string;

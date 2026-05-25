@@ -250,7 +250,9 @@ fn migrate_follow_up_message_behavior(value: &mut Value) {
 #[cfg(test)]
 mod tests {
     use super::{read_settings, read_workspaces, write_settings, write_workspaces};
-    use crate::types::{AppSettings, WorkspaceEntry, WorkspaceKind, WorkspaceSettings};
+    use crate::types::{
+        AcpHarnessConfig, AppSettings, WorkspaceEntry, WorkspaceKind, WorkspaceSettings,
+    };
     use uuid::Uuid;
 
     #[test]
@@ -437,6 +439,32 @@ mod tests {
         assert_eq!(
             read.global_worktrees_folder.as_deref(),
             Some(r"I:\gpt-projects\worktrees")
+        );
+    }
+
+    #[test]
+    fn write_read_settings_preserves_custom_harness_start_command_arguments() {
+        let temp_dir = std::env::temp_dir().join(format!("trantor-test-{}", Uuid::new_v4()));
+        std::fs::create_dir_all(&temp_dir).expect("create temp dir");
+        let path = temp_dir.join("settings.json");
+
+        let mut settings = AppSettings::default();
+        settings.custom_acp_harnesses = vec![AcpHarnessConfig {
+            id: "cursor-agent".to_string(),
+            name: "Cursor Agent".to_string(),
+            icon: "terminal".to_string(),
+            start_command: "agent acp --stdio --flag value".to_string(),
+            env: Vec::new(),
+            models: Vec::new(),
+            thinking_levels: Vec::new(),
+        }];
+
+        write_settings(&path, &settings).expect("write settings");
+        let read = read_settings(&path).expect("read settings");
+
+        assert_eq!(
+            read.custom_acp_harnesses[0].start_command,
+            "agent acp --stdio --flag value"
         );
     }
 

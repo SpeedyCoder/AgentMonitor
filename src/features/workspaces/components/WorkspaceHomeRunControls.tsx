@@ -6,6 +6,7 @@ import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
 import ChevronRight from "lucide-react/dist/esm/icons/chevron-right";
 import Cpu from "lucide-react/dist/esm/icons/cpu";
 import Feather from "lucide-react/dist/esm/icons/feather";
+import Bot from "lucide-react/dist/esm/icons/bot";
 import { PopoverMenuItem, SplitActionMenu } from "../../design-system/components/popover/PopoverPrimitives";
 import { useMenuController } from "../../app/hooks/useMenuController";
 import {
@@ -14,6 +15,8 @@ import {
   resolveModelLabel,
 } from "./workspaceHomeHelpers";
 import { harnessForModelId } from "../../models/utils/modelRuntime";
+import { isBuiltInAgentHarness } from "../../models/utils/modelRuntime";
+import type { AcpHarnessConfig } from "@/types";
 
 type WorkspaceHomeRunControlsProps = {
   workspaceKind: WorkspaceInfo["kind"];
@@ -21,6 +24,7 @@ type WorkspaceHomeRunControlsProps = {
   onRunModeChange: (mode: WorkspaceRunMode) => void;
   selectedHarness?: AgentHarness;
   onSelectHarness?: (harness: AgentHarness) => void;
+  customHarnesses?: AcpHarnessConfig[];
   models: ModelOption[];
   selectedModelId: string | null;
   onSelectModel: (modelId: string) => void;
@@ -41,6 +45,7 @@ export function WorkspaceHomeRunControls({
   workspaceKind,
   selectedHarness = "codex",
   onSelectHarness,
+  customHarnesses = [],
   models,
   selectedModelId,
   onSelectModel,
@@ -69,10 +74,14 @@ export function WorkspaceHomeRunControls({
     : null;
   const selectedModelLabel = resolveModelLabel(selectedModel);
   const modelSummary = buildModelSummary(models, modelSelections);
-  const HarnessIcon = selectedHarness === "claude" ? Feather : Cpu;
-  const SelectedModelIcon = selectedModel && harnessForModelId(selectedModel.id) === "claude"
-    ? Feather
-    : Cpu;
+  const selectedCustomHarness = customHarnesses.find((harness) => harness.id === selectedHarness);
+  const HarnessIcon = selectedHarness === "claude" ? Feather : selectedCustomHarness ? Bot : Cpu;
+  const isCustomHarness = !isBuiltInAgentHarness(selectedHarness);
+  const SelectedModelIcon = isCustomHarness
+    ? Bot
+    : selectedModel && harnessForModelId(selectedModel.id) === "claude"
+      ? Feather
+      : Cpu;
   const toggleModelsMenu = useCallback(() => {
     toggleModelsOpen();
   }, [toggleModelsOpen]);
@@ -93,6 +102,11 @@ export function WorkspaceHomeRunControls({
           >
             <option value="codex">Codex</option>
             <option value="claude">Claude</option>
+            {customHarnesses.map((harness) => (
+              <option key={harness.id} value={harness.id}>
+                {harness.name || harness.id}
+              </option>
+            ))}
           </select>
         </div>
       </div>
@@ -189,7 +203,7 @@ export function WorkspaceHomeRunControls({
           );
         })}
       </SplitActionMenu>
-      {collaborationModes.length > 0 && (
+      {!isCustomHarness && collaborationModes.length > 0 && (
         <div className="composer-select-wrap workspace-home-control">
           <div className="open-app-button">
             <span className="composer-icon" aria-hidden>

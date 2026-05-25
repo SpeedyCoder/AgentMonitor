@@ -72,6 +72,7 @@ const baseSettings: AppSettings = {
   codexArgs: null,
   claudeCliPath: null,
   claudeAdapterPath: null,
+  customAcpHarnesses: [],
   backendMode: "local",
   remoteBackendProvider: "tcp",
   remoteBackendHost: "127.0.0.1:4732",
@@ -2053,6 +2054,241 @@ describe("SettingsView Navigation", () => {
     expect(screen.getByText("Harnesses")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Agents" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Features" })).toBeNull();
+  });
+
+  it("lists custom harnesses in the sidebar and opens the selected harness editor", async () => {
+    cleanup();
+    render(
+      <SettingsView
+        workspaceGroups={[]}
+        groupedWorkspaces={[]}
+        ungroupedLabel="Ungrouped"
+        onClose={vi.fn()}
+        onMoveWorkspace={vi.fn()}
+        onDeleteWorkspace={vi.fn()}
+        onCreateWorkspaceGroup={vi.fn().mockResolvedValue(null)}
+        onRenameWorkspaceGroup={vi.fn().mockResolvedValue(null)}
+        onMoveWorkspaceGroup={vi.fn().mockResolvedValue(null)}
+        onDeleteWorkspaceGroup={vi.fn().mockResolvedValue(null)}
+        onAssignWorkspaceGroup={vi.fn().mockResolvedValue(null)}
+        appSettings={{
+          ...baseSettings,
+          customAcpHarnesses: [
+            {
+              id: "mistral-vibe",
+              name: "Mistral Vibe",
+              icon: "sparkles",
+              startCommand: "vibe-acp",
+              env: [],
+            },
+          ],
+        }}
+        openAppIconById={{}}
+        onUpdateAppSettings={vi.fn().mockResolvedValue(undefined)}
+        onRunDoctor={vi.fn().mockResolvedValue(createDoctorResult())}
+        onRunCodexUpdate={vi.fn().mockResolvedValue(createUpdateResult())}
+        onUpdateWorkspaceSettings={vi.fn().mockResolvedValue(undefined)}
+        scaleShortcutTitle="Scale shortcut"
+        scaleShortcutText="Use Command +/-"
+        onTestNotificationSound={vi.fn()}
+        onTestSystemNotification={vi.fn()}
+        dictationModelStatus={null}
+        onDownloadDictationModel={vi.fn()}
+        onCancelDictationDownload={vi.fn()}
+        onRemoveDictationModel={vi.fn()}
+        accountRateLimits={null}
+        usageShowRemaining={false}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Codex" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Claude" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Mistral Vibe" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Custom" })).toBeNull();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Mistral Vibe" }));
+    });
+
+    expect(screen.getByLabelText("Start command")).toHaveProperty("value", "vibe-acp");
+  });
+
+  it("adds a custom harness from the harness sidebar plus button", async () => {
+    cleanup();
+    const onUpdateAppSettings = vi.fn().mockResolvedValue(undefined);
+    render(
+      <SettingsView
+        workspaceGroups={[]}
+        groupedWorkspaces={[]}
+        ungroupedLabel="Ungrouped"
+        onClose={vi.fn()}
+        onMoveWorkspace={vi.fn()}
+        onDeleteWorkspace={vi.fn()}
+        onCreateWorkspaceGroup={vi.fn().mockResolvedValue(null)}
+        onRenameWorkspaceGroup={vi.fn().mockResolvedValue(null)}
+        onMoveWorkspaceGroup={vi.fn().mockResolvedValue(null)}
+        onDeleteWorkspaceGroup={vi.fn().mockResolvedValue(null)}
+        onAssignWorkspaceGroup={vi.fn().mockResolvedValue(null)}
+        appSettings={baseSettings}
+        openAppIconById={{}}
+        onUpdateAppSettings={onUpdateAppSettings}
+        onRunDoctor={vi.fn().mockResolvedValue(createDoctorResult())}
+        onRunCodexUpdate={vi.fn().mockResolvedValue(createUpdateResult())}
+        onUpdateWorkspaceSettings={vi.fn().mockResolvedValue(undefined)}
+        scaleShortcutTitle="Scale shortcut"
+        scaleShortcutText="Use Command +/-"
+        onTestNotificationSound={vi.fn()}
+        onTestSystemNotification={vi.fn()}
+        dictationModelStatus={null}
+        onDownloadDictationModel={vi.fn()}
+        onCancelDictationDownload={vi.fn()}
+        onRemoveDictationModel={vi.fn()}
+        accountRateLimits={null}
+        usageShowRemaining={false}
+      />,
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Add custom harness" }));
+    });
+
+    expect(onUpdateAppSettings).toHaveBeenCalledWith(
+      expect.objectContaining({
+        customAcpHarnesses: [
+          expect.objectContaining({
+            id: "custom-acp",
+            name: "Custom ACP",
+            icon: "bot",
+          }),
+        ],
+      }),
+    );
+  });
+
+  it("optimistically edits a custom harness without waiting for settings reload", async () => {
+    cleanup();
+    const onUpdateAppSettings = vi.fn().mockResolvedValue(undefined);
+    render(
+      <SettingsView
+        workspaceGroups={[]}
+        groupedWorkspaces={[]}
+        ungroupedLabel="Ungrouped"
+        onClose={vi.fn()}
+        onMoveWorkspace={vi.fn()}
+        onDeleteWorkspace={vi.fn()}
+        onCreateWorkspaceGroup={vi.fn().mockResolvedValue(null)}
+        onRenameWorkspaceGroup={vi.fn().mockResolvedValue(null)}
+        onMoveWorkspaceGroup={vi.fn().mockResolvedValue(null)}
+        onDeleteWorkspaceGroup={vi.fn().mockResolvedValue(null)}
+        onAssignWorkspaceGroup={vi.fn().mockResolvedValue(null)}
+        appSettings={{
+          ...baseSettings,
+          customAcpHarnesses: [
+            {
+              id: "mistral-vibe",
+              name: "Mistral Vibe",
+              icon: "sparkles",
+              startCommand: "vibe-acp",
+              env: [],
+            },
+          ],
+        }}
+        openAppIconById={{}}
+        onUpdateAppSettings={onUpdateAppSettings}
+        onRunDoctor={vi.fn().mockResolvedValue(createDoctorResult())}
+        onRunCodexUpdate={vi.fn().mockResolvedValue(createUpdateResult())}
+        onUpdateWorkspaceSettings={vi.fn().mockResolvedValue(undefined)}
+        scaleShortcutTitle="Scale shortcut"
+        scaleShortcutText="Use Command +/-"
+        onTestNotificationSound={vi.fn()}
+        onTestSystemNotification={vi.fn()}
+        dictationModelStatus={null}
+        onDownloadDictationModel={vi.fn()}
+        onCancelDictationDownload={vi.fn()}
+        onRemoveDictationModel={vi.fn()}
+        accountRateLimits={null}
+        usageShowRemaining={false}
+      />,
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Mistral Vibe" }));
+    });
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("Name"), {
+        target: { value: "Mistral Fast" },
+      });
+    });
+
+    expect(screen.getByLabelText("Name")).toHaveProperty("value", "Mistral Fast");
+    expect(screen.getByRole("button", { name: "Mistral Fast" })).toBeTruthy();
+    expect(onUpdateAppSettings).toHaveBeenCalledWith(
+      expect.objectContaining({
+        customAcpHarnesses: [
+          expect.objectContaining({ id: "mistral-vibe", name: "Mistral Fast" }),
+        ],
+      }),
+    );
+  });
+
+  it("optimistically deletes a custom harness and leaves the deleted section", async () => {
+    cleanup();
+    const onUpdateAppSettings = vi.fn().mockResolvedValue(undefined);
+    render(
+      <SettingsView
+        workspaceGroups={[]}
+        groupedWorkspaces={[]}
+        ungroupedLabel="Ungrouped"
+        onClose={vi.fn()}
+        onMoveWorkspace={vi.fn()}
+        onDeleteWorkspace={vi.fn()}
+        onCreateWorkspaceGroup={vi.fn().mockResolvedValue(null)}
+        onRenameWorkspaceGroup={vi.fn().mockResolvedValue(null)}
+        onMoveWorkspaceGroup={vi.fn().mockResolvedValue(null)}
+        onDeleteWorkspaceGroup={vi.fn().mockResolvedValue(null)}
+        onAssignWorkspaceGroup={vi.fn().mockResolvedValue(null)}
+        appSettings={{
+          ...baseSettings,
+          customAcpHarnesses: [
+            {
+              id: "mistral-vibe",
+              name: "Mistral Vibe",
+              icon: "sparkles",
+              startCommand: "vibe-acp",
+              env: [],
+            },
+          ],
+        }}
+        openAppIconById={{}}
+        onUpdateAppSettings={onUpdateAppSettings}
+        onRunDoctor={vi.fn().mockResolvedValue(createDoctorResult())}
+        onRunCodexUpdate={vi.fn().mockResolvedValue(createUpdateResult())}
+        onUpdateWorkspaceSettings={vi.fn().mockResolvedValue(undefined)}
+        scaleShortcutTitle="Scale shortcut"
+        scaleShortcutText="Use Command +/-"
+        onTestNotificationSound={vi.fn()}
+        onTestSystemNotification={vi.fn()}
+        dictationModelStatus={null}
+        onDownloadDictationModel={vi.fn()}
+        onCancelDictationDownload={vi.fn()}
+        onRemoveDictationModel={vi.fn()}
+        accountRateLimits={null}
+        usageShowRemaining={false}
+      />,
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Mistral Vibe" }));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+    });
+
+    expect(screen.queryByRole("button", { name: "Mistral Vibe" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Codex" })).toBeTruthy();
+    expect(onUpdateAppSettings).toHaveBeenCalledWith(
+      expect.objectContaining({ customAcpHarnesses: [] }),
+    );
   });
 });
 

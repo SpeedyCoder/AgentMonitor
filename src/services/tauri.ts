@@ -424,11 +424,17 @@ export async function setWorkspaceRuntimeCodexArgs(
   });
 }
 
-export async function startThread(workspaceId: string, _modelId?: string | null) {
-  // ACP uses workspace settings for agent runtime, modelId is ignored for now
-  return invoke<any>("acp_start_thread", {
-    workspaceId,
-  });
+export async function startThread(
+  workspaceId: string,
+  _modelId?: string | null,
+  runtime?: string | null,
+) {
+  // ACP uses runtime settings for agent selection; modelId is ignored for now
+  const payload: { workspaceId: string; runtime?: string } = { workspaceId };
+  if (runtime?.trim()) {
+    payload.runtime = runtime.trim();
+  }
+  return invoke<any>("acp_start_thread", payload);
 }
 
 export async function forkThread(workspaceId: string, threadId: string) {
@@ -499,14 +505,14 @@ export async function sendUserMessage(
     appMentions?: AppMention[];
   },
 ) {
-  // ACP uses simplified message format - only text and images for now
-  // Model, effort, etc. are configured per-workspace in ACP mode
   const images = await normalizeImagesForRpc(options?.images);
   const payload = {
     workspaceId,
     threadId,
     text,
     images,
+    model: options?.model ?? null,
+    effort: options?.effort ?? null,
   };
   return invoke("acp_send_user_message", payload);
 }
@@ -801,6 +807,10 @@ export async function getModelList(workspaceId: string) {
   return invoke<any>("model_list", { workspaceId });
 }
 
+export async function getAcpSessionConfig(workspaceId: string, runtime: string) {
+  return invoke<any>("acp_session_config", { workspaceId, runtime });
+}
+
 export async function getExperimentalFeatureList(
   workspaceId: string,
   cursor?: string | null,
@@ -825,7 +835,7 @@ export async function generateRunMetadata(workspaceId: string, prompt: string) {
 
 export async function getCollaborationModes(
   workspaceId: string,
-  runtime: "codex" | "claude" = "codex",
+  runtime: string = "codex",
 ) {
   return invoke<any>("collaboration_mode_list", { workspaceId, runtime });
 }

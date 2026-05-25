@@ -25,6 +25,7 @@ export type PendingNewThreadSeed = {
 type ResolveThreadCodexStateInput = {
   workspaceId: string;
   threadId: string | null;
+  workspaceHarness?: AgentHarness | null;
   defaultAccessMode: AccessMode;
   lastComposerModelId: string | null;
   lastComposerReasoningEffort: string | null;
@@ -56,7 +57,7 @@ type ThreadCodexSeedPatch = {
 
 function resolveStoredHarness(...entries: Array<ThreadCodexParams | null>): AgentHarness | null {
   for (const entry of entries) {
-    if (entry?.harness === "codex" || entry?.harness === "claude") {
+    if (entry?.harness && entry.harness.trim()) {
       return entry.harness;
     }
     const inferred = harnessForModelId(entry?.modelId);
@@ -141,6 +142,7 @@ export function resolveThreadCodexState(
   const {
     workspaceId,
     threadId,
+    workspaceHarness,
     lastComposerModelId,
     lastComposerReasoningEffort,
     stored,
@@ -151,6 +153,7 @@ export function resolveThreadCodexState(
   if (!threadId) {
     const preferredHarness =
       resolveStoredHarness(stored) ??
+      (workspaceHarness?.trim() ? workspaceHarness : null) ??
       harnessForModelId(lastComposerModelId) ??
       "codex";
     return {
@@ -170,6 +173,7 @@ export function resolveThreadCodexState(
   const preferredHarness =
     resolveStoredHarness(stored, noThreadStored) ??
     pendingForWorkspace?.harness ??
+    (workspaceHarness?.trim() ? workspaceHarness : null) ??
     harnessForModelId(lastComposerModelId) ??
     "codex";
 

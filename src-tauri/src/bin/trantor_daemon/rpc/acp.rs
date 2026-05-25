@@ -14,14 +14,13 @@ pub(super) async fn try_handle(
 ) -> Option<Result<Value, String>> {
     match method {
         "session/new" | "acp_start_thread" => Some(handle_session_new(state, params).await),
+        "acp_session_config" => Some(handle_session_config(state, params).await),
         "session/prompt" => Some(handle_session_prompt(state, params).await),
         "acp_send_user_message" => Some(handle_send_user_message(state, params).await),
         "session/cancel" | "acp_turn_interrupt" => Some(handle_session_cancel(state, params).await),
         "acp_turn_steer" => Some(handle_turn_steer(state, params).await),
         "acp_list_threads" => Some(handle_list_threads(state, params).await),
-        "acp_list_historical_threads" => {
-            Some(handle_list_historical_threads(state, params).await)
-        }
+        "acp_list_historical_threads" => Some(handle_list_historical_threads(state, params).await),
         "acp_resume_thread" | "acp_read_thread" => Some(handle_read_thread(state, params).await),
         "acp_thread_live_subscribe" => Some(handle_live_subscribe(state, params).await),
         "acp_thread_live_unsubscribe" => Some(handle_live_unsubscribe(state, params).await),
@@ -43,6 +42,7 @@ async fn handle_session_new(state: &DaemonState, params: &Value) -> Result<Value
         Some(api_key) => Some(api_key),
         None => runtime_api_key(state, &runtime).await,
     };
+    let custom_harnesses = custom_harnesses(state).await;
     let mcp_servers = parse_mcp_servers(params).unwrap_or_else(|| {
         WorkspaceMcpConfig::default().to_acp_servers(PathBuf::from(&cwd).as_path())
     });
@@ -62,6 +62,7 @@ async fn handle_session_new(state: &DaemonState, params: &Value) -> Result<Value
             PathBuf::from(cwd),
             runtime,
             api_key,
+            custom_harnesses,
             mcp_servers,
             emit_event,
         )
@@ -71,6 +72,22 @@ async fn handle_session_new(state: &DaemonState, params: &Value) -> Result<Value
         "threadId": session_id.to_string(),
         "sessionId": session_id.to_string()
     }))
+}
+
+async fn handle_session_config(state: &DaemonState, params: &Value) -> Result<Value, String> {
+    let workspace_id = parse_string(params, "workspaceId")?;
+    let runtime = parse_string(params, "runtime")?;
+    let workspace = workspace_entry(state, &workspace_id).await?;
+    let cwd = PathBuf::from(&workspace.path);
+    let runtime = AgentRuntime::from_id(runtime.trim());
+    let api_key = runtime_api_key(state, &runtime).await;
+    let custom_harnesses = custom_harnesses(state).await;
+    let mcp_servers = WorkspaceMcpConfig::default().to_acp_servers(&cwd);
+    let config_options = state
+        .acp_sessions
+        .discover_session_config(cwd, runtime, api_key, custom_harnesses, mcp_servers)
+        .await?;
+    Ok(json!({ "configOptions": config_options }))
 }
 
 async fn handle_session_prompt(state: &DaemonState, params: &Value) -> Result<Value, String> {
@@ -88,7 +105,13 @@ async fn handle_send_user_message(state: &DaemonState, params: &Value) -> Result
     let workspace_id = parse_string(params, "workspaceId")?;
     let thread_id = parse_string(params, "threadId")?;
     let text = parse_string(params, "text")?;
+    let model = parse_optional_string(params, "model");
+    let effort = parse_optional_string(params, "effort");
     let content = content_from_text_and_images(text, parse_images(params)?)?;
+    state
+        .acp_sessions
+        .set_common_session_config(&workspace_id, model.as_deref(), effort.as_deref())
+        .await?;
     let stream_ids = state
         .acp_sessions
         .send_prompt(&workspace_id, Some(&thread_id), content)
@@ -164,12 +187,14 @@ async fn handle_read_thread(state: &DaemonState, params: &Value) -> Result<Value
         .await
         .ok_or("ACP thread not found")?;
     let workspace = workspace_entry(state, &workspace_id).await?;
-    let runtime = workspace
-        .settings
-        .agent_runtime
-        .clone()
-        .unwrap_or(AgentRuntime::Codex);
+    let workspace_runtime = workspace.settings.agent_runtime.clone().unwrap_or_default();
+    let runtime = summary
+        .runtime
+        .as_deref()
+        .map(AgentRuntime::from_id)
+        .unwrap_or(workspace_runtime);
     let api_key = runtime_api_key(state, &runtime).await;
+    let custom_harnesses = custom_harnesses(state).await;
     let cwd = PathBuf::from(&workspace.path);
     let mcp_servers = WorkspaceMcpConfig::default().to_acp_servers(&cwd);
     let event_sink = state.event_sink.clone();
@@ -188,6 +213,7 @@ async fn handle_read_thread(state: &DaemonState, params: &Value) -> Result<Value
             cwd,
             runtime,
             api_key,
+            custom_harnesses,
             mcp_servers,
             emit_event,
         )
@@ -277,17 +303,13 @@ async fn handle_compact_thread(state: &DaemonState, params: &Value) -> Result<Va
 }
 
 fn parse_runtime(params: &Value) -> Option<AgentRuntime> {
-    match parse_optional_string(params, "runtime").as_deref() {
-        Some("claude") => Some(AgentRuntime::Claude),
-        Some("codex") => Some(AgentRuntime::Codex),
-        _ => None,
-    }
+    parse_optional_string(params, "runtime").map(AgentRuntime::from_id)
 }
 
 fn runtime_for_session(params: &Value, workspace: &crate::types::WorkspaceEntry) -> AgentRuntime {
     parse_runtime(params)
         .or_else(|| workspace.settings.agent_runtime.clone())
-        .unwrap_or(AgentRuntime::Codex)
+        .unwrap_or_default()
 }
 
 fn parse_content(params: &Value) -> Result<Vec<ContentBlock>, String> {
@@ -335,7 +357,12 @@ async fn runtime_api_key(state: &DaemonState, runtime: &AgentRuntime) -> Option<
     match runtime {
         AgentRuntime::Codex => settings.codex_api_key.clone(),
         AgentRuntime::Claude => settings.claude_api_key.clone(),
+        AgentRuntime::Custom(_) => None,
     }
+}
+
+async fn custom_harnesses(state: &DaemonState) -> Vec<crate::types::AcpHarnessConfig> {
+    state.app_settings.lock().await.custom_acp_harnesses.clone()
 }
 
 #[cfg(test)]

@@ -279,6 +279,10 @@ export function useSettingsViewOrchestration({
     },
     gitSectionProps,
     serverSectionProps,
+    harnessesSectionProps: {
+      appSettings,
+      onUpdateAppSettings,
+    },
     codexSectionProps: {
       ...codexSectionProps,
       agentsSectionProps,

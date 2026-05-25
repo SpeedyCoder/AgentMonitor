@@ -787,6 +787,8 @@ describe("tauri invoke wrappers", () => {
       threadId: "thread-1",
       text: "hello",
       images: ["image.png"],
+      model: null,
+      effort: null,
     });
   });
 
@@ -801,7 +803,7 @@ describe("tauri invoke wrappers", () => {
     });
   });
 
-  it("omits legacy model and collaboration fields from ACP messages", async () => {
+  it("maps model config and omits legacy collaboration fields from ACP messages", async () => {
     const invokeMock = vi.mocked(invoke);
     invokeMock.mockResolvedValueOnce({});
 
@@ -821,6 +823,8 @@ describe("tauri invoke wrappers", () => {
       threadId: "thread-1",
       text: "hello",
       images: null,
+      model: "codex:gpt-5.5",
+      effort: null,
     });
   });
 
@@ -837,6 +841,8 @@ describe("tauri invoke wrappers", () => {
       threadId: "thread-1",
       text: "hello",
       images: null,
+      model: null,
+      effort: null,
     });
   });
 
@@ -878,6 +884,8 @@ describe("tauri invoke wrappers", () => {
       threadId: "thread-1",
       text: "hello",
       images: ["data:image/png;base64,abc"],
+      model: null,
+      effort: null,
     });
   });
 
@@ -894,6 +902,8 @@ describe("tauri invoke wrappers", () => {
       threadId: "thread-1",
       text: "hello $calendar",
       images: null,
+      model: null,
+      effort: null,
     });
   });
 
@@ -967,6 +977,8 @@ describe("tauri invoke wrappers", () => {
       threadId: "thread-1",
       text: "hello",
       images: ["data:image/png;base64,mobile"],
+      model: null,
+      effort: null,
     });
   });
 

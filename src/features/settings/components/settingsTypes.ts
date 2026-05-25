@@ -10,6 +10,7 @@ export const SETTINGS_SECTION_IDS = [
   "open-apps",
   "git",
   "server",
+  "harnesses",
 ] as const;
 
 export const SETTINGS_EXTRA_SECTION_IDS = ["codex", "claude"] as const;
@@ -30,7 +31,8 @@ type SettingsSection = (typeof SETTINGS_SECTION_IDS)[number];
 
 export type CodexSection =
   | SettingsSection
-  | (typeof SETTINGS_EXTRA_SECTION_IDS)[number];
+  | (typeof SETTINGS_EXTRA_SECTION_IDS)[number]
+  | `harness:${string}`;
 
 export type SettingsRouteSection =
   | CodexSection

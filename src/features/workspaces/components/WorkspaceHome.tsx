@@ -10,6 +10,7 @@ import type { AgentHarness } from "@/features/models/utils/modelRuntime";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import type {
   AppOption,
+  AcpHarnessConfig,
   CustomPromptOption,
   DictationSessionState,
   DictationTranscript,
@@ -51,6 +52,7 @@ type WorkspaceHomeProps = {
   onRunModeChange: (mode: WorkspaceRunMode) => void;
   selectedHarness?: AgentHarness;
   onSelectHarness?: (harness: AgentHarness) => void;
+  customHarnesses?: AcpHarnessConfig[];
   models: ModelOption[];
   selectedModelId: string | null;
   onSelectModel: (modelId: string) => void;
@@ -116,6 +118,7 @@ export function WorkspaceHome({
   onRunModeChange,
   selectedHarness = "codex",
   onSelectHarness,
+  customHarnesses = [],
   models,
   selectedModelId,
   onSelectModel,
@@ -428,6 +431,7 @@ export function WorkspaceHome({
         onRunModeChange={onRunModeChange}
         selectedHarness={selectedHarness}
         onSelectHarness={onSelectHarness}
+        customHarnesses={customHarnesses}
         models={models}
         selectedModelId={selectedModelId}
         onSelectModel={onSelectModel}

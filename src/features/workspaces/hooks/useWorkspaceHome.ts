@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { AgentHarness } from "@/features/models/utils/modelRuntime";
-import { providerModelIdForModelId } from "@/features/models/utils/modelRuntime";
+import {
+  harnessForModelId,
+  providerModelIdForModelId,
+} from "@/features/models/utils/modelRuntime";
+import { isBuiltInAgentHarness } from "@/features/models/utils/modelRuntime";
 import type {
   ModelOption,
   SendMessageResult,
@@ -59,7 +63,7 @@ type UseWorkspaceHomeOptions = {
   connectWorkspace: (workspace: WorkspaceInfo) => Promise<void>;
   startThreadForWorkspace: (
     workspaceId: string,
-    options?: { activate?: boolean; modelId?: string | null },
+    options?: { activate?: boolean; modelId?: string | null; runtime?: string | null },
   ) => Promise<string | null>;
   sendUserMessageToThread: (
     workspace: WorkspaceInfo,
@@ -87,6 +91,24 @@ type WorkspaceHomeState = {
 
 const DEFAULT_MODE: WorkspaceRunMode = "worktree";
 const EMPTY_SELECTIONS: Record<string, number> = {};
+
+function providerModelIdForSelection(
+  modelId: string | null,
+  modelLookup: Map<string, ModelOption>,
+  selectedHarness: AgentHarness,
+): string | null {
+  if (!modelId) {
+    return null;
+  }
+  const model = modelLookup.get(modelId);
+  if (model) {
+    return model.providerModelId ?? providerModelIdForModelId(modelId);
+  }
+  if (isBuiltInAgentHarness(selectedHarness) && harnessForModelId(modelId) === selectedHarness) {
+    return providerModelIdForModelId(modelId);
+  }
+  return null;
+}
 const MAX_TITLE_LENGTH = 56;
 
 const createRunId = () =>
@@ -403,15 +425,38 @@ export function useWorkspaceHome({
       return false;
     }
 
-    const selectedModels = Object.entries(modelSelections)
-      .filter(([modelId, count]) => count > 0 && modelLookup.has(modelId))
-      .map(([modelId, count]) => ({
-        modelId,
-        providerModelId:
-          modelLookup.get(modelId)?.providerModelId ?? providerModelIdForModelId(modelId),
-        count,
-        model: modelLookup.get(modelId) ?? null,
-      }));
+    const selectedModels = (() => {
+      if (runMode === "worktree") {
+        const worktreeSelections = Object.entries(modelSelections)
+            .filter(([modelId, count]) => count > 0 && modelLookup.has(modelId))
+            .map(([modelId, count]) => ({
+              modelId,
+              providerModelId: providerModelIdForSelection(
+                modelId,
+                modelLookup,
+                selectedHarness,
+              ),
+              count,
+              model: modelLookup.get(modelId) ?? null,
+            }));
+        if (worktreeSelections.length > 0 || isBuiltInAgentHarness(selectedHarness)) {
+          return worktreeSelections;
+        }
+        return [{ modelId: "default", providerModelId: null, count: 1, model: null }];
+      }
+      return selectedModelId && modelLookup.has(selectedModelId)
+        ? [{
+            modelId: selectedModelId,
+            providerModelId: providerModelIdForSelection(
+              selectedModelId,
+              modelLookup,
+              selectedHarness,
+            ),
+            count: 1,
+            model: modelLookup.get(selectedModelId) ?? null,
+          }]
+        : [];
+    })();
 
     if (runMode === "worktree" && selectedModels.length === 0) {
       setWorkspaceError("Select at least one model to run in a worktree.");
@@ -489,9 +534,10 @@ export function useWorkspaceHome({
       if (runMode === "local") {
         const providerModelId =
           selectedModelId && modelLookup.has(selectedModelId)
-            ? modelLookup.get(selectedModelId)?.providerModelId ??
-              providerModelIdForModelId(selectedModelId)
-            : providerModelIdForModelId(selectedModelId);
+            ? providerModelIdForSelection(selectedModelId, modelLookup, selectedHarness)
+            : isBuiltInAgentHarness(selectedHarness)
+              ? providerModelIdForSelection(selectedModelId, modelLookup, selectedHarness)
+              : null;
         try {
           if (!activeWorkspace.connected) {
             await connectWorkspace(activeWorkspace);
@@ -499,6 +545,7 @@ export function useWorkspaceHome({
           const threadId = await startThreadForWorkspace(activeWorkspace.id, {
             activate: false,
             modelId: providerModelId,
+            runtime: selectedHarness,
           });
           if (!threadId) {
             throw new Error("Failed to start a local thread.");
@@ -565,6 +612,7 @@ export function useWorkspaceHome({
               const threadId = await startThreadForWorkspace(worktreeWorkspace.id, {
                 activate: false,
                 modelId: selection.providerModelId,
+                runtime: selectedHarness,
               });
               if (!threadId) {
                 throw new Error("Failed to start a worktree thread.");

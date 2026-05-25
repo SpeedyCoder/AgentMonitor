@@ -73,7 +73,9 @@ export const COMPOSER_PRESET_CONFIGS: Record<
 export const SETTINGS_MOBILE_BREAKPOINT_PX = 720;
 export const DEFAULT_REMOTE_HOST = "127.0.0.1:4732";
 
-export const SETTINGS_SECTION_LABELS: Record<CodexSection, string> = {
+type StaticSettingsSection = Exclude<CodexSection, `harness:${string}`>;
+
+export const SETTINGS_SECTION_LABELS: Record<StaticSettingsSection, string> = {
   projects: "Projects",
   display: "Display & Sound",
   about: "About",
@@ -83,9 +85,17 @@ export const SETTINGS_SECTION_LABELS: Record<CodexSection, string> = {
   "open-apps": "Open in",
   git: "Git",
   server: "Server",
+  harnesses: "Custom Harnesses",
   codex: "Codex",
   claude: "Claude",
 };
+
+export function getSettingsSectionLabel(section: CodexSection): string {
+  if (section.startsWith("harness:")) {
+    return "Custom Harness";
+  }
+  return SETTINGS_SECTION_LABELS[section as StaticSettingsSection];
+}
 
 export const SHORTCUT_DRAFT_KEY_BY_SETTING: Record<
   ShortcutSettingKey,

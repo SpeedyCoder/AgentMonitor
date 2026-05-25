@@ -334,12 +334,57 @@ pub(crate) struct WorkspaceInfo {
     pub(crate) settings: WorkspaceSettings,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Default)]
-#[serde(rename_all = "lowercase")]
+pub(crate) const AGENT_RUNTIME_CODEX: &str = "codex";
+pub(crate) const AGENT_RUNTIME_CLAUDE: &str = "claude";
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) enum AgentRuntime {
-    #[default]
     Codex,
     Claude,
+    Custom(String),
+}
+
+impl Default for AgentRuntime {
+    fn default() -> Self {
+        AgentRuntime::Codex
+    }
+}
+
+impl AgentRuntime {
+    pub(crate) fn as_id(&self) -> &str {
+        match self {
+            AgentRuntime::Codex => AGENT_RUNTIME_CODEX,
+            AgentRuntime::Claude => AGENT_RUNTIME_CLAUDE,
+            AgentRuntime::Custom(id) => id.as_str(),
+        }
+    }
+
+    pub(crate) fn from_id(id: impl AsRef<str>) -> Self {
+        match id.as_ref().trim() {
+            AGENT_RUNTIME_CLAUDE => AgentRuntime::Claude,
+            AGENT_RUNTIME_CODEX | "" => AgentRuntime::Codex,
+            other => AgentRuntime::Custom(other.to_string()),
+        }
+    }
+}
+
+impl Serialize for AgentRuntime {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(self.as_id())
+    }
+}
+
+impl<'de> Deserialize<'de> for AgentRuntime {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let value = String::deserialize(deserializer)?;
+        Ok(AgentRuntime::from_id(value))
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -450,6 +495,35 @@ pub(crate) struct OpenAppTarget {
     pub(crate) args: Vec<String>,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+pub(crate) struct AcpHarnessEnvVar {
+    pub(crate) name: String,
+    pub(crate) value: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct AcpHarnessConfig {
+    pub(crate) id: String,
+    pub(crate) name: String,
+    pub(crate) icon: String,
+    pub(crate) start_command: String,
+    #[serde(default)]
+    pub(crate) env: Vec<AcpHarnessEnvVar>,
+    #[serde(default)]
+    pub(crate) models: Vec<AcpHarnessModelConfig>,
+    #[serde(default)]
+    pub(crate) thinking_levels: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct AcpHarnessModelConfig {
+    pub(crate) id: String,
+    #[serde(default)]
+    pub(crate) name: Option<String>,
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub(crate) struct RemoteBackendTarget {
     pub(crate) id: String,
@@ -473,6 +547,8 @@ pub(crate) struct AppSettings {
     pub(crate) claude_cli_path: Option<String>,
     #[serde(default, rename = "claudeAdapterPath")]
     pub(crate) claude_adapter_path: Option<String>,
+    #[serde(default, rename = "customAcpHarnesses")]
+    pub(crate) custom_acp_harnesses: Vec<AcpHarnessConfig>,
     #[serde(default, rename = "backendMode")]
     pub(crate) backend_mode: BackendMode,
     #[serde(default, rename = "remoteBackendProvider")]
@@ -1215,6 +1291,7 @@ impl Default for AppSettings {
             codex_args: None,
             claude_cli_path: None,
             claude_adapter_path: None,
+            custom_acp_harnesses: Vec::new(),
             backend_mode: default_backend_mode(),
             remote_backend_provider: RemoteBackendProvider::Tcp,
             remote_backend_host: default_remote_backend_host(),

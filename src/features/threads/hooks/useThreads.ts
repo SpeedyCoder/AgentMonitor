@@ -676,7 +676,7 @@ export function useThreads({
   const startThreadForWorkspace = useCallback(
     async (
       workspaceId: string,
-      options?: { activate?: boolean; modelId?: string | null },
+      options?: { activate?: boolean; modelId?: string | null; runtime?: string | null },
     ) => {
       void ensureWorkspaceRuntimeCodexArgsBestEffort(workspaceId, null, "start");
       return startThreadForWorkspaceInternal(workspaceId, {

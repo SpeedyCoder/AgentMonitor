@@ -62,6 +62,7 @@ type UseThreadCodexBootstrapOrchestrationParams = {
 type UseThreadCodexSyncOrchestrationParams = {
   activeWorkspaceId: string | null | undefined;
   activeThreadId: string | null;
+  workspaceHarness?: AgentHarness | null;
   appSettings: Pick<
     AppSettings,
     "defaultAccessMode" | "lastComposerModelId" | "lastComposerReasoningEffort"
@@ -135,6 +136,7 @@ export function useThreadCodexBootstrapOrchestration({
 export function useThreadCodexSyncOrchestration({
   activeWorkspaceId,
   activeThreadId,
+  workspaceHarness,
   appSettings,
   threadCodexParamsVersion,
   getThreadCodexParams,
@@ -174,6 +176,7 @@ export function useThreadCodexSyncOrchestration({
     const resolved = resolveThreadCodexState({
       workspaceId,
       threadId,
+      workspaceHarness: workspaceHarness ?? null,
       defaultAccessMode: appSettings.defaultAccessMode,
       lastComposerModelId: appSettings.lastComposerModelId,
       lastComposerReasoningEffort: appSettings.lastComposerReasoningEffort,
@@ -193,6 +196,7 @@ export function useThreadCodexSyncOrchestration({
   }, [
     activeThreadId,
     activeWorkspaceId,
+    workspaceHarness,
     appSettings.defaultAccessMode,
     appSettings.lastComposerModelId,
     appSettings.lastComposerReasoningEffort,

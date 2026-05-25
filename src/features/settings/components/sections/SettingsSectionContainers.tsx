@@ -4,6 +4,7 @@ import { SettingsComposerSection } from "./SettingsComposerSection";
 import { SettingsDictationSection } from "./SettingsDictationSection";
 import { SettingsDisplaySection } from "./SettingsDisplaySection";
 import { SettingsGitSection } from "./SettingsGitSection";
+import { SettingsHarnessesSection } from "./SettingsHarnessesSection";
 import { SettingsOpenAppsSection } from "./SettingsOpenAppsSection";
 import { SettingsProjectsSection } from "./SettingsProjectsSection";
 import { SettingsServerSection } from "./SettingsServerSection";
@@ -15,11 +16,13 @@ import type { SettingsViewOrchestration } from "@settings/hooks/useSettingsViewO
 type SettingsSectionContainersProps = {
   activeSection: CodexSection;
   orchestration: SettingsViewOrchestration;
+  onSelectSection: (section: CodexSection) => void;
 };
 
 export function SettingsSectionContainers({
   activeSection,
   orchestration,
+  onSelectSection,
 }: SettingsSectionContainersProps) {
   if (activeSection === "projects") {
     return <SettingsProjectsSection {...orchestration.projectsSectionProps} />;
@@ -47,6 +50,17 @@ export function SettingsSectionContainers({
   }
   if (activeSection === "server") {
     return <SettingsServerSection {...orchestration.serverSectionProps} />;
+  }
+  if (activeSection === "harnesses" || activeSection.startsWith("harness:")) {
+    return (
+      <SettingsHarnessesSection
+        {...orchestration.harnessesSectionProps}
+        selectedHarnessId={
+          activeSection.startsWith("harness:") ? activeSection.slice("harness:".length) : null
+        }
+        onSelectSection={onSelectSection}
+      />
+    );
   }
   if (activeSection === "codex") {
     return <SettingsCodexSection {...orchestration.codexSectionProps} />;

@@ -218,6 +218,7 @@ pub fn run() {
             workspaces::update_workspace_settings,
             workspaces::set_workspace_runtime_codex_args,
             acp::acp_start_thread,
+            acp::acp_session_config,
             acp::acp_send_user_message,
             acp::acp_turn_steer,
             acp::acp_turn_interrupt,

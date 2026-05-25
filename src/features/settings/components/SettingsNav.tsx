@@ -1,4 +1,5 @@
 import type { ReactElement } from "react";
+import type { AcpHarnessConfig } from "@/types";
 import LayoutGrid from "lucide-react/dist/esm/icons/layout-grid";
 import SlidersHorizontal from "lucide-react/dist/esm/icons/sliders-horizontal";
 import Mic from "lucide-react/dist/esm/icons/mic";
@@ -9,12 +10,18 @@ import ExternalLink from "lucide-react/dist/esm/icons/external-link";
 import ServerCog from "lucide-react/dist/esm/icons/server-cog";
 import Sparkles from "lucide-react/dist/esm/icons/sparkles";
 import Info from "lucide-react/dist/esm/icons/info";
+import Bot from "lucide-react/dist/esm/icons/bot";
+import Cpu from "lucide-react/dist/esm/icons/cpu";
+import Plus from "lucide-react/dist/esm/icons/plus";
+import Wrench from "lucide-react/dist/esm/icons/wrench";
 import { PanelNavItem, PanelNavList } from "@/features/design-system/components/panel/PanelPrimitives";
 import type { CodexSection } from "./settingsTypes";
 
 type SettingsNavProps = {
   activeSection: CodexSection;
   onSelectSection: (section: CodexSection) => void;
+  customHarnesses?: AcpHarnessConfig[];
+  onAddHarness?: () => void;
   showDisclosure?: boolean;
 };
 
@@ -64,9 +71,27 @@ const FOOTER_NAV_ITEM = {
   icon: <Info aria-hidden />,
 };
 
+function getCustomHarnessIcon(icon?: string | null) {
+  switch (icon) {
+    case "terminal":
+      return <TerminalSquare aria-hidden />;
+    case "sparkles":
+      return <Sparkles aria-hidden />;
+    case "cpu":
+      return <Cpu aria-hidden />;
+    case "wrench":
+      return <Wrench aria-hidden />;
+    case "bot":
+    default:
+      return <Bot aria-hidden />;
+  }
+}
+
 export function SettingsNav({
   activeSection,
   onSelectSection,
+  customHarnesses = [],
+  onAddHarness,
   showDisclosure = false,
 }: SettingsNavProps) {
   return (
@@ -74,7 +99,20 @@ export function SettingsNav({
       <div className="settings-sidebar-groups">
         {SETTINGS_NAV_GROUPS.map((group) => (
           <div className="settings-nav-group" key={group.label}>
-            <div className="settings-nav-group-label">{group.label}</div>
+            <div className="settings-nav-group-heading">
+              <div className="settings-nav-group-label">{group.label}</div>
+              {group.label === "Harnesses" && onAddHarness ? (
+                <button
+                  type="button"
+                  className="ghost icon-button settings-nav-add"
+                  onClick={onAddHarness}
+                  aria-label="Add custom harness"
+                  title="Add custom harness"
+                >
+                  <Plus aria-hidden />
+                </button>
+              ) : null}
+            </div>
             <PanelNavList className="settings-nav-list">
               {group.items.map((item) => (
                 <PanelNavItem
@@ -88,6 +126,23 @@ export function SettingsNav({
                   {item.label}
                 </PanelNavItem>
               ))}
+              {group.label === "Harnesses"
+                ? customHarnesses.map((harness) => {
+                    const section = `harness:${harness.id}` as const;
+                    return (
+                      <PanelNavItem
+                        key={section}
+                        className="settings-nav"
+                        icon={getCustomHarnessIcon(harness.icon)}
+                        active={activeSection === section}
+                        showDisclosure={showDisclosure}
+                        onClick={() => onSelectSection(section)}
+                      >
+                        {harness.name?.trim() || harness.id}
+                      </PanelNavItem>
+                    );
+                  })
+                : null}
             </PanelNavList>
           </div>
         ))}

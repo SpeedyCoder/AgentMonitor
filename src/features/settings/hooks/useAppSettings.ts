@@ -142,6 +142,7 @@ function buildDefaultSettings(): AppSettings {
     codexArgs: null,
     claudeCliPath: null,
     claudeAdapterPath: null,
+    customAcpHarnesses: [],
     backendMode: isMobile ? "remote" : "local",
     remoteBackendProvider: defaultRemote.provider,
     remoteBackendHost: defaultRemote.host,

@@ -1,15 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { DebugEntry, ModelOption, WorkspaceInfo } from "../../../types";
-import { getConfigModel, getModelList } from "../../../services/tauri";
-import {
-  MODEL_RUNTIME_PREFIX,
-  harnessForModelId,
-} from "../utils/modelRuntime";
-import {
-  normalizeEffortValue,
-  parseModelListResponse,
-  unavailableModelIdsFromResponse,
-} from "../utils/modelListResponse";
+import type { AcpHarnessConfig, DebugEntry, ModelOption, WorkspaceInfo } from "../../../types";
+import { getAcpSessionConfig } from "../../../services/tauri";
+import { harnessForModelId } from "../utils/modelRuntime";
+import type { AgentHarness } from "../utils/modelRuntime";
+import { normalizeEffortValue } from "../utils/modelListResponse";
 
 type UseModelsOptions = {
   activeWorkspace: WorkspaceInfo | null;
@@ -17,11 +11,11 @@ type UseModelsOptions = {
   preferredModelId?: string | null;
   preferredEffort?: string | null;
   selectionKey?: string | null;
-  allowedRuntime?: "codex" | "claude" | null;
-  allowedHarness?: "codex" | "claude" | null;
+  allowedRuntime?: AgentHarness | null;
+  allowedHarness?: AgentHarness | null;
+  customHarnesses?: AcpHarnessConfig[];
 };
 
-const CONFIG_MODEL_DESCRIPTION = "Configured in CODEX_HOME/config.toml";
 const CLAUDE_REASONING_EFFORTS = ["low", "medium", "high", "xhigh"] as const;
 const CLAUDE_DEFAULT_REASONING_EFFORT = "none";
 const CLAUDE_REASONING_OPTIONS = CLAUDE_REASONING_EFFORTS.map((reasoningEffort) => ({
@@ -64,74 +58,17 @@ const FALLBACK_CLAUDE_MODELS: ModelOption[] = [
   },
 ];
 
-const GENERIC_CLAUDE_MODEL_IDS = new Set(["default", "sonnet", "haiku"]);
-
-function isGenericClaudeModel(model: ModelOption) {
-  if (harnessForModelId(model.id) !== "claude" && model.runtime !== "claude") {
-    return false;
-  }
-  const providerModelId = (model.providerModelId ?? model.model ?? model.id)
-    .trim()
-    .toLowerCase();
-  return GENERIC_CLAUDE_MODEL_IDS.has(providerModelId);
-}
-
-function canonicalClaudeAliasDisplayName(model: ModelOption) {
-  if (!isGenericClaudeModel(model)) {
-    return null;
-  }
-  const description = model.description.trim();
-  const versionMatch = description.match(/^(Opus|Sonnet|Haiku)\s+(\d+(?:\.\d+)?)/i);
-  if (versionMatch) {
-    const family = versionMatch[1]
-      ? versionMatch[1][0]?.toUpperCase() + versionMatch[1].slice(1).toLowerCase()
-      : "";
-    return `${family} ${versionMatch[2]} · Claude`;
-  }
-  const displayName = model.displayName.trim();
-  if (
-    displayName.length > 0 &&
-    !["default", "sonnet", "haiku"].includes(displayName.toLowerCase()) &&
-    !displayName.toLowerCase().includes("recommended")
-  ) {
-    return displayName;
-  }
-  return null;
-}
-
-function normalizeClaudeCatalog(models: ModelOption[]) {
-  const normalized = models.map((model) => {
-    const displayName = canonicalClaudeAliasDisplayName(model);
-    const isClaude = harnessForModelId(model.id) === "claude" || model.runtime === "claude";
-    const withDisplayName = displayName ? { ...model, displayName } : model;
-    if (!isClaude) {
-      return withDisplayName;
-    }
-    return {
-      ...withDisplayName,
-      supportedReasoningEfforts:
-        withDisplayName.supportedReasoningEfforts.length > 0
-          ? withDisplayName.supportedReasoningEfforts
-          : CLAUDE_REASONING_OPTIONS,
-      defaultReasoningEffort:
-        withDisplayName.defaultReasoningEffort ?? CLAUDE_DEFAULT_REASONING_EFFORT,
-    };
-  });
-  const genericClaudeModels = normalized.filter(isGenericClaudeModel);
-  if (genericClaudeModels.length === 0) {
-    return normalized;
-  }
-  const hasCanonicalGenericModels = genericClaudeModels.every(
-    (model) => canonicalClaudeAliasDisplayName(model) !== null,
-  );
-  if (hasCanonicalGenericModels) {
-    return normalized;
-  }
-  const nonClaudeModels = normalized.filter(
-    (model) => harnessForModelId(model.id) !== "claude" && model.runtime !== "claude",
-  );
-  return [...nonClaudeModels, ...FALLBACK_CLAUDE_MODELS];
-}
+const FALLBACK_CODEX_MODELS: ModelOption[] = [{
+  id: "codex:__default",
+  model: "default",
+  runtime: "codex",
+  providerModelId: null,
+  displayName: "Default",
+  description: "Fallback Codex model while ACP config is unavailable.",
+  supportedReasoningEfforts: [],
+  defaultReasoningEffort: null,
+  isDefault: true,
+}];
 
 const findModelByIdOrModel = (
   models: ModelOption[],
@@ -153,6 +90,215 @@ const pickDefaultModel = (models: ModelOption[], configModel: string | null) =>
   models[0] ??
   null;
 
+type HarnessDescriptor = {
+  id: AgentHarness;
+  name: string;
+  cacheSignature: string;
+  fallbackModels: ModelOption[];
+  canDiscover: boolean;
+};
+
+type CachedHarnessModels = {
+  models: ModelOption[];
+};
+
+const acpHarnessModelCache = new Map<string, CachedHarnessModels>();
+const acpHarnessModelRequests = new Map<string, Promise<CachedHarnessModels>>();
+
+export function clearAcpHarnessModelCacheForTests() {
+  acpHarnessModelCache.clear();
+  acpHarnessModelRequests.clear();
+}
+
+function harnessModelId(harnessId: string, modelId: string | null) {
+  return `${harnessId}:${modelId && modelId.trim() ? modelId.trim() : "__default"}`;
+}
+
+function customHarnessSignature(harness: AcpHarnessConfig) {
+  const env = (harness.env ?? [])
+    .map((entry) => `${entry.name}=${entry.value}`)
+    .join("\n");
+  return `${harness.id}\n${harness.name}\n${harness.startCommand}\n${env}`;
+}
+
+function harnessDescriptors(customHarnesses: AcpHarnessConfig[]): HarnessDescriptor[] {
+  return [
+    {
+      id: "codex",
+      name: "Codex",
+      cacheSignature: "builtin:codex",
+      fallbackModels: FALLBACK_CODEX_MODELS,
+      canDiscover: true,
+    },
+    {
+      id: "claude",
+      name: "Claude",
+      cacheSignature: "builtin:claude",
+      fallbackModels: FALLBACK_CLAUDE_MODELS,
+      canDiscover: true,
+    },
+    ...customHarnesses.map((harness) => ({
+      id: harness.id,
+      name: harness.name || harness.id,
+      cacheSignature: `custom:${customHarnessSignature(harness)}`,
+      fallbackModels: [],
+      canDiscover: Boolean(harness.startCommand.trim()),
+    })),
+  ];
+}
+
+function cacheKey(descriptor: HarnessDescriptor) {
+  return descriptor.cacheSignature;
+}
+
+type AcpConfigOption = {
+  id?: unknown;
+  name?: unknown;
+  category?: unknown;
+  type?: unknown;
+  currentValue?: unknown;
+  options?: unknown;
+};
+
+type AcpSelectOption = {
+  value: string;
+  name: string;
+  description: string;
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+function acpConfigOptionsFromResponse(response: unknown): AcpConfigOption[] {
+  const root = isRecord(response) ? response : {};
+  const raw = root.configOptions ?? root.config_options ?? [];
+  return Array.isArray(raw) ? raw.filter(isRecord) : [];
+}
+
+function optionCategory(option: AcpConfigOption) {
+  const category = typeof option.category === "string" ? option.category : null;
+  if (category) {
+    return category;
+  }
+  return typeof option.id === "string" ? option.id : null;
+}
+
+function flattenSelectOptions(raw: unknown): AcpSelectOption[] {
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+  return raw.flatMap((entry) => {
+    if (!isRecord(entry)) {
+      return [];
+    }
+    if (Array.isArray(entry.options)) {
+      return flattenSelectOptions(entry.options);
+    }
+    const value = typeof entry.value === "string" ? entry.value.trim() : "";
+    if (!value) {
+      return [];
+    }
+    return [{
+      value,
+      name: typeof entry.name === "string" && entry.name.trim() ? entry.name.trim() : value,
+      description:
+        typeof entry.description === "string" && entry.description.trim()
+          ? entry.description.trim()
+          : "",
+    }];
+  });
+}
+
+function buildHarnessModels(harness: HarnessDescriptor, response: unknown): ModelOption[] {
+  const configOptions = acpConfigOptionsFromResponse(response);
+  const modelOption = configOptions.find((option) => optionCategory(option) === "model");
+  const thoughtOption = configOptions.find(
+    (option) => optionCategory(option) === "thought_level",
+  );
+  const thinkingLevels = flattenSelectOptions(thoughtOption?.options);
+  const supportedReasoningEfforts = thinkingLevels.map((option) => ({
+    reasoningEffort: option.value,
+    description: option.description,
+  }));
+  const defaultReasoningEffort =
+    typeof thoughtOption?.currentValue === "string" && thoughtOption.currentValue.trim()
+      ? thoughtOption.currentValue.trim()
+      : supportedReasoningEfforts[0]?.reasoningEffort ?? null;
+  const models = flattenSelectOptions(modelOption?.options);
+  if (models.length === 0) {
+    if (harness.fallbackModels.length > 0) {
+      return harness.fallbackModels;
+    }
+    return [{
+      id: harnessModelId(harness.id, null),
+      model: "default",
+      runtime: harness.id,
+      providerModelId: null,
+      displayName: "Default",
+      description: `${harness.name} default model`,
+      supportedReasoningEfforts,
+      defaultReasoningEffort,
+      isDefault: true,
+    }];
+  }
+  return models.map((model, index) => {
+    const providerModelId = model.value;
+    const displayName = model.name;
+    return {
+      id: harnessModelId(harness.id, providerModelId),
+      model: providerModelId,
+      runtime: harness.id,
+      providerModelId,
+      displayName,
+      description: model.description || `${displayName} · ${harness.name}`,
+      supportedReasoningEfforts,
+      defaultReasoningEffort,
+      isDefault:
+        typeof modelOption?.currentValue === "string"
+          ? modelOption.currentValue === providerModelId
+          : index === 0,
+    };
+  });
+}
+
+async function loadAcpHarnessModels(
+  workspaceId: string,
+  descriptor: HarnessDescriptor,
+): Promise<CachedHarnessModels> {
+  const key = cacheKey(descriptor);
+  const cached = acpHarnessModelCache.get(key);
+  if (cached) {
+    return cached;
+  }
+  const pending = acpHarnessModelRequests.get(key);
+  if (pending) {
+    return pending;
+  }
+  const request = (async () => {
+    if (!descriptor.canDiscover) {
+      return { models: descriptor.fallbackModels };
+    }
+    try {
+      const response = await getAcpSessionConfig(workspaceId, descriptor.id);
+      const models = buildHarnessModels(descriptor, response);
+      return {
+        models: models.length > 0 ? models : descriptor.fallbackModels,
+      };
+    } catch {
+      return { models: descriptor.fallbackModels };
+    }
+  })();
+  acpHarnessModelRequests.set(key, request);
+  try {
+    const result = await request;
+    acpHarnessModelCache.set(key, result);
+    return result;
+  } finally {
+    acpHarnessModelRequests.delete(key);
+  }
+}
+
 export function useModels({
   activeWorkspace,
   onDebug,
@@ -161,14 +307,15 @@ export function useModels({
   selectionKey = null,
   allowedRuntime = null,
   allowedHarness = null,
+  customHarnesses = [],
 }: UseModelsOptions) {
   const effectiveAllowedHarness = allowedHarness ?? allowedRuntime;
   const [allModels, setAllModels] = useState<ModelOption[]>([]);
   const [configModel, setConfigModel] = useState<string | null>(null);
   const [selectedModelId, setSelectedModelIdState] = useState<string | null>(null);
   const [selectedEffort, setSelectedEffortState] = useState<string | null>(null);
-  const lastFetchedWorkspaceId = useRef<string | null>(null);
-  const inFlight = useRef(false);
+  const lastFetchedKey = useRef<string | null>(null);
+  const activeRequestId = useRef(0);
   const hasUserSelectedModel = useRef(false);
   const hasUserSelectedEffort = useRef(false);
   const lastWorkspaceId = useRef<string | null>(null);
@@ -176,6 +323,21 @@ export function useModels({
 
   const workspaceId = activeWorkspace?.id ?? null;
   const isConnected = Boolean(activeWorkspace?.connected);
+  const descriptors = useMemo(
+    () => harnessDescriptors(customHarnesses),
+    [customHarnesses],
+  );
+  const activeHarness =
+    effectiveAllowedHarness ?? activeWorkspace?.settings?.agentRuntime ?? "codex";
+  const activeDescriptor = useMemo(
+    () => descriptors.find((descriptor) => descriptor.id === activeHarness) ?? null,
+    [activeHarness, descriptors],
+  );
+  const modelFetchKey = workspaceId
+    ? activeDescriptor
+      ? cacheKey(activeDescriptor)
+      : `${workspaceId}:missing:${activeHarness}`
+    : null;
 
   useEffect(() => {
     if (selectionKey === lastSelectionKey.current) {
@@ -223,12 +385,15 @@ export function useModels({
         effectiveAllowedHarness === null
           ? allModels
           : allModels.filter((model) => harnessForModelId(model.id) === effectiveAllowedHarness);
-      if (effectiveAllowedHarness === "claude" && filtered.length === 0) {
+      if (activeHarness === "claude" && filtered.length === 0) {
         return FALLBACK_CLAUDE_MODELS;
+      }
+      if (activeHarness === "codex" && filtered.length === 0) {
+        return FALLBACK_CODEX_MODELS;
       }
       return filtered;
     },
-    [allModels, effectiveAllowedHarness],
+    [activeHarness, allModels, effectiveAllowedHarness],
   );
 
   const selectedModel = useMemo(
@@ -281,107 +446,43 @@ export function useModels({
   );
 
   const refreshModels = useCallback(async () => {
-    if (!workspaceId || !isConnected) {
+    if (!workspaceId || !isConnected || !modelFetchKey) {
       return;
     }
-    if (inFlight.current) {
+    activeRequestId.current += 1;
+    const requestId = activeRequestId.current;
+    if (!activeDescriptor) {
+      setAllModels([]);
+      setConfigModel(null);
+      lastFetchedKey.current = modelFetchKey;
       return;
     }
-    inFlight.current = true;
     onDebug?.({
-      id: `${Date.now()}-client-model-list`,
+      id: `${Date.now()}-client-acp-session-config`,
       timestamp: Date.now(),
       source: "client",
-      label: "model/list",
-      payload: { workspaceId },
+      label: "acp/session_config",
+      payload: { workspaceId, runtime: activeDescriptor.id, cached: acpHarnessModelCache.has(modelFetchKey) },
     });
-    try {
-      const [modelListResult, configModelResult] = await Promise.allSettled([
-        getModelList(workspaceId),
-        getConfigModel(workspaceId),
-      ]);
-      const configModelFromConfig =
-        configModelResult.status === "fulfilled"
-          ? configModelResult.value
-          : null;
-      if (configModelResult.status === "rejected") {
-        onDebug?.({
-          id: `${Date.now()}-client-config-model-error`,
-          timestamp: Date.now(),
-          source: "error",
-          label: "config/model error",
-          payload:
-            configModelResult.reason instanceof Error
-              ? configModelResult.reason.message
-              : String(configModelResult.reason),
-        });
-      }
-      const response =
-        modelListResult.status === "fulfilled" ? modelListResult.value : null;
-      const unavailableModelIds = unavailableModelIdsFromResponse(response);
-      if (modelListResult.status === "rejected") {
-        onDebug?.({
-          id: `${Date.now()}-client-model-list-error`,
-          timestamp: Date.now(),
-          source: "error",
-          label: "model/list error",
-          payload:
-            modelListResult.reason instanceof Error
-              ? modelListResult.reason.message
-              : String(modelListResult.reason),
-        });
-      }
-      onDebug?.({
-        id: `${Date.now()}-server-model-list`,
-        timestamp: Date.now(),
-        source: "server",
-        label: "model/list response",
-        payload: response,
-      });
-      setConfigModel(configModelFromConfig);
-      const dataFromServer: ModelOption[] = normalizeClaudeCatalog(
-        parseModelListResponse(response),
-      );
-      const data = (() => {
-        if (!configModelFromConfig) {
-          return dataFromServer;
-        }
-        if (unavailableModelIds.has(configModelFromConfig)) {
-          return dataFromServer;
-        }
-        const hasConfigModel = dataFromServer.some(
-          (model) =>
-            model.model === configModelFromConfig ||
-            model.providerModelId === configModelFromConfig,
-        );
-        if (hasConfigModel) {
-          return dataFromServer;
-        }
-        if (dataFromServer.length > 0) {
-          return dataFromServer;
-        }
-        const configOption: ModelOption = {
-          id: `${MODEL_RUNTIME_PREFIX.codex}${configModelFromConfig}`,
-          model: configModelFromConfig,
-          runtime: "codex",
-          providerModelId: configModelFromConfig,
-          displayName: `${configModelFromConfig} (config)`,
-          description: CONFIG_MODEL_DESCRIPTION,
-          supportedReasoningEfforts: [],
-          defaultReasoningEffort: null,
-          isDefault: false,
-        };
-        return [configOption, ...dataFromServer];
-      })();
-      setAllModels(data);
-      lastFetchedWorkspaceId.current = workspaceId;
-    } finally {
-      inFlight.current = false;
+    const result = await loadAcpHarnessModels(workspaceId, activeDescriptor);
+    if (requestId !== activeRequestId.current) {
+      return;
     }
+    setConfigModel(null);
+    setAllModels(result.models);
+    lastFetchedKey.current = modelFetchKey;
+    onDebug?.({
+      id: `${Date.now()}-server-acp-session-config`,
+      timestamp: Date.now(),
+      source: "server",
+      label: "acp/session_config response",
+      payload: { runtime: activeDescriptor.id, models: result.models },
+    });
   }, [
+    activeDescriptor,
     isConnected,
+    modelFetchKey,
     onDebug,
-    effectiveAllowedHarness,
     workspaceId,
   ]);
 
@@ -389,11 +490,36 @@ export function useModels({
     if (!workspaceId || !isConnected) {
       return;
     }
-    if (lastFetchedWorkspaceId.current === workspaceId && allModels.length > 0) {
+    descriptors.forEach((descriptor) => {
+      if (!descriptor.canDiscover && descriptor.fallbackModels.length === 0) {
+        return;
+      }
+      void loadAcpHarnessModels(workspaceId, descriptor);
+    });
+  }, [descriptors, isConnected, workspaceId]);
+
+  useEffect(() => {
+    if (!workspaceId || !isConnected) {
+      return;
+    }
+    if (lastFetchedKey.current === modelFetchKey) {
       return;
     }
     refreshModels();
-  }, [allModels.length, isConnected, refreshModels, workspaceId]);
+  }, [isConnected, modelFetchKey, refreshModels, workspaceId]);
+
+  useEffect(() => {
+    if (!workspaceId || !isConnected || !modelFetchKey) {
+      return;
+    }
+    const cached = acpHarnessModelCache.get(modelFetchKey);
+    if (!cached) {
+      return;
+    }
+    setConfigModel(null);
+    setAllModels(cached.models);
+    lastFetchedKey.current = modelFetchKey;
+  }, [isConnected, modelFetchKey, workspaceId]);
 
   useEffect(() => {
     if (!selectedModel) {

@@ -1,6 +1,6 @@
 import ChevronLeft from "lucide-react/dist/esm/icons/chevron-left";
 import X from "lucide-react/dist/esm/icons/x";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   AppSettings,
   CodexDoctorResult,
@@ -17,9 +17,10 @@ import { useSettingsViewOrchestration } from "@settings/hooks/useSettingsViewOrc
 import { ModalShell } from "@/features/design-system/components/modal/ModalShell";
 import { isMacPlatform } from "@utils/platformPaths";
 import { SettingsNav } from "./SettingsNav";
-import type { SettingsRouteSection } from "./settingsTypes";
-import { SETTINGS_SECTION_LABELS } from "./settingsViewConstants";
+import type { CodexSection, SettingsRouteSection } from "./settingsTypes";
+import { getSettingsSectionLabel } from "./settingsViewConstants";
 import { SettingsSectionContainers } from "./sections/SettingsSectionContainers";
+import { createDefaultHarness } from "@settings/utils/settingsHarnesses";
 
 export type SettingsViewProps = {
   workspaceGroups: WorkspaceGroup[];
@@ -103,6 +104,10 @@ export function SettingsView({
   usageShowRemaining,
 }: SettingsViewProps) {
   const [isWindowedMac, setIsWindowedMac] = useState(false);
+  const [localCustomHarnesses, setLocalCustomHarnesses] = useState(
+    () => appSettings.customAcpHarnesses ?? [],
+  );
+  const customHarnessSaveCountRef = useRef(0);
   const {
     activeSection,
     showMobileDetail,
@@ -111,13 +116,46 @@ export function SettingsView({
     handleSelectSection,
   } = useSettingsViewNavigation({ initialSection });
 
+  useEffect(() => {
+    if (customHarnessSaveCountRef.current > 0) {
+      return;
+    }
+    setLocalCustomHarnesses(appSettings.customAcpHarnesses ?? []);
+  }, [appSettings.customAcpHarnesses]);
+
+  const visibleAppSettings = useMemo(
+    () => ({
+      ...appSettings,
+      customAcpHarnesses: localCustomHarnesses,
+    }),
+    [appSettings, localCustomHarnesses],
+  );
+
+  const handleUpdateAppSettings = useCallback(
+    async (next: AppSettings) => {
+      if (next.customAcpHarnesses !== visibleAppSettings.customAcpHarnesses) {
+        customHarnessSaveCountRef.current += 1;
+        setLocalCustomHarnesses(next.customAcpHarnesses ?? []);
+      }
+      try {
+        await onUpdateAppSettings(next);
+      } finally {
+        customHarnessSaveCountRef.current = Math.max(
+          0,
+          customHarnessSaveCountRef.current - 1,
+        );
+      }
+    },
+    [onUpdateAppSettings, visibleAppSettings.customAcpHarnesses],
+  );
+
   const orchestration = useSettingsViewOrchestration({
     workspaceGroups,
     groupedWorkspaces,
     ungroupedLabel,
-    appSettings,
+    appSettings: visibleAppSettings,
     openAppIconById,
-    onUpdateAppSettings,
+    onUpdateAppSettings: handleUpdateAppSettings,
     onToggleAutomaticAppUpdateChecks,
     onRunDoctor,
     onRunCodexUpdate,
@@ -143,6 +181,36 @@ export function SettingsView({
   });
 
   useSettingsViewCloseShortcuts(onClose);
+
+  const customHarnessSectionIds = useMemo(
+    () =>
+      new Set(
+        localCustomHarnesses.map(
+          (harness) => `harness:${harness.id}`,
+        ),
+      ),
+    [localCustomHarnesses],
+  );
+
+  useEffect(() => {
+    if (activeSection.startsWith("harness:") && !customHarnessSectionIds.has(activeSection)) {
+      handleSelectSection("codex");
+    }
+  }, [activeSection, customHarnessSectionIds, handleSelectSection]);
+
+  const handleAddHarness = useCallback(() => {
+    const nextHarness = createDefaultHarness(visibleAppSettings);
+    void handleUpdateAppSettings({
+      ...visibleAppSettings,
+      customAcpHarnesses: [...localCustomHarnesses, nextHarness],
+    });
+    handleSelectSection(`harness:${nextHarness.id}` as CodexSection);
+  }, [
+    handleSelectSection,
+    handleUpdateAppSettings,
+    localCustomHarnesses,
+    visibleAppSettings,
+  ]);
 
   useEffect(() => {
     if (!isMacPlatform() || typeof window === "undefined") {
@@ -170,7 +238,13 @@ export function SettingsView({
     };
   }, []);
 
-  const activeSectionLabel = SETTINGS_SECTION_LABELS[activeSection];
+  const customActiveHarness = activeSection.startsWith("harness:")
+    ? localCustomHarnesses.find(
+        (harness) => `harness:${harness.id}` === activeSection,
+      )
+    : null;
+  const activeSectionLabel =
+    customActiveHarness?.name?.trim() || getSettingsSectionLabel(activeSection);
   const settingsBodyClassName = `settings-body${
     useMobileMasterDetail ? " settings-body-mobile-master-detail" : ""
   }${useMobileMasterDetail && showMobileDetail ? " is-detail-visible" : ""}`;
@@ -204,6 +278,8 @@ export function SettingsView({
             <SettingsNav
               activeSection={activeSection}
               onSelectSection={handleSelectSection}
+              customHarnesses={localCustomHarnesses}
+              onAddHarness={handleAddHarness}
               showDisclosure={useMobileMasterDetail}
             />
           </div>
@@ -228,6 +304,7 @@ export function SettingsView({
               <SettingsSectionContainers
                 activeSection={activeSection}
                 orchestration={orchestration}
+                onSelectSection={handleSelectSection}
               />
             </div>
           </div>

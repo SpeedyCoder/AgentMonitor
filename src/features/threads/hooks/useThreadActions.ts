@@ -158,7 +158,7 @@ export function useThreadActions({
   const startThreadForWorkspace = useCallback(
     async (
       workspaceId: string,
-      options?: { activate?: boolean; modelId?: string | null },
+      options?: { activate?: boolean; modelId?: string | null; runtime?: string | null },
     ) => {
       const shouldActivate = options?.activate !== false;
       const modelId = options?.modelId ?? null;
@@ -175,10 +175,15 @@ export function useThreadActions({
         payload: { workspaceId, modelId, pendingThreadId },
       });
       const startPromise = (async () => {
+        const runtime = options?.runtime?.trim() || null;
         const response =
           modelId && modelId.trim().length > 0
-            ? await startThreadService(workspaceId, modelId)
-            : await startThreadService(workspaceId);
+            ? runtime
+              ? await startThreadService(workspaceId, modelId, runtime)
+              : await startThreadService(workspaceId, modelId)
+            : runtime
+              ? await startThreadService(workspaceId, null, runtime)
+              : await startThreadService(workspaceId);
         onDebug?.({
           id: `${Date.now()}-server-thread-start`,
           timestamp: Date.now(),

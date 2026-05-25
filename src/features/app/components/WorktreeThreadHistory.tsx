@@ -1,12 +1,23 @@
-import type { AgentRuntime, ThreadSummary, WorkspaceInfo } from "../../../types";
+import type {
+  AcpHarnessConfig,
+  AgentRuntime,
+  ThreadSummary,
+  WorkspaceInfo,
+} from "../../../types";
 import { harnessForModelId } from "@/features/models/utils/modelRuntime";
 import { formatRelativeTime } from "../../../utils/time";
+import Bot from "lucide-react/dist/esm/icons/bot";
 import Cpu from "lucide-react/dist/esm/icons/cpu";
 import Feather from "lucide-react/dist/esm/icons/feather";
+import Sparkles from "lucide-react/dist/esm/icons/sparkles";
+import Terminal from "lucide-react/dist/esm/icons/terminal";
+import Wrench from "lucide-react/dist/esm/icons/wrench";
+import type { LucideIcon } from "lucide-react";
 
 type WorktreeThreadHistoryProps = {
   workspace: WorkspaceInfo;
   threads: ThreadSummary[];
+  customHarnesses?: AcpHarnessConfig[];
   onSelectThread: (workspaceId: string, threadId: string) => void;
 };
 
@@ -16,16 +27,55 @@ function getThreadLabel(thread: ThreadSummary) {
 }
 
 function getAgentRuntime(thread: ThreadSummary, workspace: WorkspaceInfo): AgentRuntime {
-  return harnessForModelId(thread.modelId) ?? workspace.settings.agentRuntime ?? "codex";
+  return (
+    thread.runtime ??
+    harnessForModelId(thread.modelId) ??
+    workspace.settings.agentRuntime ??
+    "codex"
+  );
 }
 
-function getAgentLabel(runtime: AgentRuntime) {
-  return runtime === "claude" ? "Claude" : "Codex";
+function getCustomHarness(runtime: AgentRuntime, customHarnesses: AcpHarnessConfig[]) {
+  return customHarnesses.find((harness) => harness.id === runtime) ?? null;
+}
+
+function getCustomHarnessIcon(icon?: string | null): LucideIcon {
+  switch (icon) {
+    case "terminal":
+      return Terminal;
+    case "sparkles":
+      return Sparkles;
+    case "cpu":
+      return Cpu;
+    case "wrench":
+      return Wrench;
+    case "bot":
+    default:
+      return Bot;
+  }
+}
+
+function getAgentPresentation(
+  runtime: AgentRuntime,
+  customHarnesses: AcpHarnessConfig[],
+): { label: string; Icon: LucideIcon } {
+  if (runtime === "claude") {
+    return { label: "Claude", Icon: Feather };
+  }
+  if (runtime === "codex") {
+    return { label: "Codex", Icon: Cpu };
+  }
+  const customHarness = getCustomHarness(runtime, customHarnesses);
+  return {
+    label: customHarness?.name?.trim() || runtime,
+    Icon: getCustomHarnessIcon(customHarness?.icon),
+  };
 }
 
 export function WorktreeThreadHistory({
   workspace,
   threads,
+  customHarnesses = [],
   onSelectThread,
 }: WorktreeThreadHistoryProps) {
   return (
@@ -34,8 +84,10 @@ export function WorktreeThreadHistory({
         <div className="worktree-thread-history-list">
           {threads.map((thread) => {
             const runtime = getAgentRuntime(thread, workspace);
-            const AgentIcon = runtime === "claude" ? Feather : Cpu;
-            const agentLabel = getAgentLabel(runtime);
+            const { label: agentLabel, Icon: AgentIcon } = getAgentPresentation(
+              runtime,
+              customHarnesses,
+            );
             return (
               <div key={thread.id} className="worktree-thread-history-row">
                 <button

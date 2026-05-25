@@ -49,10 +49,11 @@ const DEFAULT_ENTRY: ThreadCodexParams = {
 };
 
 function coerceHarness(value: unknown): AgentHarness | null {
-  if (value === "codex" || value === "claude") {
-    return value;
+  if (typeof value !== "string") {
+    return null;
   }
-  return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
 }
 
 function coerceAccessMode(value: unknown): AccessMode | null {

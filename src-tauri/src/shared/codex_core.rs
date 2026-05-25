@@ -38,6 +38,7 @@ pub(crate) fn model_runtime_prefix(runtime: &AgentRuntime) -> &'static str {
     match runtime {
         AgentRuntime::Codex => CODEX_MODEL_PREFIX,
         AgentRuntime::Claude => CLAUDE_MODEL_PREFIX,
+        AgentRuntime::Custom(_) => CODEX_MODEL_PREFIX,
     }
 }
 
@@ -88,6 +89,7 @@ fn workspace_session_key(workspace_id: &str, runtime: &AgentRuntime) -> String {
     match runtime {
         AgentRuntime::Codex => workspace_id.to_string(),
         AgentRuntime::Claude => claude_session_key(workspace_id),
+        AgentRuntime::Custom(id) => format!("{workspace_id}::{id}"),
     }
 }
 
