@@ -1,5 +1,7 @@
 #[cfg(desktop)]
 use std::sync::atomic::{AtomicBool, Ordering};
+#[cfg(target_os = "macos")]
+use tauri::image::Image;
 use tauri::Manager;
 #[cfg(desktop)]
 use tauri::RunEvent;
@@ -120,6 +122,10 @@ pub fn run() {
             app.manage(state);
             #[cfg(target_os = "macos")]
             {
+                if let Some(main_window) = app.get_webview_window("main") {
+                    let app_icon = Image::from_bytes(include_bytes!("../icons/icon.png"))?;
+                    main_window.set_icon(app_icon)?;
+                }
                 let tray_state = app.state::<tray::TrayState>();
                 tray::initialize(&app.handle(), tray_state.inner())?;
             }
