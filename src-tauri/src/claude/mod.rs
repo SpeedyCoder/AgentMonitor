@@ -176,16 +176,6 @@ async fn run_auth_status(cli_path: Option<&str>) -> ClaudeAuthStatus {
     }
 }
 
-fn dev_adapter_candidates() -> Vec<PathBuf> {
-    let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-    let mut candidates = vec![cwd.join("packages/claude-app-server-adapter/dist/index.js")];
-    let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    if let Some(repo_root) = manifest_dir.parent() {
-        candidates.push(repo_root.join("packages/claude-app-server-adapter/dist/index.js"));
-    }
-    candidates
-}
-
 fn node_candidate_paths() -> Vec<PathBuf> {
     let mut candidates = Vec::new();
     if let Ok(node_binary) = std::env::var("NODE_BINARY") {
@@ -233,29 +223,6 @@ fn resolve_node_path() -> Option<PathBuf> {
     None
 }
 
-fn resolve_bundled_adapter_path(app: &AppHandle) -> Option<PathBuf> {
-    if let Ok(resource_dir) = app.path().resource_dir() {
-        for candidate in [
-            resource_dir
-                .join("packages")
-                .join("claude-app-server-adapter")
-                .join("dist")
-                .join("index.js"),
-            resource_dir
-                .join("claude-app-server-adapter")
-                .join("index.js"),
-            resource_dir.join("index.js"),
-        ] {
-            if candidate.is_file() {
-                return Some(candidate);
-            }
-        }
-    }
-    dev_adapter_candidates()
-        .into_iter()
-        .find(|candidate| candidate.is_file())
-}
-
 fn command_for_adapter(
     adapter_path: &Path,
     cli_path: Option<&str>,
@@ -291,7 +258,6 @@ pub(crate) async fn spawn_workspace_session(
         .claude_adapter_path
         .as_deref()
         .map(PathBuf::from)
-        .or_else(|| resolve_bundled_adapter_path(&app_handle))
         .ok_or_else(|| {
             "Claude adapter not found. Configure a Claude adapter path in Settings.".to_string()
         })?;

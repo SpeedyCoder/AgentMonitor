@@ -73,7 +73,7 @@ export function SettingsClaudeSection({
             id="claude-adapter-path"
             className="settings-input"
             value={claudeAdapterPathDraft}
-            placeholder="/path/to/claude-app-server-adapter"
+            placeholder="/path/to/claude-adapter"
             onChange={(event) => onSetClaudeAdapterPathDraft(event.target.value)}
           />
           <button
