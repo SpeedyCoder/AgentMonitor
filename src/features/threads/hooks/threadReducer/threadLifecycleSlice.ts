@@ -55,16 +55,18 @@ export function reduceThreadLifecycle(
       if (list.some((thread) => thread.id === action.threadId)) {
         return state;
       }
+      const now = Date.now();
       const thread: ThreadSummary = {
         id: action.threadId,
         name: "New Agent",
-        updatedAt: 0,
+        createdAt: now,
+        updatedAt: now,
       };
       return {
         ...state,
         threadsByWorkspace: {
           ...state.threadsByWorkspace,
-          [action.workspaceId]: [thread, ...list],
+          [action.workspaceId]: [...list, thread],
         },
         threadStatusById: {
           ...state.threadStatusById,
@@ -81,6 +83,74 @@ export function reduceThreadLifecycle(
           [action.workspaceId]:
             state.activeThreadIdByWorkspace[action.workspaceId] ?? action.threadId,
         },
+      };
+    }
+    case "replaceThreadId": {
+      const { workspaceId, fromThreadId, toThreadId } = action;
+      if (!fromThreadId || !toThreadId || fromThreadId === toThreadId) {
+        return state;
+      }
+      const list = state.threadsByWorkspace[workspaceId] ?? [];
+      const fromThread = list.find((thread) => thread.id === fromThreadId);
+      if (!fromThread) {
+        return state;
+      }
+      const hasTarget = list.some((thread) => thread.id === toThreadId);
+      const nextThreads = hasTarget
+        ? list.filter((thread) => thread.id !== fromThreadId)
+        : list.map((thread) =>
+            thread.id === fromThreadId ? { ...thread, id: toThreadId } : thread,
+          );
+      const moveKey = <T,>(record: Record<string, T>) => {
+        if (!(fromThreadId in record)) {
+          return record;
+        }
+        const { [fromThreadId]: value, ...rest } = record;
+        return toThreadId in rest ? rest : { ...rest, [toThreadId]: value };
+      };
+      const nextParents = { ...state.threadParentById };
+      if (fromThreadId in nextParents) {
+        if (!(toThreadId in nextParents)) {
+          nextParents[toThreadId] = nextParents[fromThreadId];
+        }
+        delete nextParents[fromThreadId];
+      }
+      for (const [childId, parentId] of Object.entries(nextParents)) {
+        if (parentId === fromThreadId) {
+          nextParents[childId] = toThreadId;
+        }
+      }
+      const nextHidden = { ...(state.hiddenThreadIdsByWorkspace[workspaceId] ?? {}) };
+      if (nextHidden[fromThreadId]) {
+        delete nextHidden[fromThreadId];
+        nextHidden[toThreadId] = true;
+      }
+      return {
+        ...state,
+        threadsByWorkspace: {
+          ...state.threadsByWorkspace,
+          [workspaceId]: nextThreads,
+        },
+        hiddenThreadIdsByWorkspace: {
+          ...state.hiddenThreadIdsByWorkspace,
+          [workspaceId]: nextHidden,
+        },
+        activeThreadIdByWorkspace: {
+          ...state.activeThreadIdByWorkspace,
+          [workspaceId]:
+            state.activeThreadIdByWorkspace[workspaceId] === fromThreadId
+              ? toThreadId
+              : state.activeThreadIdByWorkspace[workspaceId] ?? null,
+        },
+        itemsByThread: moveKey(state.itemsByThread),
+        threadStatusById: moveKey(state.threadStatusById),
+        threadResumeLoadingById: moveKey(state.threadResumeLoadingById),
+        activeTurnIdByThread: moveKey(state.activeTurnIdByThread),
+        turnDiffByThread: moveKey(state.turnDiffByThread),
+        tokenUsageByThread: moveKey(state.tokenUsageByThread),
+        planByThread: moveKey(state.planByThread),
+        lastAgentMessageByThread: moveKey(state.lastAgentMessageByThread),
+        threadParentById: nextParents,
       };
     }
     case "hideThread": {

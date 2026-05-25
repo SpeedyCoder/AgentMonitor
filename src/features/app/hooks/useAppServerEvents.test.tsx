@@ -513,6 +513,111 @@ describe("useAppServerEvents", () => {
     });
   });
 
+  it("routes ACP user message chunks as user message items", async () => {
+    const handlers: Handlers = {
+      onItemStarted: vi.fn(),
+    };
+    const { root } = await mount(handlers);
+
+    act(() => {
+      listener?.({
+        workspace_id: "ws-1",
+        message: {
+          method: "user_message_chunk",
+          params: {
+            threadId: "thread-1",
+            itemId: "user-message-1",
+            content: [{ type: "text", text: "Hello" }],
+          },
+        },
+      });
+    });
+
+    expect(handlers.onItemStarted).toHaveBeenCalledWith("ws-1", "thread-1", {
+      id: "user-message-1",
+      type: "userMessage",
+      content: [{ type: "text", text: "Hello" }],
+    });
+
+    await act(async () => {
+      root.unmount();
+    });
+  });
+
+  it("hydrates ACP history replay chunks without marking items as started", async () => {
+    const handlers: Handlers = {
+      onAgentMessageDelta: vi.fn(),
+      onItemCompleted: vi.fn(),
+      onItemStarted: vi.fn(),
+      onCommandOutputDelta: vi.fn(),
+    };
+    const { root } = await mount(handlers);
+
+    act(() => {
+      listener?.({
+        workspace_id: "ws-1",
+        message: {
+          method: "agent_message_chunk",
+          params: {
+            threadId: "thread-1",
+            itemId: "agent-message-1",
+            content: { type: "text", text: "Loaded" },
+            historyReplay: true,
+          },
+        },
+      });
+      listener?.({
+        workspace_id: "ws-1",
+        message: {
+          method: "user_message_chunk",
+          params: {
+            threadId: "thread-1",
+            itemId: "user-message-1",
+            content: [{ type: "text", text: "Hello" }],
+            historyReplay: true,
+          },
+        },
+      });
+      listener?.({
+        workspace_id: "ws-1",
+        message: {
+          method: "tool_call_update",
+          params: {
+            threadId: "thread-1",
+            itemId: "tool-1",
+            update: { delta: "done" },
+            historyReplay: true,
+          },
+        },
+      });
+    });
+
+    expect(handlers.onAgentMessageDelta).toHaveBeenCalledWith({
+      workspaceId: "ws-1",
+      threadId: "thread-1",
+      itemId: "agent-message-1",
+      delta: "Loaded",
+      shouldMarkProcessing: false,
+    });
+    expect(handlers.onItemCompleted).toHaveBeenCalledWith("ws-1", "thread-1", {
+      id: "user-message-1",
+      type: "userMessage",
+      content: [{ type: "text", text: "Hello" }],
+    });
+    expect(handlers.onItemStarted).not.toHaveBeenCalled();
+    expect(handlers.onCommandOutputDelta).toHaveBeenCalledWith(
+      "ws-1",
+      "thread-1",
+      "tool-1",
+      "done",
+      false,
+    );
+
+    await act(async () => {
+      root.unmount();
+    });
+  });
+
   it("coerces string thread status payloads to object form", async () => {
     const handlers: Handlers = {
       onThreadStatusChanged: vi.fn(),

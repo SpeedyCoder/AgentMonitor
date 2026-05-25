@@ -52,6 +52,12 @@ export type ThreadAction =
   | { type: "setActiveThreadId"; workspaceId: string; threadId: string | null }
   | { type: "setMaxItemsPerThread"; maxItemsPerThread: number | null }
   | { type: "ensureThread"; workspaceId: string; threadId: string }
+  | {
+      type: "replaceThreadId";
+      workspaceId: string;
+      fromThreadId: string;
+      toThreadId: string;
+    }
   | { type: "hideThread"; workspaceId: string; threadId: string }
   | { type: "removeThread"; workspaceId: string; threadId: string }
   | { type: "setThreadParent"; threadId: string; parentId: string }
@@ -104,7 +110,9 @@ export type ThreadAction =
       threadId: string;
       item: ConversationItem;
       hasCustomName?: boolean;
+      replaceItemId?: string;
     }
+  | { type: "removeItem"; threadId: string; itemId: string }
   | { type: "setThreadItems"; threadId: string; items: ConversationItem[] }
   | {
       type: "appendReasoningSummary";

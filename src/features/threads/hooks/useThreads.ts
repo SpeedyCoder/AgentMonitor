@@ -559,6 +559,7 @@ export function useThreads({
 
   const {
     startThreadForWorkspace: startThreadForWorkspaceInternal,
+    resolvePendingThreadId,
     forkThreadForWorkspace,
     resumeThreadForWorkspace,
     refreshThread,
@@ -656,7 +657,7 @@ export function useThreads({
       workspaceId: string,
       options?: { activate?: boolean; modelId?: string | null },
     ) => {
-      await ensureWorkspaceRuntimeCodexArgsBestEffort(workspaceId, null, "start");
+      void ensureWorkspaceRuntimeCodexArgsBestEffort(workspaceId, null, "start");
       return startThreadForWorkspaceInternal(workspaceId, {
         ...options,
         modelId: options?.modelId ?? model ?? null,
@@ -798,6 +799,8 @@ export function useThreads({
     pushThreadErrorMessage,
     ensureThreadForActiveWorkspace,
     ensureThreadForWorkspace,
+    startThreadForWorkspace,
+    resolvePendingThreadId,
     refreshThread,
     forkThreadForWorkspace,
     updateThreadParent,
@@ -904,6 +907,7 @@ export function useThreads({
     renameThread,
     startThread,
     startThreadForWorkspace,
+    resolvePendingThreadId,
     forkThreadForWorkspace,
     listThreadsForWorkspaces,
     listThreadsForWorkspace,

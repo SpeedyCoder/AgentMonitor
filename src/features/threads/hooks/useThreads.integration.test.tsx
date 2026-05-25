@@ -440,7 +440,10 @@ describe("useThreads UX integration", () => {
 
     expect(ensureWorkspaceRuntimeCodexArgs).toHaveBeenCalledWith("ws-1", null);
     expect(vi.mocked(startThread)).toHaveBeenCalledWith("ws-1");
-    expect(threadId).toBe("thread-new");
+    expect(threadId).toMatch(/^pending-thread-/);
+    await act(async () => {
+      expect(await result.current.resolvePendingThreadId(threadId ?? "")).toBe("thread-new");
+    });
   });
 
   it("defers trimming until scrollback settings hydrate", async () => {

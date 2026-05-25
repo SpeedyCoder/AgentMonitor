@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 use std::future::Future;
 use std::path::PathBuf;
-use std::sync::OnceLock;
 use std::sync::Arc;
+use std::sync::OnceLock;
 
 use tokio::sync::Mutex;
 
@@ -42,9 +42,7 @@ pub(super) async fn take_live_shared_session(
             let sessions = sessions.lock().await;
             sessions
                 .values()
-                .find(|session| {
-                    session.supports_workspace_sharing() && &session.runtime == runtime
-                })
+                .find(|session| session.supports_workspace_sharing() && &session.runtime == runtime)
                 .cloned()
         };
         let Some(existing_session) = existing_session else {

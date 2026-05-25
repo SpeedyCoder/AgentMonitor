@@ -11,6 +11,7 @@ import { formatRelativeTime } from "@utils/time";
 
 export type SendMessageOptions = {
   skipPromptExpansion?: boolean;
+  retryInactiveAcpSession?: boolean;
   model?: string | null;
   effort?: string | null;
   serviceTier?: ServiceTier | null | undefined;
@@ -88,6 +89,13 @@ export function isStaleSteerTurnError(message: string): boolean {
     return true;
   }
   return normalized.includes("active turn") && normalized.includes("not found");
+}
+
+export function isInactiveAcpSessionError(message: string): boolean {
+  return message
+    .trim()
+    .toLowerCase()
+    .includes("acp session is not active for this workspace");
 }
 
 export function parseFastCommand(text: string): FastCommandAction {

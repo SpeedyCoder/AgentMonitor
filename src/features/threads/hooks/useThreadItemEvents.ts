@@ -106,8 +106,15 @@ export function useThreadItemEvents({
   );
 
   const handleToolOutputDelta = useCallback(
-    (threadId: string, itemId: string, delta: string) => {
-      markProcessing(threadId, true);
+    (
+      threadId: string,
+      itemId: string,
+      delta: string,
+      shouldMarkProcessing = true,
+    ) => {
+      if (shouldMarkProcessing) {
+        markProcessing(threadId, true);
+      }
       dispatch({ type: "appendToolOutput", threadId, itemId, delta });
       safeMessageActivity();
     },
@@ -132,14 +139,18 @@ export function useThreadItemEvents({
       threadId,
       itemId,
       delta,
+      shouldMarkProcessing = true,
     }: {
       workspaceId: string;
       threadId: string;
       itemId: string;
       delta: string;
+      shouldMarkProcessing?: boolean;
     }) => {
       dispatch({ type: "ensureThread", workspaceId, threadId });
-      markProcessing(threadId, true);
+      if (shouldMarkProcessing) {
+        markProcessing(threadId, true);
+      }
       const hasCustomName = Boolean(getCustomName(workspaceId, threadId));
       dispatch({
         type: "appendAgentDelta",
@@ -246,8 +257,14 @@ export function useThreadItemEvents({
   );
 
   const onCommandOutputDelta = useCallback(
-    (_workspaceId: string, threadId: string, itemId: string, delta: string) => {
-      handleToolOutputDelta(threadId, itemId, delta);
+    (
+      _workspaceId: string,
+      threadId: string,
+      itemId: string,
+      delta: string,
+      shouldMarkProcessing = true,
+    ) => {
+      handleToolOutputDelta(threadId, itemId, delta, shouldMarkProcessing);
     },
     [handleToolOutputDelta],
   );
@@ -260,8 +277,14 @@ export function useThreadItemEvents({
   );
 
   const onFileChangeOutputDelta = useCallback(
-    (_workspaceId: string, threadId: string, itemId: string, delta: string) => {
-      handleToolOutputDelta(threadId, itemId, delta);
+    (
+      _workspaceId: string,
+      threadId: string,
+      itemId: string,
+      delta: string,
+      shouldMarkProcessing = true,
+    ) => {
+      handleToolOutputDelta(threadId, itemId, delta, shouldMarkProcessing);
     },
     [handleToolOutputDelta],
   );

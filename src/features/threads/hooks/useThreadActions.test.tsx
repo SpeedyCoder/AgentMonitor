@@ -125,24 +125,33 @@ describe("useThreadActions", () => {
       threadId = await result.current.startThreadForWorkspace("ws-1");
     });
 
-    expect(threadId).toBe("thread-1");
+    expect(threadId).toMatch(/^pending-thread-/);
     expect(startThread).toHaveBeenCalledWith("ws-1");
     expect(dispatch.mock.calls.slice(0, 2)).toEqual([
       [
         {
           type: "setActiveThreadId",
           workspaceId: "ws-1",
-          threadId: "thread-1",
+          threadId,
         },
       ],
       [
         {
           type: "ensureThread",
           workspaceId: "ws-1",
-          threadId: "thread-1",
+          threadId,
         },
       ],
     ]);
+    await act(async () => {
+      expect(await result.current.resolvePendingThreadId(threadId ?? "")).toBe("thread-1");
+    });
+    expect(dispatch).toHaveBeenCalledWith({
+      type: "replaceThreadId",
+      workspaceId: "ws-1",
+      fromThreadId: threadId,
+      toThreadId: "thread-1",
+    });
     expect(loadedThreadsRef.current["thread-1"]).toBe(true);
   });
 
@@ -159,23 +168,32 @@ describe("useThreadActions", () => {
       threadId = await result.current.startThreadForWorkspace("ws-1");
     });
 
-    expect(threadId).toBe("session-1");
+    expect(threadId).toMatch(/^pending-thread-/);
     expect(dispatch.mock.calls.slice(0, 2)).toEqual([
       [
         {
           type: "setActiveThreadId",
           workspaceId: "ws-1",
-          threadId: "session-1",
+          threadId,
         },
       ],
       [
         {
           type: "ensureThread",
           workspaceId: "ws-1",
-          threadId: "session-1",
+          threadId,
         },
       ],
     ]);
+    await act(async () => {
+      expect(await result.current.resolvePendingThreadId(threadId ?? "")).toBe("session-1");
+    });
+    expect(dispatch).toHaveBeenCalledWith({
+      type: "replaceThreadId",
+      workspaceId: "ws-1",
+      fromThreadId: threadId,
+      toThreadId: "session-1",
+    });
     expect(loadedThreadsRef.current["session-1"]).toBe(true);
   });
 
@@ -239,14 +257,24 @@ describe("useThreadActions", () => {
 
     const { result, dispatch } = renderActions();
 
+    let threadId: string | null = null;
     await act(async () => {
-      await result.current.startThreadForWorkspace("ws-1", { activate: false });
+      threadId = await result.current.startThreadForWorkspace("ws-1", { activate: false });
     });
 
     expect(dispatch).toHaveBeenCalledWith({
       type: "ensureThread",
       workspaceId: "ws-1",
-      threadId: "thread-2",
+      threadId,
+    });
+    await act(async () => {
+      expect(await result.current.resolvePendingThreadId(threadId ?? "")).toBe("thread-2");
+    });
+    expect(dispatch).toHaveBeenCalledWith({
+      type: "replaceThreadId",
+      workspaceId: "ws-1",
+      fromThreadId: threadId,
+      toThreadId: "thread-2",
     });
     expect(dispatch).not.toHaveBeenCalledWith(
       expect.objectContaining({ type: "setActiveThreadId" }),
@@ -883,7 +911,89 @@ describe("useThreadActions", () => {
     expect(setThreadsAction.threads[20]?.updatedAt).toBe(4980);
   });
 
-  it("lists threads once and distributes results across workspaces", async () => {
+  it("fetches scoped thread lists for each workspace", async () => {
+    vi.mocked(listThreads)
+      .mockResolvedValueOnce({
+        result: {
+          data: [
+            {
+              id: "thread-1",
+              preview: "WS1 thread",
+              updated_at: 5000,
+            },
+          ],
+          nextCursor: null,
+        },
+      })
+      .mockResolvedValueOnce({
+        result: {
+          data: [
+            {
+              id: "thread-2",
+              preview: "WS2 thread",
+              updated_at: 4500,
+            },
+          ],
+          nextCursor: null,
+        },
+      });
+    vi.mocked(getThreadTimestamp).mockImplementation((thread) => {
+      const value = (thread as Record<string, unknown>).updated_at as number;
+      return value ?? 0;
+    });
+
+    const { result, dispatch } = renderActions();
+
+    await act(async () => {
+      await result.current.listThreadsForWorkspaces([workspace, workspaceTwo]);
+    });
+
+    expect(listThreads).toHaveBeenCalledTimes(2);
+    expect(listThreads).toHaveBeenNthCalledWith(
+      1,
+      "ws-1",
+      null,
+      100,
+      "updated_at",
+    );
+    expect(listThreads).toHaveBeenNthCalledWith(
+      2,
+      "ws-2",
+      null,
+      100,
+      "updated_at",
+    );
+    expect(dispatch).toHaveBeenCalledWith({
+      type: "setThreads",
+      workspaceId: "ws-1",
+      sortKey: "updated_at",
+      preserveAnchors: true,
+      threads: [
+        {
+          id: "thread-1",
+          name: "WS1 thread",
+          updatedAt: 5000,
+          createdAt: 0,
+        },
+      ],
+    });
+    expect(dispatch).toHaveBeenCalledWith({
+      type: "setThreads",
+      workspaceId: "ws-2",
+      sortKey: "updated_at",
+      preserveAnchors: true,
+      threads: [
+        {
+          id: "thread-2",
+          name: "WS2 thread",
+          updatedAt: 4500,
+          createdAt: 0,
+        },
+      ],
+    });
+  });
+
+  it("deduplicates legacy global thread list responses across workspaces", async () => {
     vi.mocked(listThreads).mockResolvedValue({
       result: {
         data: [
@@ -914,8 +1024,7 @@ describe("useThreadActions", () => {
       await result.current.listThreadsForWorkspaces([workspace, workspaceTwo]);
     });
 
-    expect(listThreads).toHaveBeenCalledTimes(1);
-    expect(listThreads).toHaveBeenCalledWith("ws-1", null, 100, "updated_at");
+    expect(listThreads).toHaveBeenCalledTimes(2);
     expect(dispatch).toHaveBeenCalledWith({
       type: "setThreads",
       workspaceId: "ws-1",
@@ -974,6 +1083,7 @@ describe("useThreadActions", () => {
       await result.current.listThreadsForWorkspaces([workspace, workspaceAlias]);
     });
 
+    expect(listThreads).toHaveBeenCalledTimes(2);
     expect(dispatch).toHaveBeenCalledWith({
       type: "setThreads",
       workspaceId: "ws-1",

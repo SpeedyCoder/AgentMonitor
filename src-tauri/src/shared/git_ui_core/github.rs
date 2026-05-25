@@ -227,7 +227,9 @@ struct ReviewThreadMutationResponse {
     data: Option<Value>,
 }
 
-fn map_graphql_author(author: Option<GraphQlAuthor>) -> Option<crate::types::GitHubPullRequestAuthor> {
+fn map_graphql_author(
+    author: Option<GraphQlAuthor>,
+) -> Option<crate::types::GitHubPullRequestAuthor> {
     author.map(|author| crate::types::GitHubPullRequestAuthor {
         login: author.login,
     })
@@ -571,12 +573,8 @@ query($owner: String!, $name: String!, $number: Int!, $after: String) {
         if let Some(cursor) = after.as_ref() {
             fields.push(("after", cursor.clone()));
         }
-        let value = run_gh_graphql(
-            &repo_root,
-            fields,
-            vec![("number", pr_number.to_string())],
-        )
-        .await?;
+        let value =
+            run_gh_graphql(&repo_root, fields, vec![("number", pr_number.to_string())]).await?;
         let response: ReviewThreadsResponse =
             serde_json::from_value(value).map_err(|err| err.to_string())?;
         let review_threads = response
@@ -603,7 +601,10 @@ query($owner: String!, $name: String!, $number: Int!, $after: String) {
     Ok(threads)
 }
 
-fn parse_mutation_thread(value: Value, mutation_name: &str) -> Result<GitHubPullRequestReviewThread, String> {
+fn parse_mutation_thread(
+    value: Value,
+    mutation_name: &str,
+) -> Result<GitHubPullRequestReviewThread, String> {
     let response: ReviewThreadMutationResponse =
         serde_json::from_value(value).map_err(|err| err.to_string())?;
     let thread_value = response

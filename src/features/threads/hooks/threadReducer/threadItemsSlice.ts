@@ -105,6 +105,22 @@ export function reduceThreadItems(state: ThreadState, action: ThreadAction): Thr
     case "upsertItem": {
       let list = state.itemsByThread[action.threadId] ?? [];
       const item = normalizeItem(action.item);
+      if (action.replaceItemId && action.replaceItemId !== item.id) {
+        let replaced = false;
+        const nextList: ConversationItem[] = [];
+        for (const entry of list) {
+          if (entry.id === action.replaceItemId) {
+            replaced = true;
+            nextList.push({ ...entry, id: item.id } as ConversationItem);
+            continue;
+          }
+          if (replaced && entry.id === item.id) {
+            continue;
+          }
+          nextList.push(entry);
+        }
+        list = nextList;
+      }
       const isUserMessage = item.kind === "message" && item.role === "user";
       const hadUserMessage = isUserMessage
         ? list.some((entry) => entry.kind === "message" && entry.role === "user")
@@ -169,6 +185,19 @@ export function reduceThreadItems(state: ThreadState, action: ThreadAction): Thr
           [action.threadId]: updatedItems,
         },
         threadsByWorkspace: nextThreadsByWorkspace,
+      };
+    }
+    case "removeItem": {
+      const list = state.itemsByThread[action.threadId] ?? [];
+      return {
+        ...state,
+        itemsByThread: {
+          ...state.itemsByThread,
+          [action.threadId]: prepareThreadItems(
+            list.filter((item) => item.id !== action.itemId),
+            { maxItemsPerThread: state.maxItemsPerThread },
+          ),
+        },
       };
     }
     case "setThreadItems":

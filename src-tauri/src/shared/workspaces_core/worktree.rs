@@ -9,12 +9,12 @@ use uuid::Uuid;
 use crate::backend::app_server::WorkspaceSession;
 use crate::codex::args::resolve_workspace_codex_args;
 use crate::codex::home::resolve_workspace_codex_home;
+use crate::shared::codex_core;
 use crate::storage::write_workspaces;
 use crate::types::{
     AgentRuntime, AppSettings, WorkspaceEntry, WorkspaceInfo, WorkspaceKind, WorkspaceSettings,
     WorktreeInfo, WorktreeSetupStatus,
 };
-use crate::shared::codex_core;
 
 use super::connect::{kill_session_by_id, take_live_shared_session, workspace_session_spawn_lock};
 use super::helpers::{

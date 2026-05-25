@@ -2,18 +2,20 @@ use agent_client_protocol::{
     on_receive_notification, on_receive_request, Agent, Client, ConnectionTo, Responder,
 };
 use agent_client_protocol_schema::{
-    CancelNotification, ContentBlock, EnvVariable, ImageContent, InitializeRequest, McpServer,
-    McpServerStdio, NewSessionRequest, NewSessionResponse, PermissionOptionId, PromptRequest,
-    ProtocolVersion, RequestPermissionOutcome, RequestPermissionRequest, RequestPermissionResponse,
+    CancelNotification, ContentBlock, ContentChunk, EnvVariable, ImageContent, InitializeRequest,
+    LoadSessionRequest, LoadSessionResponse, McpServer, McpServerStdio, NewSessionRequest,
+    NewSessionResponse, PermissionOptionId, PromptRequest, ProtocolVersion,
+    RequestPermissionOutcome, RequestPermissionRequest, RequestPermissionResponse,
     SelectedPermissionOutcome, SessionId, SessionNotification, SessionUpdate, TextContent,
 };
-use base64::Engine;
 use agent_client_protocol_tokio::AcpAgent;
+use base64::Engine;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::sync::Mutex as StdMutex;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -289,6 +291,22 @@ fn find_git_root(path: &Path) -> Option<PathBuf> {
     }
 }
 
+async fn create_session_on_connection(
+    connection: Arc<Mutex<ConnectionTo<Agent>>>,
+    cwd: PathBuf,
+    mcp_servers: Vec<McpServer>,
+) -> Result<SessionId, String> {
+    let mut new_session_req = NewSessionRequest::new(cwd);
+    new_session_req.mcp_servers = mcp_servers;
+    let cx = connection.lock().await;
+    let response: NewSessionResponse = cx
+        .send_request::<NewSessionRequest>(new_session_req)
+        .block_task()
+        .await
+        .map_err(|e| format!("Failed to create ACP session: {e}"))?;
+    Ok(response.session_id)
+}
+
 #[derive(Clone)]
 pub(crate) struct AcpAppEvent {
     pub(crate) workspace_id: String,
@@ -297,12 +315,22 @@ pub(crate) struct AcpAppEvent {
 
 pub(crate) type AcpEventEmitter = Arc<dyn Fn(AcpAppEvent) + Send + Sync + 'static>;
 
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct AcpPromptStreamIds {
+    pub(crate) sequence: u64,
+    pub(crate) user_item_id: String,
+    pub(crate) agent_item_id: String,
+    pub(crate) thought_item_id: String,
+}
+
 #[derive(Default)]
 pub(crate) struct SessionManager {
     connections: Arc<Mutex<HashMap<String, Arc<Mutex<ConnectionTo<Agent>>>>>>,
     session_ids: Arc<Mutex<HashMap<String, SessionId>>>,
     agent_runtimes: Arc<Mutex<HashMap<String, AgentRuntime>>>,
     tasks: Arc<Mutex<HashMap<String, JoinHandle<()>>>>,
+    message_streams: Arc<StdMutex<HashMap<String, AcpMessageStreamState>>>,
     summaries: Arc<Mutex<HashMap<String, Vec<AcpThreadSummary>>>>,
     summaries_path: Option<PathBuf>,
 }
@@ -330,6 +358,26 @@ impl SessionManager {
         mcp_servers: Vec<McpServer>,
         emit_event: AcpEventEmitter,
     ) -> Result<SessionId, String> {
+        if let Some(connection) = self.reusable_connection(&workspace_id, &runtime).await {
+            match create_session_on_connection(connection, cwd.clone(), mcp_servers.clone()).await {
+                Ok(session_id) => {
+                    self.session_ids
+                        .lock()
+                        .await
+                        .insert(workspace_id.clone(), session_id.clone());
+                    self.upsert_summary(
+                        &workspace_id,
+                        AcpThreadSummary::new(session_id.to_string(), "Session".to_string()),
+                    )
+                    .await?;
+                    return Ok(session_id);
+                }
+                Err(_) => {
+                    drop(self.remove_session(&workspace_id).await);
+                }
+            }
+        }
+
         let agent_config = AgentConfig::resolve(runtime.clone(), api_key);
 
         if !agent_config.is_available() {
@@ -351,6 +399,7 @@ impl SessionManager {
         let notification_emitter = emit_event.clone();
         let notification_summaries = self.summaries.clone();
         let notification_summaries_path = self.summaries_path.clone();
+        let notification_message_streams = self.message_streams.clone();
         let client = Client
             .builder()
             .name("trantor-client")
@@ -373,9 +422,12 @@ impl SessionManager {
                             .await;
                         }
                     }
-                    if let Some(message) =
-                        map_session_notification(&notification_workspace_id, notification)
-                    {
+                    if let Some(message) = map_session_notification(
+                        &notification_workspace_id,
+                        notification,
+                        &notification_message_streams,
+                        false,
+                    ) {
                         notification_emitter(AcpAppEvent {
                             workspace_id: notification_workspace_id.clone(),
                             message,
@@ -443,15 +495,13 @@ impl SessionManager {
             }
         });
 
-        let ready_result = timeout(ACP_STARTUP_TIMEOUT, ready_rx)
-            .await
-            .map_err(|_| {
-                task.abort();
-                format!(
-                    "Timed out creating ACP connection after {} seconds",
-                    ACP_STARTUP_TIMEOUT.as_secs()
-                )
-            })?;
+        let ready_result = timeout(ACP_STARTUP_TIMEOUT, ready_rx).await.map_err(|_| {
+            task.abort();
+            format!(
+                "Timed out creating ACP connection after {} seconds",
+                ACP_STARTUP_TIMEOUT.as_secs()
+            )
+        })?;
         let (session_id, connection) = ready_result.map_err(|_| {
             task.abort();
             "Failed to create ACP connection: connection task exited".to_string()
@@ -479,12 +529,188 @@ impl SessionManager {
         Ok(session_id)
     }
 
+    pub(crate) async fn load_session(
+        &self,
+        workspace_id: String,
+        thread_id: String,
+        cwd: PathBuf,
+        runtime: AgentRuntime,
+        api_key: Option<String>,
+        mcp_servers: Vec<McpServer>,
+        emit_event: AcpEventEmitter,
+    ) -> Result<(), String> {
+        if self
+            .get_session_id(&workspace_id)
+            .await
+            .is_some_and(|active_id| active_id.to_string() == thread_id)
+        {
+            return Ok(());
+        }
+
+        let session_id = SessionId::new(thread_id.clone());
+        let agent_config = AgentConfig::resolve(runtime.clone(), api_key);
+
+        if !agent_config.is_available() {
+            let release_hint = match runtime {
+                AgentRuntime::Codex => {
+                    "Please ensure the native codex-acp binary is bundled for this platform or codex-acp is on PATH."
+                }
+                AgentRuntime::Claude => {
+                    "claude-agent-acp requires Node.js. Packaged releases must bundle a Node runtime in the resource bin directory or declare Node.js as a release prerequisite."
+                }
+            };
+            return Err(format!(
+                "{} adapter not available. {release_hint}",
+                agent_runtime_name(&runtime),
+            ));
+        }
+
+        let notification_workspace_id = workspace_id.clone();
+        let notification_emitter = emit_event.clone();
+        let notification_summaries = self.summaries.clone();
+        let notification_summaries_path = self.summaries_path.clone();
+        let notification_message_streams = self.message_streams.clone();
+        let is_history_replay = Arc::new(AtomicBool::new(true));
+        let notification_history_replay = is_history_replay.clone();
+        let client = Client
+            .builder()
+            .name("trantor-client")
+            .on_receive_notification(
+                async move |notification: SessionNotification, _cx| {
+                    if let SessionUpdate::SessionInfoUpdate(info) = &notification.update {
+                        if let Some(title) = info
+                            .title
+                            .as_opt_ref()
+                            .flatten()
+                            .filter(|title| !title.trim().is_empty())
+                        {
+                            let _ = persist_summary_title(
+                                &notification_summaries,
+                                notification_summaries_path.as_ref(),
+                                &notification_workspace_id,
+                                &notification.session_id.to_string(),
+                                title.clone(),
+                            )
+                            .await;
+                        }
+                    }
+                    if let Some(message) = map_session_notification(
+                        &notification_workspace_id,
+                        notification,
+                        &notification_message_streams,
+                        notification_history_replay.load(Ordering::SeqCst),
+                    ) {
+                        notification_emitter(AcpAppEvent {
+                            workspace_id: notification_workspace_id.clone(),
+                            message,
+                        });
+                    }
+                    Ok(())
+                },
+                on_receive_notification!(),
+            )
+            .on_receive_request(
+                async move |request: RequestPermissionRequest,
+                            responder: Responder<RequestPermissionResponse>,
+                            _cx| {
+                    let response = select_permission_response(request);
+                    responder.respond(response)?;
+                    Ok(())
+                },
+                on_receive_request!(),
+            );
+
+        let agent = agent_config.to_connectable();
+        let (ready_tx, ready_rx) = oneshot::channel::<Result<ConnectionTo<Agent>, String>>();
+        let ready_tx = Arc::new(StdMutex::new(Some(ready_tx)));
+        let ready_tx_for_connection = ready_tx.clone();
+        let ready_tx_for_failure = ready_tx.clone();
+        let session_id_for_connection = session_id.clone();
+
+        let task = tokio::spawn(async move {
+            let result = client
+                .connect_with(agent, async move |cx: ConnectionTo<Agent>| {
+                    let init_response = cx
+                        .send_request::<InitializeRequest>(InitializeRequest::new(
+                            ProtocolVersion::V1,
+                        ))
+                        .block_task()
+                        .await
+                        .map_err(agent_client_protocol::Error::into_internal_error)?;
+
+                    if !init_response.agent_capabilities.load_session {
+                        return Err(agent_client_protocol::util::internal_error(
+                            "ACP agent does not support session/load",
+                        ));
+                    }
+
+                    let mut load_session_req =
+                        LoadSessionRequest::new(session_id_for_connection, cwd);
+                    load_session_req.mcp_servers = mcp_servers;
+                    cx.send_request::<LoadSessionRequest>(load_session_req)
+                        .block_task()
+                        .await
+                        .map(|_: LoadSessionResponse| ())
+                        .map_err(agent_client_protocol::Error::into_internal_error)?;
+                    is_history_replay.store(false, Ordering::SeqCst);
+
+                    if let Some(tx) = ready_tx_for_connection
+                        .lock()
+                        .ok()
+                        .and_then(|mut tx| tx.take())
+                    {
+                        let _ = tx.send(Ok(cx.clone()));
+                    }
+
+                    std::future::pending::<Result<(), agent_client_protocol::Error>>().await
+                })
+                .await;
+
+            if let Err(err) = result {
+                if let Some(tx) = ready_tx_for_failure
+                    .lock()
+                    .ok()
+                    .and_then(|mut tx| tx.take())
+                {
+                    let _ = tx.send(Err(format!("Failed to load ACP session: {err}")));
+                }
+            }
+        });
+
+        let ready_result = timeout(ACP_STARTUP_TIMEOUT, ready_rx).await.map_err(|_| {
+            task.abort();
+            format!(
+                "Timed out loading ACP session after {} seconds",
+                ACP_STARTUP_TIMEOUT.as_secs()
+            )
+        })?;
+        let connection = ready_result.map_err(|_| {
+            task.abort();
+            "Failed to load ACP session: connection task exited".to_string()
+        })??;
+
+        let mut conns = self.connections.lock().await;
+        let mut ids = self.session_ids.lock().await;
+        let mut runtimes = self.agent_runtimes.lock().await;
+        let mut tasks = self.tasks.lock().await;
+
+        conns.insert(workspace_id.clone(), Arc::new(Mutex::new(connection)));
+        ids.insert(workspace_id.clone(), session_id);
+        runtimes.insert(workspace_id.clone(), runtime);
+        let old_task = tasks.insert(workspace_id, task);
+        if let Some(old_task) = old_task {
+            old_task.abort();
+        }
+
+        Ok(())
+    }
+
     pub(crate) async fn send_prompt(
         &self,
         workspace_id: &str,
         thread_id: Option<&str>,
         content: Vec<ContentBlock>,
-    ) -> Result<(), String> {
+    ) -> Result<AcpPromptStreamIds, String> {
         let connections = self.connections.lock().await;
         let connection = connections
             .get(workspace_id)
@@ -499,6 +725,8 @@ impl SessionManager {
                 return Err("ACP session is not active for this workspace".to_string());
             }
         }
+        let stream_ids =
+            start_prompt_stream(&self.message_streams, workspace_id, &session_id.to_string());
 
         let cx = connection.lock().await;
         cx.send_request::<PromptRequest>(PromptRequest::new(session_id, content))
@@ -506,7 +734,7 @@ impl SessionManager {
             .await
             .map_err(|e| format!("Failed to send ACP prompt: {e}"))?;
 
-        Ok(())
+        Ok(stream_ids)
     }
 
     pub(crate) async fn cancel(
@@ -538,6 +766,18 @@ impl SessionManager {
 
     pub(crate) async fn get_session_id(&self, workspace_id: &str) -> Option<SessionId> {
         self.session_ids.lock().await.get(workspace_id).cloned()
+    }
+
+    async fn reusable_connection(
+        &self,
+        workspace_id: &str,
+        runtime: &AgentRuntime,
+    ) -> Option<Arc<Mutex<ConnectionTo<Agent>>>> {
+        let current_runtime = self.agent_runtimes.lock().await.get(workspace_id).cloned();
+        if current_runtime.as_ref() != Some(runtime) {
+            return None;
+        }
+        self.connections.lock().await.get(workspace_id).cloned()
     }
 
     pub(crate) async fn ensure_active_thread(
@@ -633,6 +873,9 @@ impl SessionManager {
 
         conns.remove(workspace_id);
         runtimes.remove(workspace_id);
+        if let Ok(mut streams) = self.message_streams.lock() {
+            streams.remove(workspace_id);
+        }
         if let Some(task) = tasks.remove(workspace_id) {
             task.abort();
         }
@@ -656,7 +899,7 @@ impl SessionManager {
             existing.updated_at = summary.updated_at;
             existing.archived = false;
         } else {
-            workspace_summaries.insert(0, summary);
+            workspace_summaries.push(summary);
         }
         self.persist_summaries(&summaries)
     }
@@ -739,15 +982,13 @@ impl AcpThreadSummary {
         })
     }
 
-    pub(crate) fn to_thread_payload(&self) -> Value {
+    pub(crate) fn to_loaded_thread_payload(&self) -> Value {
         json!({
             "id": self.id,
             "name": self.name,
             "preview": self.name,
             "items": [],
-            "resumable": false,
-            "historyPlaceholder": true,
-            "historyStatus": "ACP history is not available for this placeholder thread.",
+            "resumable": true,
             "createdAt": self.created_at,
             "updatedAt": self.updated_at,
         })
@@ -851,9 +1092,130 @@ fn select_permission_response(request: RequestPermissionRequest) -> RequestPermi
     }
 }
 
+#[derive(Default)]
+struct AcpMessageStreamState {
+    sequence: u64,
+    user_item_id: String,
+    agent_item_id: String,
+    thought_item_id: String,
+    user_content: Vec<Value>,
+}
+
+fn start_prompt_stream(
+    streams: &Arc<StdMutex<HashMap<String, AcpMessageStreamState>>>,
+    workspace_id: &str,
+    session_id: &str,
+) -> AcpPromptStreamIds {
+    let Ok(mut streams) = streams.lock() else {
+        return AcpPromptStreamIds {
+            sequence: 1,
+            user_item_id: format!("user-message-{session_id}-1"),
+            agent_item_id: format!("agent-message-{session_id}-1"),
+            thought_item_id: format!("agent-thought-{session_id}-1"),
+        };
+    };
+    let state = streams.entry(workspace_id.to_string()).or_default();
+    state.sequence = state.sequence.saturating_add(1).max(1);
+    let sequence = state.sequence;
+    state.user_item_id = format!("user-message-{session_id}-{sequence}");
+    state.agent_item_id = format!("agent-message-{session_id}-{sequence}");
+    state.thought_item_id = format!("agent-thought-{session_id}-{sequence}");
+    state.user_content.clear();
+    AcpPromptStreamIds {
+        sequence,
+        user_item_id: state.user_item_id.clone(),
+        agent_item_id: state.agent_item_id.clone(),
+        thought_item_id: state.thought_item_id.clone(),
+    }
+}
+
+fn ensure_prompt_stream<'a>(
+    streams: &'a mut HashMap<String, AcpMessageStreamState>,
+    workspace_id: &str,
+    session_id: &str,
+) -> &'a mut AcpMessageStreamState {
+    let state = streams.entry(workspace_id.to_string()).or_default();
+    if state.sequence == 0 {
+        state.sequence = 1;
+        state.user_item_id = format!("user-message-{session_id}-1");
+        state.agent_item_id = format!("agent-message-{session_id}-1");
+        state.thought_item_id = format!("agent-thought-{session_id}-1");
+    }
+    state
+}
+
+fn stream_item_id(
+    streams: &Arc<StdMutex<HashMap<String, AcpMessageStreamState>>>,
+    workspace_id: &str,
+    session_id: &str,
+    role: &str,
+) -> String {
+    let Ok(mut streams) = streams.lock() else {
+        return format!("{role}-{session_id}-1");
+    };
+    let state = ensure_prompt_stream(&mut streams, workspace_id, session_id);
+    match role {
+        "agent-message" => state.agent_item_id.clone(),
+        "agent-thought" => state.thought_item_id.clone(),
+        "user-message" => state.user_item_id.clone(),
+        _ => format!("{role}-{session_id}-{}", state.sequence),
+    }
+}
+
+fn chunk_item_id(chunk: &ContentChunk, role: &str) -> Option<String> {
+    let message_id = chunk.message_id.as_deref()?.trim();
+    if message_id.is_empty() {
+        return None;
+    }
+    Some(format!("{role}-{message_id}"))
+}
+
+fn user_message_content_for_chunk(
+    streams: &Arc<StdMutex<HashMap<String, AcpMessageStreamState>>>,
+    workspace_id: &str,
+    session_id: &str,
+    content: &ContentBlock,
+) -> (String, Vec<Value>) {
+    let Ok(mut streams) = streams.lock() else {
+        return (
+            format!("user-message-{session_id}-1"),
+            vec![serde_json::to_value(content).unwrap_or(Value::Null)],
+        );
+    };
+    let state = ensure_prompt_stream(&mut streams, workspace_id, session_id);
+    if let ContentBlock::Text(text) = content {
+        let existing = state
+            .user_content
+            .iter()
+            .position(|entry| entry.get("type").and_then(Value::as_str) == Some("text"));
+        match existing {
+            Some(index) => {
+                let current = state.user_content[index]
+                    .get("text")
+                    .and_then(Value::as_str)
+                    .unwrap_or("")
+                    .to_string();
+                state.user_content[index] = json!({
+                    "type": "text",
+                    "text": format!("{current}{}", text.text),
+                });
+            }
+            None => state.user_content.push(json!({
+                "type": "text",
+                "text": text.text.clone(),
+            })),
+        }
+    } else if let Ok(value) = serde_json::to_value(content) {
+        state.user_content.push(value);
+    }
+    (state.user_item_id.clone(), state.user_content.clone())
+}
+
 fn map_session_notification(
     workspace_id: &str,
     notification: SessionNotification,
+    message_streams: &Arc<StdMutex<HashMap<String, AcpMessageStreamState>>>,
+    history_replay: bool,
 ) -> Option<Value> {
     let thread_id = notification.session_id.to_string();
     let session_id = thread_id.clone();
@@ -861,30 +1223,49 @@ fn map_session_notification(
         "workspaceId": workspace_id,
         "threadId": thread_id,
         "sessionId": session_id,
+        "historyReplay": history_replay,
     });
 
     let message = match notification.update {
-        SessionUpdate::AgentMessageChunk(chunk) => json!({
-            "method": "agent_message_chunk",
-            "params": merge_params(base, json!({
-                "itemId": format!("agent-message-{}", notification.session_id),
-                "content": chunk.content,
-            })),
-        }),
-        SessionUpdate::AgentThoughtChunk(chunk) => json!({
-            "method": "agent_thought_chunk",
-            "params": merge_params(base, json!({
-                "itemId": format!("agent-thought-{}", notification.session_id),
-                "content": chunk.content,
-            })),
-        }),
-        SessionUpdate::UserMessageChunk(chunk) => json!({
-            "method": "user_message_chunk",
-            "params": merge_params(base, json!({
-                "itemId": format!("user-message-{}", notification.session_id),
-                "content": chunk.content,
-            })),
-        }),
+        SessionUpdate::AgentMessageChunk(chunk) => {
+            let item_id = chunk_item_id(&chunk, "agent-message").unwrap_or_else(|| {
+                stream_item_id(message_streams, workspace_id, &session_id, "agent-message")
+            });
+            json!({
+                "method": "agent_message_chunk",
+                "params": merge_params(base, json!({
+                    "itemId": item_id,
+                    "content": chunk.content,
+                })),
+            })
+        }
+        SessionUpdate::AgentThoughtChunk(chunk) => {
+            let item_id = chunk_item_id(&chunk, "agent-thought").unwrap_or_else(|| {
+                stream_item_id(message_streams, workspace_id, &session_id, "agent-thought")
+            });
+            json!({
+                "method": "agent_thought_chunk",
+                "params": merge_params(base, json!({
+                    "itemId": item_id,
+                    "content": chunk.content,
+                })),
+            })
+        }
+        SessionUpdate::UserMessageChunk(chunk) => {
+            let (item_id, content) = user_message_content_for_chunk(
+                message_streams,
+                workspace_id,
+                &session_id,
+                &chunk.content,
+            );
+            json!({
+                "method": "user_message_chunk",
+                "params": merge_params(base, json!({
+                    "itemId": item_id,
+                    "content": content,
+                })),
+            })
+        }
         SessionUpdate::ToolCall(tool_call) => {
             let item_id = tool_call.tool_call_id.to_string();
             json!({
@@ -980,21 +1361,136 @@ mod tests {
 
     #[test]
     fn notification_mapping_includes_thread_and_item_ids() {
+        let streams = Arc::new(StdMutex::new(HashMap::new()));
+        start_prompt_stream(&streams, "workspace-1", "session-1");
         let notification = SessionNotification::new(
             "session-1",
             SessionUpdate::AgentMessageChunk(ContentChunk::new(ContentBlock::Text(
                 TextContent::new("hello"),
             ))),
         );
-        let message = map_session_notification("workspace-1", notification).unwrap();
+        let message =
+            map_session_notification("workspace-1", notification, &streams, false).unwrap();
         assert_eq!(message["method"], "agent_message_chunk");
         assert_eq!(message["params"]["threadId"], "session-1");
-        assert_eq!(message["params"]["itemId"], "agent-message-session-1");
+        assert_eq!(message["params"]["itemId"], "agent-message-session-1-1");
+    }
+
+    #[test]
+    fn notification_mapping_uses_distinct_item_ids_for_prompt_streams() {
+        let streams = Arc::new(StdMutex::new(HashMap::new()));
+        start_prompt_stream(&streams, "workspace-1", "session-1");
+        let first = map_session_notification(
+            "workspace-1",
+            SessionNotification::new(
+                "session-1",
+                SessionUpdate::AgentMessageChunk(ContentChunk::new(ContentBlock::Text(
+                    TextContent::new("first"),
+                ))),
+            ),
+            &streams,
+            false,
+        )
+        .unwrap();
+
+        start_prompt_stream(&streams, "workspace-1", "session-1");
+        let second = map_session_notification(
+            "workspace-1",
+            SessionNotification::new(
+                "session-1",
+                SessionUpdate::AgentMessageChunk(ContentChunk::new(ContentBlock::Text(
+                    TextContent::new("second"),
+                ))),
+            ),
+            &streams,
+            false,
+        )
+        .unwrap();
+
+        assert_eq!(first["params"]["itemId"], "agent-message-session-1-1");
+        assert_eq!(second["params"]["itemId"], "agent-message-session-1-2");
+    }
+
+    #[test]
+    fn notification_mapping_uses_acp_message_ids_for_agent_message_boundaries() {
+        let streams = Arc::new(StdMutex::new(HashMap::new()));
+        start_prompt_stream(&streams, "workspace-1", "session-1");
+        let first = map_session_notification(
+            "workspace-1",
+            SessionNotification::new(
+                "session-1",
+                SessionUpdate::AgentMessageChunk(
+                    ContentChunk::new(ContentBlock::Text(TextContent::new("first")))
+                        .message_id("11111111-1111-1111-1111-111111111111"),
+                ),
+            ),
+            &streams,
+            false,
+        )
+        .unwrap();
+        let second = map_session_notification(
+            "workspace-1",
+            SessionNotification::new(
+                "session-1",
+                SessionUpdate::AgentMessageChunk(
+                    ContentChunk::new(ContentBlock::Text(TextContent::new("second")))
+                        .message_id("22222222-2222-2222-2222-222222222222"),
+                ),
+            ),
+            &streams,
+            false,
+        )
+        .unwrap();
+
+        assert_eq!(
+            first["params"]["itemId"],
+            "agent-message-11111111-1111-1111-1111-111111111111",
+        );
+        assert_eq!(
+            second["params"]["itemId"],
+            "agent-message-22222222-2222-2222-2222-222222222222",
+        );
+    }
+
+    #[test]
+    fn notification_mapping_accumulates_user_message_chunks() {
+        let streams = Arc::new(StdMutex::new(HashMap::new()));
+        start_prompt_stream(&streams, "workspace-1", "session-1");
+        let first = map_session_notification(
+            "workspace-1",
+            SessionNotification::new(
+                "session-1",
+                SessionUpdate::UserMessageChunk(ContentChunk::new(ContentBlock::Text(
+                    TextContent::new("hello "),
+                ))),
+            ),
+            &streams,
+            false,
+        )
+        .unwrap();
+        let second = map_session_notification(
+            "workspace-1",
+            SessionNotification::new(
+                "session-1",
+                SessionUpdate::UserMessageChunk(ContentChunk::new(ContentBlock::Text(
+                    TextContent::new("world"),
+                ))),
+            ),
+            &streams,
+            false,
+        )
+        .unwrap();
+
+        assert_eq!(first["params"]["itemId"], "user-message-session-1-1");
+        assert_eq!(first["params"]["content"][0]["text"], "hello ");
+        assert_eq!(second["params"]["itemId"], "user-message-session-1-1");
+        assert_eq!(second["params"]["content"][0]["text"], "hello world");
     }
 
     #[test]
     fn image_content_preserves_data_url_mime_and_infers_file_mime() {
-        let temp_dir = std::env::temp_dir().join(format!("trantor-acp-img-{}", uuid::Uuid::new_v4()));
+        let temp_dir =
+            std::env::temp_dir().join(format!("trantor-acp-img-{}", uuid::Uuid::new_v4()));
         std::fs::create_dir_all(&temp_dir).unwrap();
         let jpg_path = temp_dir.join("sample.jpg");
         std::fs::write(&jpg_path, [1_u8, 2, 3]).unwrap();
@@ -1010,10 +1506,16 @@ mod tests {
         .unwrap();
 
         assert_eq!(content.len(), 4);
-        assert_eq!(serde_json::to_value(&content[1]).unwrap()["mimeType"], "image/webp");
+        assert_eq!(
+            serde_json::to_value(&content[1]).unwrap()["mimeType"],
+            "image/webp"
+        );
         let remote_image = serde_json::to_value(&content[2]).unwrap();
         assert_eq!(remote_image["mimeType"], "image/avif");
-        assert_eq!(remote_image["uri"], "https://example.test/image.avif?cache=1");
+        assert_eq!(
+            remote_image["uri"],
+            "https://example.test/image.avif?cache=1"
+        );
         let file_image = serde_json::to_value(&content[3]).unwrap();
         assert_eq!(file_image["mimeType"], "image/jpeg");
         assert!(file_image["data"]

@@ -130,7 +130,8 @@ fn parse_status_output(
 
     for token in combined.split_whitespace() {
         if token.contains('@') && token.contains('.') {
-            status.account_email = Some(token.trim_matches(|ch| ch == ',' || ch == '.').to_string());
+            status.account_email =
+                Some(token.trim_matches(|ch| ch == ',' || ch == '.').to_string());
             break;
         }
     }
@@ -240,7 +241,9 @@ fn resolve_bundled_adapter_path(app: &AppHandle) -> Option<PathBuf> {
                 .join("claude-app-server-adapter")
                 .join("dist")
                 .join("index.js"),
-            resource_dir.join("claude-app-server-adapter").join("index.js"),
+            resource_dir
+                .join("claude-app-server-adapter")
+                .join("index.js"),
             resource_dir.join("index.js"),
         ] {
             if candidate.is_file() {
@@ -253,7 +256,10 @@ fn resolve_bundled_adapter_path(app: &AppHandle) -> Option<PathBuf> {
         .find(|candidate| candidate.is_file())
 }
 
-fn command_for_adapter(adapter_path: &Path, cli_path: Option<&str>) -> Result<tokio::process::Command, String> {
+fn command_for_adapter(
+    adapter_path: &Path,
+    cli_path: Option<&str>,
+) -> Result<tokio::process::Command, String> {
     let adapter_str = adapter_path
         .to_str()
         .ok_or_else(|| "Claude adapter path is not valid UTF-8.".to_string())?;
@@ -261,8 +267,9 @@ fn command_for_adapter(adapter_path: &Path, cli_path: Option<&str>) -> Result<to
         adapter_path.extension().and_then(|ext| ext.to_str()),
         Some("js") | Some("mjs") | Some("cjs")
     ) {
-        let node_path = resolve_node_path()
-            .ok_or_else(|| "Could not find a working Node.js runtime for the Claude adapter.".to_string())?;
+        let node_path = resolve_node_path().ok_or_else(|| {
+            "Could not find a working Node.js runtime for the Claude adapter.".to_string()
+        })?;
         let mut cmd = tokio_command(node_path);
         cmd.arg(adapter_str);
         cmd
@@ -285,7 +292,9 @@ pub(crate) async fn spawn_workspace_session(
         .as_deref()
         .map(PathBuf::from)
         .or_else(|| resolve_bundled_adapter_path(&app_handle))
-        .ok_or_else(|| "Claude adapter not found. Configure a Claude adapter path in Settings.".to_string())?;
+        .ok_or_else(|| {
+            "Claude adapter not found. Configure a Claude adapter path in Settings.".to_string()
+        })?;
     let cli_path = resolve_cli_path(app_settings.claude_cli_path.as_deref());
     let resolved_cli_path = resolve_cli_binary_path(app_settings.claude_cli_path.as_deref())
         .unwrap_or_else(|| PathBuf::from(cli_path.as_str()));
@@ -345,8 +354,8 @@ pub(crate) async fn claude_auth_login(
         settings.claude_cli_path.clone()
     };
     let resolved = resolve_cli_path(cli_path.as_deref());
-    let resolved_binary =
-        resolve_cli_binary_path(cli_path.as_deref()).unwrap_or_else(|| PathBuf::from(resolved.as_str()));
+    let resolved_binary = resolve_cli_binary_path(cli_path.as_deref())
+        .unwrap_or_else(|| PathBuf::from(resolved.as_str()));
     let path_env = build_codex_path_env(Some(resolved.as_str()));
     let mut command = tokio_command(&resolved_binary);
     command.args(["auth", "login"]);
@@ -359,7 +368,10 @@ pub(crate) async fn claude_auth_login(
     command.spawn().map_err(|err| err.to_string())?;
     Ok(ClaudeAuthLoginResult {
         started: true,
-        details: Some("Started `claude auth login`. Refresh status after the browser flow completes.".to_string()),
+        details: Some(
+            "Started `claude auth login`. Refresh status after the browser flow completes."
+                .to_string(),
+        ),
     })
 }
 
@@ -372,8 +384,8 @@ pub(crate) async fn claude_auth_logout(
         settings.claude_cli_path.clone()
     };
     let resolved = resolve_cli_path(cli_path.as_deref());
-    let resolved_binary =
-        resolve_cli_binary_path(cli_path.as_deref()).unwrap_or_else(|| PathBuf::from(resolved.as_str()));
+    let resolved_binary = resolve_cli_binary_path(cli_path.as_deref())
+        .unwrap_or_else(|| PathBuf::from(resolved.as_str()));
     let path_env = build_codex_path_env(Some(resolved.as_str()));
     let mut command = tokio_command(&resolved_binary);
     command.args(["auth", "logout"]);

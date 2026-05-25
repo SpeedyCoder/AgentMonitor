@@ -102,12 +102,12 @@ pub async fn acp_send_user_message(
 
     let content = content_from_text_and_images(text, images.unwrap_or_default())?;
 
-    state
+    let stream_ids = state
         .acp_sessions
         .send_prompt(&workspace_id, Some(&thread_id), content)
         .await?;
 
-    Ok(json!({}))
+    Ok(json!({ "promptStream": stream_ids }))
 }
 
 /// Interrupt/cancel a running turn in an ACP session
@@ -186,12 +186,8 @@ pub async fn acp_resume_thread(
         .await;
     }
 
-    let summary = state
-        .acp_sessions
-        .get_thread_summary(&workspace_id, &thread_id)
-        .await
-        .ok_or("ACP thread not found")?;
-    Ok(json!({ "thread": summary.to_thread_payload() }))
+    let summary = load_thread_for_workspace(&workspace_id, &thread_id, &state, app).await?;
+    Ok(json!({ "thread": summary.to_loaded_thread_payload() }))
 }
 
 /// Read an active ACP session.
@@ -211,12 +207,65 @@ pub async fn acp_read_thread(
         )
         .await;
     }
+    let summary = load_thread_for_workspace(&workspace_id, &thread_id, &state, app).await?;
+    Ok(json!({ "thread": summary.to_loaded_thread_payload() }))
+}
+
+async fn load_thread_for_workspace(
+    workspace_id: &str,
+    thread_id: &str,
+    state: &State<'_, AppState>,
+    app: AppHandle,
+) -> Result<crate::shared::acp_core::AcpThreadSummary, String> {
     let summary = state
         .acp_sessions
-        .get_thread_summary(&workspace_id, &thread_id)
+        .get_thread_summary(workspace_id, thread_id)
         .await
         .ok_or("ACP thread not found")?;
-    Ok(json!({ "thread": summary.to_thread_payload() }))
+
+    let workspaces = state.workspaces.lock().await;
+    let workspace = workspaces.get(workspace_id).ok_or("Workspace not found")?;
+    let settings = state.app_settings.lock().await;
+    let runtime = workspace
+        .settings
+        .agent_runtime
+        .clone()
+        .unwrap_or(AgentRuntime::Codex);
+    let api_key = match runtime {
+        AgentRuntime::Codex => settings.codex_api_key.clone(),
+        AgentRuntime::Claude => settings.claude_api_key.clone(),
+    };
+    let cwd = PathBuf::from(&workspace.path);
+    drop(settings);
+    drop(workspaces);
+
+    let mcp_config = WorkspaceMcpConfig::default();
+    let mcp_servers = mcp_config.to_acp_servers(&cwd);
+    let emit_app = app.clone();
+    let emit_event = Arc::new(move |event: AcpAppEvent| {
+        let _ = emit_app.emit(
+            "app-server-event",
+            json!({
+                "workspace_id": event.workspace_id,
+                "message": event.message,
+            }),
+        );
+    });
+
+    state
+        .acp_sessions
+        .load_session(
+            workspace_id.to_string(),
+            thread_id.to_string(),
+            cwd,
+            runtime,
+            api_key,
+            mcp_servers,
+            emit_event,
+        )
+        .await?;
+
+    Ok(summary)
 }
 
 /// Mark an ACP session as live-attached for frontend compatibility.
@@ -327,7 +376,7 @@ pub async fn acp_turn_steer(
         text
     )))];
 
-    state
+    let _stream_ids = state
         .acp_sessions
         .send_prompt(&workspace_id, Some(&thread_id), content)
         .await?;

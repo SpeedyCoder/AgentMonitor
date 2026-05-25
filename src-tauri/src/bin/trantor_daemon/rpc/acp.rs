@@ -73,11 +73,11 @@ async fn handle_session_prompt(state: &DaemonState, params: &Value) -> Result<Va
     let workspace_id = parse_string(params, "workspaceId")?;
     let thread_id = parse_optional_string(params, "threadId");
     let content = parse_content(params)?;
-    state
+    let stream_ids = state
         .acp_sessions
         .send_prompt(&workspace_id, thread_id.as_deref(), content)
         .await?;
-    Ok(json!({}))
+    Ok(json!({ "promptStream": stream_ids }))
 }
 
 async fn handle_send_user_message(state: &DaemonState, params: &Value) -> Result<Value, String> {
@@ -85,11 +85,11 @@ async fn handle_send_user_message(state: &DaemonState, params: &Value) -> Result
     let thread_id = parse_string(params, "threadId")?;
     let text = parse_string(params, "text")?;
     let content = content_from_text_and_images(text, parse_images(params)?)?;
-    state
+    let stream_ids = state
         .acp_sessions
         .send_prompt(&workspace_id, Some(&thread_id), content)
         .await?;
-    Ok(json!({}))
+    Ok(json!({ "promptStream": stream_ids }))
 }
 
 async fn handle_turn_steer(state: &DaemonState, params: &Value) -> Result<Value, String> {
@@ -99,7 +99,7 @@ async fn handle_turn_steer(state: &DaemonState, params: &Value) -> Result<Value,
     let content = vec![ContentBlock::Text(TextContent::new(format!(
         "[STEERING] {text}"
     )))];
-    state
+    let _stream_ids = state
         .acp_sessions
         .send_prompt(&workspace_id, Some(&thread_id), content)
         .await?;
@@ -140,7 +140,36 @@ async fn handle_read_thread(state: &DaemonState, params: &Value) -> Result<Value
         .get_thread_summary(&workspace_id, &thread_id)
         .await
         .ok_or("ACP thread not found")?;
-    Ok(json!({ "thread": summary.to_thread_payload() }))
+    let workspace = workspace_entry(state, &workspace_id).await?;
+    let runtime = workspace
+        .settings
+        .agent_runtime
+        .clone()
+        .unwrap_or(AgentRuntime::Codex);
+    let api_key = runtime_api_key(state, &runtime).await;
+    let cwd = PathBuf::from(&workspace.path);
+    let mcp_servers = WorkspaceMcpConfig::default().to_acp_servers(&cwd);
+    let event_sink = state.event_sink.clone();
+    let emit_event = Arc::new(move |event: AcpAppEvent| {
+        event_sink.emit_app_server_event(AppServerEvent {
+            workspace_id: event.workspace_id,
+            message: event.message,
+        });
+    });
+
+    state
+        .acp_sessions
+        .load_session(
+            workspace_id,
+            thread_id,
+            cwd,
+            runtime,
+            api_key,
+            mcp_servers,
+            emit_event,
+        )
+        .await?;
+    Ok(json!({ "thread": summary.to_loaded_thread_payload() }))
 }
 
 async fn handle_live_subscribe(state: &DaemonState, params: &Value) -> Result<Value, String> {
@@ -222,10 +251,7 @@ fn parse_runtime(params: &Value) -> Option<AgentRuntime> {
     }
 }
 
-fn runtime_for_session(
-    params: &Value,
-    workspace: &crate::types::WorkspaceEntry,
-) -> AgentRuntime {
+fn runtime_for_session(params: &Value, workspace: &crate::types::WorkspaceEntry) -> AgentRuntime {
     parse_runtime(params)
         .or_else(|| workspace.settings.agent_runtime.clone())
         .unwrap_or(AgentRuntime::Codex)
