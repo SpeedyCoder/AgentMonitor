@@ -235,9 +235,3 @@ pub(crate) async fn unique_branch_name_live(
     }
     Err("Unable to find an available branch name.".to_string())
 }
-
-pub(crate) async fn git_get_origin_url(repo_path: &PathBuf) -> Option<String> {
-    run_git_command(repo_path, &["remote", "get-url", "origin"])
-        .await
-        .ok()
-}

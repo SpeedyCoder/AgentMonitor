@@ -19,7 +19,6 @@ use crate::shared::account::{build_account_response, read_auth_account};
 use crate::types::{AgentRuntime, WorkspaceEntry};
 
 const LOGIN_START_TIMEOUT: Duration = Duration::from_secs(30);
-#[allow(dead_code)]
 const MAX_INLINE_IMAGE_BYTES: u64 = 50 * 1024 * 1024;
 const THREAD_LIST_SOURCE_KINDS: &[&str] = &[
     "cli",
@@ -70,17 +69,6 @@ fn normalize_collaboration_mode_model(mut collaboration_mode: Value) -> Value {
     collaboration_mode
 }
 
-pub(crate) fn runtime_for_model_id(model_id: Option<&str>) -> AgentRuntime {
-    let trimmed = model_id.unwrap_or_default().trim();
-    if trimmed.starts_with(CLAUDE_MODEL_PREFIX)
-        || trimmed.to_ascii_lowercase().starts_with("claude-")
-    {
-        AgentRuntime::Claude
-    } else {
-        AgentRuntime::Codex
-    }
-}
-
 pub(crate) fn claude_session_key(workspace_id: &str) -> String {
     format!("{workspace_id}::claude")
 }
@@ -93,7 +81,6 @@ fn workspace_session_key(workspace_id: &str, runtime: &AgentRuntime) -> String {
     }
 }
 
-#[allow(dead_code)]
 fn image_extension_for_path(path: &str) -> Option<String> {
     Path::new(path)
         .extension()
@@ -101,7 +88,6 @@ fn image_extension_for_path(path: &str) -> Option<String> {
         .map(|value| value.to_ascii_lowercase())
 }
 
-#[allow(dead_code)]
 fn image_mime_type_for_path(path: &str) -> Option<&'static str> {
     let extension = image_extension_for_path(path)?;
     match extension.as_str() {
@@ -115,7 +101,6 @@ fn image_mime_type_for_path(path: &str) -> Option<&'static str> {
     }
 }
 
-#[allow(dead_code)]
 fn should_inline_image_path_for_codex(path: &str) -> bool {
     matches!(
         image_extension_for_path(path).as_deref(),
@@ -171,7 +156,6 @@ fn convert_heif_image_to_jpeg_bytes(path: &str) -> Result<Vec<u8>, String> {
     Ok(bytes)
 }
 
-#[allow(dead_code)]
 pub(crate) fn normalize_file_path(raw: &str) -> String {
     let path = raw.trim();
     let file_uri_path = path
@@ -212,7 +196,6 @@ pub(crate) fn normalize_file_path(raw: &str) -> String {
     String::from_utf8_lossy(&decoded).into_owned()
 }
 
-#[allow(dead_code)]
 pub(crate) fn read_image_as_data_url_core(path: &str) -> Result<String, String> {
     let trimmed_path = normalize_file_path(path);
     if trimmed_path.is_empty() {
