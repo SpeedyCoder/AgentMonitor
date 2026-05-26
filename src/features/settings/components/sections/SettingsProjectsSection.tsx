@@ -3,6 +3,7 @@ import ChevronUp from "lucide-react/dist/esm/icons/chevron-up";
 import Trash2 from "lucide-react/dist/esm/icons/trash-2";
 import type { Dispatch, SetStateAction } from "react";
 import { useState } from "react";
+import { SelectMenu } from "@/features/design-system/components/popover/PopoverPrimitives";
 import {
   SettingsSection,
   SettingsSubsection,
@@ -349,21 +350,22 @@ export function SettingsProjectsSection({
                       </div>
                     </button>
                     <div className="settings-project-actions">
-                      <select
-                        className="settings-select settings-select--compact"
+                      <SelectMenu<string>
                         value={groupValue}
-                        onChange={(event) => {
-                          const nextGroupId = event.target.value || null;
+                        onChange={(value) => {
+                          const nextGroupId = value || null;
                           void onAssignWorkspaceGroup(workspace.id, nextGroupId);
                         }}
-                      >
-                        <option value="">{ungroupedLabel}</option>
-                        {workspaceGroups.map((entry) => (
-                          <option key={entry.id} value={entry.id}>
-                            {entry.name}
-                          </option>
-                        ))}
-                      </select>
+                        options={[
+                          { value: "", label: ungroupedLabel },
+                          ...workspaceGroups.map((entry) => ({
+                            value: entry.id,
+                            label: entry.name,
+                          })),
+                        ]}
+                        ariaLabel="Project group"
+                        size="sm"
+                      />
                       <button
                         type="button"
                         className="ghost icon-button"

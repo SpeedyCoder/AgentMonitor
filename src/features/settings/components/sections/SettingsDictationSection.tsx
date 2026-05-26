@@ -1,4 +1,5 @@
 import type { AppSettings, DictationModelStatus } from "@/types";
+import { SelectMenu } from "@/features/design-system/components/popover/PopoverPrimitives";
 import {
   SettingsSection,
   SettingsToggleRow,
@@ -80,23 +81,22 @@ export function SettingsDictationSection({
         <label className="settings-field-label" htmlFor="dictation-model">
           Dictation model
         </label>
-        <select
+        <SelectMenu<string>
           id="dictation-model"
-          className="settings-select"
           value={appSettings.dictationModelId}
-          onChange={(event) =>
+          onChange={(value) =>
             void onUpdateAppSettings({
               ...appSettings,
-              dictationModelId: event.target.value,
+              dictationModelId: value,
             })
           }
-        >
-          {dictationModels.map((model) => (
-            <option key={model.id} value={model.id}>
-              {model.label} ({model.size})
-            </option>
-          ))}
-        </select>
+          options={dictationModels.map((model) => ({
+            value: model.id,
+            label: `${model.label} (${model.size})`,
+          }))}
+          ariaLabel="Dictation model"
+          fullWidth
+        />
         <div className="settings-help">
           {selectedDictationModel.note} Download size: {selectedDictationModel.size}.
         </div>
@@ -105,37 +105,39 @@ export function SettingsDictationSection({
         <label className="settings-field-label" htmlFor="dictation-language">
           Preferred dictation language
         </label>
-        <select
+        <SelectMenu<string>
           id="dictation-language"
-          className="settings-select"
           value={appSettings.dictationPreferredLanguage ?? ""}
-          onChange={(event) =>
+          onChange={(value) =>
             void onUpdateAppSettings({
               ...appSettings,
-              dictationPreferredLanguage: event.target.value || null,
+              dictationPreferredLanguage: value || null,
             })
           }
-        >
-          <option value="">Auto-detect only</option>
-          <option value="en">English</option>
-          <option value="es">Spanish</option>
-          <option value="fr">French</option>
-          <option value="de">German</option>
-          <option value="it">Italian</option>
-          <option value="pt">Portuguese</option>
-          <option value="nl">Dutch</option>
-          <option value="sv">Swedish</option>
-          <option value="no">Norwegian</option>
-          <option value="da">Danish</option>
-          <option value="fi">Finnish</option>
-          <option value="pl">Polish</option>
-          <option value="tr">Turkish</option>
-          <option value="ru">Russian</option>
-          <option value="uk">Ukrainian</option>
-          <option value="ja">Japanese</option>
-          <option value="ko">Korean</option>
-          <option value="zh">Chinese</option>
-        </select>
+          options={[
+            { value: "", label: "Auto-detect only" },
+            { value: "en", label: "English" },
+            { value: "es", label: "Spanish" },
+            { value: "fr", label: "French" },
+            { value: "de", label: "German" },
+            { value: "it", label: "Italian" },
+            { value: "pt", label: "Portuguese" },
+            { value: "nl", label: "Dutch" },
+            { value: "sv", label: "Swedish" },
+            { value: "no", label: "Norwegian" },
+            { value: "da", label: "Danish" },
+            { value: "fi", label: "Finnish" },
+            { value: "pl", label: "Polish" },
+            { value: "tr", label: "Turkish" },
+            { value: "ru", label: "Russian" },
+            { value: "uk", label: "Ukrainian" },
+            { value: "ja", label: "Japanese" },
+            { value: "ko", label: "Korean" },
+            { value: "zh", label: "Chinese" },
+          ]}
+          ariaLabel="Preferred dictation language"
+          fullWidth
+        />
         <div className="settings-help">
           Auto-detect stays on; this nudges the decoder toward your preference.
         </div>
@@ -144,23 +146,25 @@ export function SettingsDictationSection({
         <label className="settings-field-label" htmlFor="dictation-hold-key">
           Hold-to-dictate key
         </label>
-        <select
+        <SelectMenu<string>
           id="dictation-hold-key"
-          className="settings-select"
           value={appSettings.dictationHoldKey ?? ""}
-          onChange={(event) =>
+          onChange={(value) =>
             void onUpdateAppSettings({
               ...appSettings,
-              dictationHoldKey: event.target.value,
+              dictationHoldKey: value,
             })
           }
-        >
-          <option value="">Off</option>
-          <option value="alt">{optionKeyLabel}</option>
-          <option value="shift">Shift</option>
-          <option value="control">Control</option>
-          <option value="meta">{metaKeyLabel}</option>
-        </select>
+          options={[
+            { value: "", label: "Off" },
+            { value: "alt", label: optionKeyLabel },
+            { value: "shift", label: "Shift" },
+            { value: "control", label: "Control" },
+            { value: "meta", label: metaKeyLabel },
+          ]}
+          ariaLabel="Hold-to-dictate key"
+          fullWidth
+        />
         <div className="settings-help">
           Hold the key to start dictation, release to stop and process.
         </div>

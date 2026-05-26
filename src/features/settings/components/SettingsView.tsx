@@ -1,6 +1,7 @@
 import ChevronLeft from "lucide-react/dist/esm/icons/chevron-left";
 import X from "lucide-react/dist/esm/icons/x";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useWindowFullscreenState } from "@/features/layout/hooks/useWindowFullscreenState";
 import type {
   AppSettings,
   CodexDoctorResult,
@@ -103,7 +104,8 @@ export function SettingsView({
   accountRateLimits,
   usageShowRemaining,
 }: SettingsViewProps) {
-  const [isWindowedMac, setIsWindowedMac] = useState(false);
+  const isFullscreen = useWindowFullscreenState();
+  const isWindowedMac = isMacPlatform() && !isFullscreen;
   const [localCustomHarnesses, setLocalCustomHarnesses] = useState(
     () => appSettings.customAcpHarnesses ?? [],
   );
@@ -211,32 +213,6 @@ export function SettingsView({
     localCustomHarnesses,
     visibleAppSettings,
   ]);
-
-  useEffect(() => {
-    if (!isMacPlatform() || typeof window === "undefined") {
-      setIsWindowedMac(false);
-      return;
-    }
-
-    const updateWindowMode = () => {
-      const screenWidth = window.screen?.availWidth ?? 0;
-      const screenHeight = window.screen?.availHeight ?? 0;
-      if (screenWidth <= 0 || screenHeight <= 0) {
-        setIsWindowedMac(false);
-        return;
-      }
-
-      const widthGap = screenWidth - window.innerWidth;
-      const heightGap = screenHeight - window.innerHeight;
-      setIsWindowedMac(widthGap > 24 || heightGap > 24);
-    };
-
-    updateWindowMode();
-    window.addEventListener("resize", updateWindowMode);
-    return () => {
-      window.removeEventListener("resize", updateWindowMode);
-    };
-  }, []);
 
   const customActiveHarness = activeSection.startsWith("harness:")
     ? localCustomHarnesses.find(

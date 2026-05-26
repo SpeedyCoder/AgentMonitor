@@ -861,21 +861,21 @@
 }
 
 .thread-status.processing {
-  background: #ff9f43;
+  background: var(--ds-status-processing);
   animation: pulse 1.2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
 .thread-status.reviewing {
-  background: #2fd1c4;
+  background: var(--ds-status-reviewing);
   animation: pulse 1.4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
 .thread-status.unread {
-  background: #4da3ff;
+  background: var(--ds-status-unread);
 }
 
 .thread-status.ready {
-  background: #3fe47e;
+  background: var(--ds-status-ready);
 }
 
 .thread-row:hover {
@@ -1270,7 +1270,7 @@
 
 .worktree-label {
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
   line-height: 1.2;
   white-space: nowrap;
   overflow: hidden;

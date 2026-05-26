@@ -7,6 +7,7 @@ import type {
   CodexUpdateResult,
   ModelOption,
 } from "@/types";
+import { SelectMenu } from "@/features/design-system/components/popover/PopoverPrimitives";
 import {
   SettingsSection,
   SettingsSubsection,
@@ -481,25 +482,22 @@ export function SettingsCodexSection({
         }
       >
         <div className="settings-field-row">
-          <select
+          <SelectMenu<string>
             id="default-model"
-            className="settings-select"
             value={selectedModelSlug}
             disabled={!defaultModels.length || defaultModelsLoading}
-            onChange={(event) =>
+            onChange={(value) =>
               void onUpdateAppSettings({
                 ...appSettings,
-                lastComposerModelId: event.target.value,
+                lastComposerModelId: value,
               })
             }
-            aria-label="Model"
-          >
-            {defaultModels.map((model) => (
-              <option key={model.model} value={model.model}>
-                {model.displayName?.trim() || model.model}
-              </option>
-            ))}
-          </select>
+            options={defaultModels.map((model) => ({
+              value: model.model,
+              label: model.displayName?.trim() || model.model,
+            }))}
+            ariaLabel="Model"
+          />
           <button
             type="button"
             className="ghost"
@@ -519,46 +517,45 @@ export function SettingsCodexSection({
             : "The selected model does not expose reasoning effort options."
         }
       >
-        <select
+        <SelectMenu<string>
           id="default-effort"
-          className="settings-select"
           value={selectedEffort}
-          onChange={(event) =>
+          onChange={(value) =>
             void onUpdateAppSettings({
               ...appSettings,
-              lastComposerReasoningEffort: event.target.value,
+              lastComposerReasoningEffort: value,
             })
           }
-          aria-label="Reasoning effort"
+          options={
+            !reasoningSupported
+              ? [{ value: "", label: "not supported" }]
+              : reasoningOptions.map((effort) => ({ value: effort, label: effort }))
+          }
+          ariaLabel="Reasoning effort"
           disabled={!reasoningSupported}
-        >
-          {!reasoningSupported && <option value="">not supported</option>}
-          {reasoningOptions.map((effort) => (
-            <option key={effort} value={effort}>
-              {effort}
-            </option>
-          ))}
-        </select>
+        />
       </SettingsToggleRow>
 
       <div className="settings-field">
         <label className="settings-field-label" htmlFor="review-delivery">
           Review mode
         </label>
-        <select
+        <SelectMenu<AppSettings["reviewDeliveryMode"]>
           id="review-delivery"
-          className="settings-select"
           value={appSettings.reviewDeliveryMode}
-          onChange={(event) =>
+          onChange={(value) =>
             void onUpdateAppSettings({
               ...appSettings,
-              reviewDeliveryMode: event.target.value as AppSettings["reviewDeliveryMode"],
+              reviewDeliveryMode: value,
             })
           }
-        >
-          <option value="inline">Inline (same thread)</option>
-          <option value="detached">Detached (new review thread)</option>
-        </select>
+          options={[
+            { value: "inline", label: "Inline (same thread)" },
+            { value: "detached", label: "Detached (new review thread)" },
+          ]}
+          ariaLabel="Review mode"
+          fullWidth
+        />
         <div className="settings-help">
           Choose whether <code>/review</code> runs in the current thread or a detached review
           thread.

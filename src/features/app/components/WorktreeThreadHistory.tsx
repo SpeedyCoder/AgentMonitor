@@ -5,6 +5,7 @@ import type {
   WorkspaceInfo,
 } from "../../../types";
 import { harnessForModelId } from "@/features/models/utils/modelRuntime";
+import { displayThreadLabel } from "../../threads/utils/emptyThreadSession";
 import { formatRelativeTime } from "../../../utils/time";
 import Bot from "lucide-react/dist/esm/icons/bot";
 import Cpu from "lucide-react/dist/esm/icons/cpu";
@@ -22,8 +23,7 @@ type WorktreeThreadHistoryProps = {
 };
 
 function getThreadLabel(thread: ThreadSummary) {
-  const trimmed = thread.name?.trim();
-  return trimmed && trimmed.length > 0 ? trimmed : "Untitled thread";
+  return displayThreadLabel(thread.name);
 }
 
 function getAgentRuntime(thread: ThreadSummary, workspace: WorkspaceInfo): AgentRuntime {

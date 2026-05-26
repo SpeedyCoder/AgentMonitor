@@ -206,7 +206,6 @@ export function OpenAppMenu({
               alt=""
               aria-hidden
             />
-            {selectedOpenTarget.label}
           </span>
         </button>
       }

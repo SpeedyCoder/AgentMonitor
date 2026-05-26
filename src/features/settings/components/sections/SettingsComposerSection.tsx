@@ -1,4 +1,5 @@
 import type { AppSettings } from "@/types";
+import { SelectMenu } from "@/features/design-system/components/popover/PopoverPrimitives";
 import {
   SettingsSection,
   SettingsToggleRow,
@@ -35,20 +36,17 @@ export function SettingsComposerSection({
         <label className="settings-field-label" htmlFor="composer-preset">
           Preset
         </label>
-        <select
+        <SelectMenu<ComposerPreset>
           id="composer-preset"
-          className="settings-select"
           value={appSettings.composerEditorPreset}
-          onChange={(event) =>
-            onComposerPresetChange(event.target.value as ComposerPreset)
-          }
-        >
-          {Object.entries(composerPresetLabels).map(([preset, label]) => (
-            <option key={preset} value={preset}>
-              {label}
-            </option>
-          ))}
-        </select>
+          onChange={(value) => onComposerPresetChange(value)}
+          options={Object.entries(composerPresetLabels).map(([preset, label]) => ({
+            value: preset as ComposerPreset,
+            label,
+          }))}
+          ariaLabel="Preset"
+          fullWidth
+        />
         <div className="settings-help">
           Presets update the toggles below. Customize any setting after selecting.
         </div>

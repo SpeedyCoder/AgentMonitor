@@ -40,7 +40,7 @@
 
 .messages-empty {
   padding: 20px 22px;
-  border-radius: 18px;
+  border-radius: var(--ds-radius-md);
   border: 1px solid var(--cm-border-strong);
   background: var(--cm-surface-panel);
   color: var(--text-muted);
@@ -178,7 +178,7 @@
 .bubble {
   max-width: min(100%, 760px);
   padding: 14px 16px;
-  border-radius: 18px;
+  border-radius: var(--ds-radius-md);
   border: 1px solid var(--cm-border-emphasis);
   background: var(--cm-surface-panel-soft);
   font-size: 14px;
@@ -371,8 +371,8 @@
   display: block;
   max-width: 90vw;
   max-height: 90vh;
-  border-radius: 16px;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.4);
+  border-radius: var(--ds-radius-lg);
+  box-shadow: var(--ds-shadow-2xl);
 }
 
 .message-image-lightbox-close {
@@ -1271,10 +1271,10 @@
 
 .message .markdown-codeblock {
   border: 1px solid var(--border-stronger);
-  border-radius: 10px;
+  border-radius: var(--ds-radius-md);
   background: var(--surface-command);
   overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--ds-shadow-md);
   margin: 8px 0;
   width: 100%;
   max-width: 100%;
@@ -1334,7 +1334,7 @@
   margin: 8px 0;
   padding: 10px 12px 12px;
   border: 1px solid var(--border-stronger);
-  border-radius: 10px;
+  border-radius: var(--ds-radius-md);
   background: var(--surface-command);
   white-space: pre;
   overflow-x: auto;
@@ -1345,7 +1345,7 @@
   font-size: var(--code-font-size, 11px);
   font-weight: var(--code-font-weight, 400);
   line-height: var(--code-line-height, 1.28);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--ds-shadow-md);
 }
 
 .message .markdown-codeblock-single code {
@@ -1377,9 +1377,9 @@
   width: 100%;
   overflow-x: auto;
   border: 1px solid var(--border-strong);
-  border-radius: 14px;
+  border-radius: var(--ds-radius-lg);
   background: color-mix(in srgb, var(--surface-card-strong) 92%, transparent);
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
+  box-shadow: var(--ds-shadow-lg);
 }
 
 .markdown .markdown-table {

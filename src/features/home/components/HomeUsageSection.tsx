@@ -15,6 +15,7 @@ import {
 } from "../homeFormatters";
 import type { HomeStatCard, UsageMetric, UsageWorkspaceOption } from "../homeTypes";
 import { buildHomeUsageViewModel } from "../homeUsageViewModel";
+import { SelectMenu } from "../../design-system/components/popover/PopoverPrimitives";
 
 type HomeUsageSectionProps = {
   accountInfo: AccountSnapshot | null;
@@ -130,21 +131,20 @@ export function HomeUsageSection({
       <div className="home-usage-controls">
         <div className="home-usage-control-group">
           <span className="home-usage-control-label">Workspace</span>
-          <div className="home-usage-select-wrap">
-            <select
-              className="home-usage-select"
-              value={usageWorkspaceId ?? ""}
-              onChange={(event) => onUsageWorkspaceChange(event.target.value || null)}
-              disabled={usageWorkspaceOptions.length === 0}
-            >
-              <option value="">All workspaces</option>
-              {usageWorkspaceOptions.map((option) => (
-                <option key={option.id} value={option.id}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
+          <SelectMenu<string>
+            value={usageWorkspaceId ?? ""}
+            onChange={(value) => onUsageWorkspaceChange(value || null)}
+            options={[
+              { value: "", label: "All workspaces" },
+              ...usageWorkspaceOptions.map((option) => ({
+                value: option.id,
+                label: option.label,
+              })),
+            ]}
+            ariaLabel="Workspace"
+            disabled={usageWorkspaceOptions.length === 0}
+            className="home-usage-select"
+          />
         </div>
         <div className="home-usage-control-group">
           <span className="home-usage-control-label">View</span>

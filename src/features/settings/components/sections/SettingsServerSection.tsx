@@ -8,6 +8,7 @@ import type {
   TcpDaemonStatus,
 } from "@/types";
 import { ModalShell } from "@/features/design-system/components/modal/ModalShell";
+import { SelectMenu } from "@/features/design-system/components/popover/PopoverPrimitives";
 import {
   SettingsSection,
   SettingsToggleRow,
@@ -192,20 +193,22 @@ export function SettingsServerSection({
           <label className="settings-field-label" htmlFor="backend-mode">
             Backend mode
           </label>
-          <select
+          <SelectMenu<AppSettings["backendMode"]>
             id="backend-mode"
-            className="settings-select"
             value={appSettings.backendMode}
-            onChange={(event) =>
+            onChange={(value) =>
               void onUpdateAppSettings({
                 ...appSettings,
-                backendMode: event.target.value as AppSettings["backendMode"],
+                backendMode: value,
               })
             }
-          >
-            <option value="local">Local (default)</option>
-            <option value="remote">Remote (daemon)</option>
-          </select>
+            options={[
+              { value: "local", label: "Local (default)" },
+              { value: "remote", label: "Remote (daemon)" },
+            ]}
+            ariaLabel="Backend mode"
+            fullWidth
+          />
           <div className="settings-help">
             Local keeps desktop requests in-process. Remote routes desktop requests through the same
             TCP transport path used by mobile clients.

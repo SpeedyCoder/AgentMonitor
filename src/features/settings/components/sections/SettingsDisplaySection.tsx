@@ -16,6 +16,7 @@ import {
   clampChatScrollbackItems,
   isChatScrollbackPreset,
 } from "@utils/chatScrollback";
+import { SelectMenu } from "@/features/design-system/components/popover/PopoverPrimitives";
 import {
   SettingsSection,
   SettingsToggleRow,
@@ -167,36 +168,24 @@ export function SettingsDisplaySection({
         <label className="settings-field-label" htmlFor="theme-select">
           Theme
         </label>
-        <select
+        <SelectMenu<AppSettings["theme"]>
           id="theme-select"
-          className="settings-select"
           value={appSettings.theme}
-          onChange={(event) =>
+          onChange={(value) =>
             void onUpdateAppSettings({
               ...appSettings,
-              theme: event.target.value as AppSettings["theme"],
+              theme: value,
             })
           }
-        >
-          <option value="system">System</option>
-          <option value="light">Light</option>
-          <option value="dark">Dark</option>
-        </select>
-      </div>
-      <SettingsToggleRow
-        title="Show remaining Codex limits"
-        subtitle="Display what is left instead of what is used."
-      >
-        <SettingsToggleSwitch
-          pressed={appSettings.usageShowRemaining}
-          onClick={() =>
-            void onUpdateAppSettings({
-              ...appSettings,
-              usageShowRemaining: !appSettings.usageShowRemaining,
-            })
-          }
+          options={[
+            { value: "system", label: "System" },
+            { value: "light", label: "Light" },
+            { value: "dark", label: "Dark" },
+          ]}
+          ariaLabel="Theme"
+          fullWidth
         />
-      </SettingsToggleRow>
+      </div>
       <SettingsToggleRow
         title="Show file path in messages"
         subtitle="Display the parent path next to file links in messages."
@@ -258,21 +247,22 @@ export function SettingsDisplaySection({
         <label className="settings-field-label" htmlFor="chat-scrollback-preset">
           Scrollback preset
         </label>
-        <select
+        <SelectMenu<string>
           id="chat-scrollback-preset"
-          className="settings-select"
           value={scrollbackPresetValue}
-          onChange={(event) => selectScrollbackPreset(event.target.value)}
-          data-scrollback-control="true"
+          onChange={(value) => selectScrollbackPreset(value)}
+          options={[
+            { value: "custom", label: "Custom" },
+            ...CHAT_SCROLLBACK_PRESETS.map((value) => ({
+              value: String(value),
+              label:
+                value === CHAT_SCROLLBACK_DEFAULT ? `${value} (Default)` : String(value),
+            })),
+          ]}
+          ariaLabel="Scrollback preset"
           disabled={scrollbackUnlimited}
-        >
-          <option value="custom">Custom</option>
-          {CHAT_SCROLLBACK_PRESETS.map((value) => (
-            <option key={value} value={value}>
-              {value === CHAT_SCROLLBACK_DEFAULT ? `${value} (Default)` : value}
-            </option>
-          ))}
-        </select>
+          fullWidth
+        />
         <div className="settings-help">
           Higher values keep more history but may increase memory usage. Use “Sync from
           server” on a thread to re-fetch older messages.

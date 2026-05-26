@@ -45,7 +45,6 @@
   width: 38px;
   flex: 0 0 38px;
   border: 0;
-  border-inline-end: 1px solid rgba(255, 255, 255, 0.08);
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;

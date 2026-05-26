@@ -9,7 +9,32 @@ type ChatPaneProps = {
 
 export function ChatPane({ messagesNode, composerNode, headerNode, className }: ChatPaneProps) {
   const composerRef = useRef<HTMLDivElement | null>(null);
+  const messagesRef = useRef<HTMLDivElement | null>(null);
   const [composerHeight, setComposerHeight] = useState(0);
+
+  const [messagesDragging, setMessagesDragging] = useState(false);
+
+  useEffect(() => {
+    const messagesEl = messagesRef.current;
+    if (!messagesEl) {
+      return;
+    }
+
+    const handleMessagesMouseDown = () => {
+      setMessagesDragging(true);
+    };
+    const handleWindowMouseUp = () => {
+      setMessagesDragging(false);
+    };
+
+    messagesEl.addEventListener("mousedown", handleMessagesMouseDown);
+    window.addEventListener("mouseup", handleWindowMouseUp);
+
+    return () => {
+      messagesEl.removeEventListener("mousedown", handleMessagesMouseDown);
+      window.removeEventListener("mouseup", handleWindowMouseUp);
+    };
+  }, [composerNode]);
 
   useEffect(() => {
     if (!composerNode) {
@@ -54,9 +79,14 @@ export function ChatPane({ messagesNode, composerNode, headerNode, className }: 
       style={paneStyle}
     >
       {headerNode ? <div className="chat-pane-header">{headerNode}</div> : null}
-      <div className="chat-pane-messages">{messagesNode}</div>
+      <div className="chat-pane-messages" ref={messagesRef}>
+        {messagesNode}
+      </div>
       {composerNode ? (
-        <div className="chat-pane-composer" ref={composerRef}>
+        <div
+          className={`chat-pane-composer${messagesDragging ? " is-passthrough" : ""}`}
+          ref={composerRef}
+        >
           {composerNode}
         </div>
       ) : null}

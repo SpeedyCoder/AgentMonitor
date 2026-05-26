@@ -10,7 +10,7 @@ use crate::utils::normalize_git_path;
 fn should_skip_dir(name: &str) -> bool {
     matches!(
         name,
-        ".git" | "node_modules" | "dist" | "target" | "release-artifacts"
+        ".git" | ".trantor" | "node_modules" | "dist" | "target" | "release-artifacts"
     )
 }
 

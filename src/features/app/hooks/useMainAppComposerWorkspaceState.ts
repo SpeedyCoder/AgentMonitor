@@ -16,6 +16,7 @@ import { useComposerInsert } from "@app/hooks/useComposerInsert";
 import { useWorkspaceFileListing } from "@app/hooks/useWorkspaceFileListing";
 import { useWorkspaceAgentMd } from "@/features/workspaces/hooks/useWorkspaceAgentMd";
 import { useWorkspaceHome } from "@/features/workspaces/hooks/useWorkspaceHome";
+import { displayThreadLabel } from "@/features/threads/utils/emptyThreadSession";
 
 const RECENT_THREAD_LIMIT = 8;
 
@@ -300,7 +301,7 @@ export function useMainAppComposerWorkspaceState({
       workspaceId: activeWorkspaceId,
       threadId: thread.id,
       modelId: null,
-      modelLabel: thread.name?.trim() || "Untitled thread",
+      modelLabel: displayThreadLabel(thread.name),
       sequence: index + 1,
     }));
     return {

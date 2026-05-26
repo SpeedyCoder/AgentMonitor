@@ -7,6 +7,7 @@ import {
 } from "@/features/shared/components/MagicSparkleIcon";
 import type { SettingsAgentsSectionProps } from "@settings/hooks/useSettingsAgentsSection";
 import { fileManagerName, openInFileManagerLabel } from "@utils/platformPaths";
+import { SelectMenu } from "@/features/design-system/components/popover/PopoverPrimitives";
 import {
   SettingsSection,
   SettingsSubsection,
@@ -546,41 +547,40 @@ export function SettingsAgentsSection({
         <div className="settings-agents-model-row">
           <div className="settings-agents-model-field settings-agents-model-field--model">
             <span className="settings-agents-inline-label">model:</span>
-            <select
+            <SelectMenu<string>
               id="settings-agent-create-model"
-              className="settings-select settings-select--compact"
               value={createModel}
-              onChange={(event) => setCreateModel(event.target.value)}
+              onChange={(value) => setCreateModel(value)}
+              options={effectiveModelOptions.map((option) => ({
+                value: option.model,
+                label: option.model,
+              }))}
+              ariaLabel="Agent model"
               disabled={creatingAgent}
-              aria-label="Agent model"
-            >
-              {effectiveModelOptions.map((option) => (
-                <option key={option.model} value={option.model}>
-                  {option.model}
-                </option>
-              ))}
-            </select>
+              size="sm"
+            />
           </div>
           <span className="settings-agents-inline-separator" aria-hidden>
             |
           </span>
           <div className="settings-agents-model-field settings-agents-model-field--effort">
             <span className="settings-agents-inline-label">reasoning:</span>
-            <select
+            <SelectMenu<string>
               id="settings-agent-create-effort"
-              className="settings-select settings-select--compact"
               value={createReasoningEffort}
-              onChange={(event) => setCreateReasoningEffort(event.target.value)}
+              onChange={(value) => setCreateReasoningEffort(value)}
+              options={
+                createReasoningOptions.length === 0
+                  ? [{ value: "", label: "not supported" }]
+                  : createReasoningOptions.map((effort) => ({
+                      value: effort,
+                      label: effort,
+                    }))
+              }
+              ariaLabel="Agent reasoning effort"
               disabled={creatingAgent || createReasoningOptions.length === 0}
-              aria-label="Agent reasoning effort"
-            >
-              {createReasoningOptions.length === 0 && <option value="">not supported</option>}
-              {createReasoningOptions.map((effort) => (
-                <option key={effort} value={effort}>
-                  {effort}
-                </option>
-              ))}
-            </select>
+              size="sm"
+            />
           </div>
         </div>
         <div className="settings-agents-actions">

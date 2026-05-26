@@ -2,6 +2,7 @@ import Eye from "lucide-react/dist/esm/icons/eye";
 import EyeOff from "lucide-react/dist/esm/icons/eye-off";
 import { useState } from "react";
 import type { AppSettings, ModelOption } from "@/types";
+import { SelectMenu } from "@/features/design-system/components/popover/PopoverPrimitives";
 import {
   SettingsSection,
   SettingsToggleRow,
@@ -205,25 +206,25 @@ export function SettingsGitSection({
             The model used when generating commit messages. Leave on default to use the
             project model.
           </div>
-          <select
+          <SelectMenu<string>
             id="commit-message-model-select"
-            className="settings-select"
             value={appSettings.commitMessageModelId ?? ""}
-            onChange={(event) => {
-              const value = event.target.value || null;
+            onChange={(value) => {
               void onUpdateAppSettings({
                 ...appSettings,
-                commitMessageModelId: value,
+                commitMessageModelId: value || null,
               });
             }}
-          >
-            <option value="">Default</option>
-            {models.map((model) => (
-              <option key={model.id} value={model.model}>
-                {model.displayName?.trim() || model.model}
-              </option>
-            ))}
-          </select>
+            options={[
+              { value: "", label: "Default" },
+              ...models.map((model) => ({
+                value: model.model,
+                label: model.displayName?.trim() || model.model,
+              })),
+            ]}
+            ariaLabel="Commit message model"
+            fullWidth
+          />
         </div>
       )}
     </SettingsSection>

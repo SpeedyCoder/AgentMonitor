@@ -5,12 +5,12 @@
 
 button {
   border: none;
-  border-radius: 10px;
+  border-radius: var(--ds-radius-md);
   padding: 8px 14px;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
   -webkit-app-region: no-drag;
 }
 
@@ -20,8 +20,12 @@ button:disabled {
 }
 
 .primary {
-  background: linear-gradient(135deg, #62b7ff, #4fe3a3);
-  color: #0b0f1a;
+  background: var(--border-accent);
+  color: #ffffff;
+}
+
+.primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--border-accent) 88%, white);
 }
 
 .secondary {
@@ -37,6 +41,7 @@ button:disabled {
 
 .icon-button {
   padding: 6px;
+  border-radius: var(--ds-radius-sm);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -64,7 +69,7 @@ button:active:not(:disabled) {
 }
 
 .primary:hover:not(:disabled) {
-  color: #05070d;
+  color: #ffffff;
 }
 
 .ghost:active:not(:disabled) {
