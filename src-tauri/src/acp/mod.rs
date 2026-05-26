@@ -138,6 +138,8 @@ pub async fn acp_send_user_message(
                 "workspaceId": workspace_id,
                 "threadId": thread_id,
                 "text": text,
+                "model": model,
+                "effort": effort,
                 "images": images,
             }),
         )
