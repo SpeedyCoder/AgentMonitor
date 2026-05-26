@@ -819,6 +819,7 @@ function buildGitSurface({
                 pullRequest: gitState.selectedPullRequest!,
                 thread,
               });
+              await writeTextFile(`${activeWorkspace.path}/.trantor/.gitignore`, "*\n");
               await writeTextFile(path, content);
               composerWorkspaceState.handleDraftChange("");
               composerWorkspaceState.attachFileAttachments([path]);

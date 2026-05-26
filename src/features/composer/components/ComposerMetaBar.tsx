@@ -8,6 +8,7 @@ import {
   harnessForModelId,
   isBuiltInAgentHarness,
 } from "@/features/models/utils/modelRuntime";
+import { SelectMenu } from "@/features/design-system/components/popover/PopoverPrimitives";
 
 type ComposerMetaBarProps = {
   disabled: boolean;
@@ -138,21 +139,21 @@ export function ComposerMetaBar({
                 />
               </svg>
             </span>
-              <select
-                className="composer-select composer-select--model composer-select--collab"
-                aria-label="Collaboration mode"
+              <SelectMenu<string>
                 value={selectedCollaborationModeId ?? ""}
-                onChange={(event) =>
-                  onSelectCollaborationMode(event.target.value || null)
-                }
+                onChange={(value) => onSelectCollaborationMode(value || null)}
+                options={collaborationModes.map((mode) => ({
+                  value: mode.id,
+                  label: mode.label || mode.id,
+                }))}
+                ariaLabel="Collaboration mode"
                 disabled={disabled}
-              >
-                {collaborationModes.map((mode) => (
-                  <option key={mode.id} value={mode.id}>
-                    {mode.label || mode.id}
-                  </option>
-                ))}
-              </select>
+                unstyledTrigger
+                hideCaret
+                placement="top"
+                anchorClassName="composer-select-wrap"
+                buttonClassName="composer-select composer-select--model composer-select--collab"
+              />
             </div>
           )
         )}
@@ -193,21 +194,25 @@ export function ComposerMetaBar({
               </svg>
             )}
           </span>
-          <select
-            className="composer-select composer-select--model composer-select--harness"
-            aria-label="Harness"
+          <SelectMenu<string>
             value={selectedHarness}
-            onChange={(event) => onSelectHarness?.(event.target.value as AgentHarness)}
+            onChange={(value) => onSelectHarness?.(value as AgentHarness)}
+            options={[
+              { value: "codex", label: "Codex" },
+              { value: "claude", label: "Claude" },
+              ...customHarnesses.map((harness) => ({
+                value: harness.id,
+                label: harness.name || harness.id,
+              })),
+            ]}
+            ariaLabel="Harness"
             disabled={disabled || harnessLocked}
-          >
-            <option value="codex">Codex</option>
-            <option value="claude">Claude</option>
-            {customHarnesses.map((harness) => (
-              <option key={harness.id} value={harness.id}>
-                {harness.name || harness.id}
-              </option>
-            ))}
-          </select>
+            unstyledTrigger
+            hideCaret
+            placement="top"
+            anchorClassName="composer-select-wrap"
+            buttonClassName="composer-select composer-select--model composer-select--harness"
+          />
         </div>
         <div className="composer-select-wrap composer-select-wrap--model">
           <span className="composer-icon composer-icon--model" aria-hidden>
@@ -246,21 +251,27 @@ export function ComposerMetaBar({
               </svg>
             )}
           </span>
-          <select
-            className="composer-select composer-select--model"
-            aria-label="Model"
+          <SelectMenu<string>
             value={selectedModelId ?? ""}
-            onChange={(event) => onSelectModel(event.target.value)}
+            onChange={(value) => onSelectModel(value)}
+            options={
+              models.length === 0
+                ? [{ value: "", label: "No models", disabled: true }]
+                : models.map((model) => ({
+                    value: model.id,
+                    label: getModelLabel(model),
+                  }))
+            }
+            ariaLabel="Model"
             disabled={disabled}
-            style={modelSelectStyle}
-          >
-            {models.length === 0 && <option value="">No models</option>}
-            {models.map((model) => (
-              <option key={model.id} value={model.id}>
-                {getModelLabel(model)}
-              </option>
-            ))}
-          </select>
+            unstyledTrigger
+            hideCaret
+            placement="top"
+            anchorClassName="composer-select-wrap"
+            align="start"
+            buttonClassName="composer-select composer-select--model"
+            buttonStyle={modelSelectStyle}
+          />
           {selectedServiceTier === "fast" && (
             <span
               className="composer-fast-indicator"
@@ -276,41 +287,43 @@ export function ComposerMetaBar({
           <span className="composer-icon composer-icon--effort" aria-hidden>
             <BrainCog size={14} strokeWidth={1.8} />
           </span>
-          <select
-            className="composer-select composer-select--effort"
-            aria-label="Thinking mode"
+          <SelectMenu<string>
             value={selectedEffort ?? ""}
-            onChange={(event) => onSelectEffort(event.target.value)}
+            onChange={(value) => onSelectEffort(value)}
+            options={
+              reasoningOptions.length === 0
+                ? [{ value: "", label: "Default" }]
+                : reasoningOptions.map((effort) => ({ value: effort, label: effort }))
+            }
+            ariaLabel="Thinking mode"
             disabled={disabled || !reasoningSupported}
-          >
-            {reasoningOptions.length === 0 && <option value="">Default</option>}
-            {reasoningOptions.map((effort) => (
-              <option key={effort} value={effort}>
-                {effort}
-              </option>
-            ))}
-          </select>
+            unstyledTrigger
+            hideCaret
+            placement="top"
+            anchorClassName="composer-select-wrap"
+            buttonClassName="composer-select composer-select--effort"
+          />
         </div>
         {!isCustomHarness && codexArgsOptions.length > 1 && onSelectCodexArgsOverride && (
           <div className="composer-select-wrap">
             <span className="composer-icon" aria-hidden>
               <SlidersHorizontal size={14} strokeWidth={1.8} />
             </span>
-            <select
-              className="composer-select composer-select--approval"
-              aria-label="Codex args profile"
-              disabled={disabled}
+            <SelectMenu<string>
               value={selectedCodexArgsOverride ?? ""}
-              onChange={(event) =>
-                onSelectCodexArgsOverride(event.target.value || null)
-              }
-            >
-              {codexArgsOptions.map((option) => (
-                <option key={option.value || "default"} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+              onChange={(value) => onSelectCodexArgsOverride(value || null)}
+              options={codexArgsOptions.map((option) => ({
+                value: option.value,
+                label: option.label,
+              }))}
+              ariaLabel="Codex args profile"
+              disabled={disabled}
+              unstyledTrigger
+              hideCaret
+              placement="top"
+              anchorClassName="composer-select-wrap"
+              buttonClassName="composer-select composer-select--approval"
+            />
           </div>
         )}
       </div>

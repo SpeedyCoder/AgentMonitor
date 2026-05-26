@@ -8,6 +8,36 @@
   background: var(--cm-surface-composer);
   grid-column: 1;
   grid-row: 3;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.composer.is-plan-mode .composer-input-area {
+  border-color: var(--border-accent);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 5%, transparent),
+    0 0 0 1px var(--border-accent);
+}
+
+.composer.is-plan-mode .composer-input-area:focus-within {
+  border-color: var(--border-accent);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 5%, transparent),
+    0 0 0 3px color-mix(in srgb, var(--border-accent) 24%, transparent);
+}
+
+.composer input:focus,
+.composer textarea:focus,
+.composer [contenteditable="true"]:focus {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.composer input,
+.composer textarea,
+.composer [contenteditable="true"] {
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .composer > * {
@@ -20,7 +50,7 @@
   flex-direction: column;
   gap: 8px;
   padding: 10px 12px;
-  border-radius: 16px;
+  border-radius: var(--ds-radius-lg);
   background: var(--cm-surface-panel);
   border: 1px solid var(--cm-border-emphasis);
 }
@@ -49,7 +79,7 @@
   align-items: center;
   gap: 8px;
   padding: 4px 6px;
-  border-radius: 8px;
+  border-radius: var(--ds-radius-sm);
   background: var(--surface-item);
   color: var(--text-quiet);
   font-size: 11px;
@@ -95,7 +125,7 @@
   flex-direction: column;
   gap: 4px;
   padding: 10px 12px;
-  border-radius: 16px;
+  border-radius: var(--ds-radius-lg);
   border: 1px solid var(--cm-border-emphasis);
   background: var(--cm-surface-panel);
 }
@@ -121,8 +151,8 @@
 
 .composer-context-action {
   font-size: 11px;
-  padding: 6px 11px;
-  border-radius: 999px;
+  padding: 6px 12px;
+  border-radius: var(--ds-radius-pill);
   border: 1px solid var(--cm-border-emphasis);
   background: var(--cm-surface-panel-strong);
   color: var(--text-muted);
@@ -142,9 +172,17 @@
   min-width: 0;
   border: 1px solid var(--cm-border-heavy);
   background: var(--cm-surface-panel-elevated);
-  border-radius: 20px;
-  padding: 10px 8px 10px 8px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  border-radius: var(--ds-radius-md);
+  padding: 10px 8px;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 5%, transparent), var(--ds-shadow-sm);
+  transition: border-color var(--ds-dur-normal) var(--ds-ease-out-soft),
+              box-shadow var(--ds-dur-normal) var(--ds-ease-out-soft);
+}
+
+.composer-input-area:focus-within {
+  border-color: var(--cm-border-accent-strong);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 5%, transparent),
+              0 0 0 3px color-mix(in srgb, var(--border-accent) 18%, transparent);
 }
 
 .composer-input-area.is-drag-over {
@@ -247,11 +285,11 @@
   bottom: calc(100% + 8px);
   width: 240px;
   height: 180px;
-  border-radius: 12px;
+  border-radius: var(--ds-radius-lg);
   overflow: hidden;
   border: 1px solid var(--border-subtle);
   background: var(--surface-quiet);
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.24);
+  box-shadow: var(--ds-shadow-lg);
   opacity: 0;
   transform: translate(-50%, -2px) scale(0.98);
   transition:
@@ -383,17 +421,17 @@
 }
 
 .composer-action--mic.is-active {
-  border-color: rgba(120, 235, 190, 0.6);
-  background: rgba(120, 235, 190, 0.12);
+  border-color: color-mix(in srgb, var(--status-success) 60%, transparent);
+  background: color-mix(in srgb, var(--status-success) 12%, transparent);
 }
 
 .composer-action--mic.is-active:hover {
-  background: rgba(120, 235, 190, 0.18);
+  background: color-mix(in srgb, var(--status-success) 18%, transparent);
 }
 
 .composer-action--mic.is-processing {
-  border-color: rgba(160, 200, 255, 0.6);
-  background: rgba(160, 200, 255, 0.12);
+  border-color: color-mix(in srgb, var(--border-accent) 60%, transparent);
+  background: color-mix(in srgb, var(--border-accent) 14%, transparent);
 }
 
 .composer-waveform {
@@ -566,7 +604,7 @@
   display: grid;
   gap: 4px;
   padding: 8px;
-  border-radius: 16px;
+  border-radius: var(--ds-radius-lg);
   width: min(100%, 420px);
   max-height: 220px;
   overflow-y: auto;
@@ -579,7 +617,7 @@
   gap: 2px;
   text-align: left;
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: var(--ds-radius-sm);
   padding: 6px 8px;
   background: transparent;
   color: var(--text-strong);
@@ -667,8 +705,7 @@
 .composer-bar {
   display: flex;
   align-items: center;
-  padding-top: 10px;
-  border-top: 1px solid var(--cm-border-strong);
+  padding-top: 6px;
   gap: 12px;
 }
 

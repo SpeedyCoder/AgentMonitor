@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { getVersion } from "@tauri-apps/api/app";
 import { openUrl } from "@tauri-apps/plugin-opener";
 
-const GITHUB_URL = "https://github.com/Dimillian/Trantor";
-const TWITTER_URL = "https://x.com/dimillian";
+const GITHUB_URL = "https://github.com/SpeedyCoder/Trantor";
+const ORIGINAL_REPO_URL = "https://github.com/Dimillian/Trantor";
 
 export function AboutView() {
   const [version, setVersion] = useState<string | null>(null);
@@ -12,8 +12,8 @@ export function AboutView() {
     void openUrl(GITHUB_URL);
   };
 
-  const handleOpenTwitter = () => {
-    void openUrl(TWITTER_URL);
+  const handleOpenOriginalRepo = () => {
+    void openUrl(ORIGINAL_REPO_URL);
   };
 
   useEffect(() => {
@@ -52,7 +52,7 @@ export function AboutView() {
           {version ? `Version ${version}` : "Version —"}
         </div>
         <div className="about-tagline">
-          Monitor the situation of your Codex agents
+          Run and supervise your AI coding agents across worktrees.
         </div>
         <div className="about-divider" />
         <div className="about-links">
@@ -67,12 +67,14 @@ export function AboutView() {
           <button
             type="button"
             className="about-link"
-            onClick={handleOpenTwitter}
+            onClick={handleOpenOriginalRepo}
           >
-            Twitter
+            Original repo
           </button>
         </div>
-        <div className="about-footer">Made with ♥ by Codex & Dimillian</div>
+        <div className="about-footer">
+          Maintained by SpeedyCoder. Originally created by Dimillian.
+        </div>
       </div>
     </div>
   );

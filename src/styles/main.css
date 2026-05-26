@@ -102,13 +102,20 @@
   display: inline-flex;
   align-items: stretch;
   gap: 0;
-  border: 1px solid var(--border-strong);
-  border-radius: 10px;
+  border: 1px solid var(--cm-border-emphasis);
+  background: var(--cm-surface-panel-strong);
+  border-radius: 8px;
   overflow: hidden;
+  min-height: 32px;
+}
+
+.open-app-button:hover {
+  border-color: var(--cm-border-contrast);
+  background: var(--cm-surface-panel-hover);
 }
 
 .open-app-action {
-  padding: 7px 10px;
+  padding: 0 6px;
   border-radius: 0;
   border: none;
 }
@@ -139,14 +146,14 @@
 .open-app-icon {
   width: 14px;
   height: 14px;
-  border-radius: 3px;
+  border-radius: var(--ds-radius-xs);
   flex-shrink: 0;
 }
 
 .open-app-toggle {
-  padding: 7px 8px;
+  padding: 0 4px;
   border-radius: 0;
-  border-left: 1px solid var(--border-subtle);
+  border-left: 1px solid var(--cm-border-emphasis);
 }
 
 .open-app-dropdown {
@@ -353,8 +360,8 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px var(--main-panel-padding) 12px;
-  border-bottom: 1px solid var(--cm-border-default);
+  padding: 0 var(--main-panel-padding);
+  height: var(--main-topbar-height);
   background: var(--cm-surface-topbar);
   -webkit-app-region: drag;
   grid-column: 1;
@@ -480,7 +487,7 @@
   padding: 2px 10px;
   border-radius: 999px;
   border: 1px solid var(--border-muted);
-  background: rgba(12, 16, 26, 0.94);
+  background: var(--surface-control);
   white-space: nowrap;
 }
 
@@ -557,7 +564,7 @@
 .worktree-info-code {
   font-size: 11px;
   color: var(--text-stronger);
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--surface-control);
   border: 1px solid var(--border-muted);
   padding: 6px 8px;
   border-radius: 8px;
@@ -569,7 +576,7 @@
 
 .worktree-info-copy {
   border: 1px solid var(--border-muted);
-  background: rgba(12, 16, 26, 0.94);
+  background: var(--surface-control);
   color: var(--text-subtle);
   border-radius: 8px;
   width: 28px;
@@ -599,7 +606,7 @@
 
 .worktree-info-reveal {
   border: 1px solid var(--border-muted);
-  background: rgba(12, 16, 26, 0.94);
+  background: var(--surface-control);
   color: var(--text-stronger);
   border-radius: 8px;
   padding: 6px 10px;
@@ -621,7 +628,7 @@
 
 .worktree-info-input {
   border: 1px solid var(--border-muted);
-  background: rgba(12, 16, 26, 0.94);
+  background: var(--surface-control);
   color: var(--text-stronger);
   border-radius: 8px;
   padding: 6px 8px;
@@ -636,7 +643,7 @@
 
 .worktree-info-confirm {
   border: 1px solid var(--border-muted);
-  background: rgba(12, 16, 26, 0.94);
+  background: var(--surface-control);
   color: var(--text-stronger);
   border-radius: 8px;
   width: 28px;
@@ -958,10 +965,23 @@
   bottom: 0;
   z-index: 2;
   pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .chat-pane-composer > .composer {
   pointer-events: auto;
+}
+
+.chat-pane-composer.is-passthrough > .composer {
+  pointer-events: none;
+}
+
+.chat-pane-composer input:focus,
+.chat-pane-composer textarea:focus,
+.chat-pane-composer [contenteditable="true"]:focus {
+  user-select: text;
+  -webkit-user-select: text;
 }
 
 .content-split {

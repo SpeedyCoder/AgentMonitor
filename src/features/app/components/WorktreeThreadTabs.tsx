@@ -1,5 +1,6 @@
 import type { ThreadSummary, WorkspaceInfo } from "../../../types";
 import { TerminalTabs } from "../../terminal/components/TerminalTabs";
+import { displayThreadLabel } from "../../threads/utils/emptyThreadSession";
 import type { ThreadStatusById } from "../../../utils/threadStatus";
 import ScrollText from "lucide-react/dist/esm/icons/scroll-text";
 
@@ -17,8 +18,7 @@ type WorktreeThreadTabsProps = {
 };
 
 function getThreadLabel(thread: ThreadSummary) {
-  const trimmed = thread.name?.trim();
-  return trimmed && trimmed.length > 0 ? trimmed : "Untitled thread";
+  return displayThreadLabel(thread.name);
 }
 
 export function WorktreeThreadTabs({

@@ -1,4 +1,5 @@
-import type { CodexFeature } from "@/types";
+import type { AppSettings, CodexFeature } from "@/types";
+import { SelectMenu } from "@/features/design-system/components/popover/PopoverPrimitives";
 import {
   SettingsSection,
   SettingsSubsection,
@@ -118,35 +119,20 @@ export function SettingsFeaturesSection({
           </>
         }
       >
-        <select
+        <SelectMenu<AppSettings["personality"]>
           id="features-personality-select"
-          className="settings-select"
           value={appSettings.personality}
-          onChange={(event) =>
+          onChange={(value) =>
             void onUpdateAppSettings({
               ...appSettings,
-              personality: event.target.value as (typeof appSettings)["personality"],
+              personality: value,
             })
           }
-          aria-label="Personality"
-        >
-          <option value="friendly">Friendly</option>
-          <option value="pragmatic">Pragmatic</option>
-        </select>
-      </SettingsToggleRow>
-      <SettingsToggleRow
-        title="Pause queued messages when a response is required"
-        subtitle="Keep queued messages paused while Codex is waiting for plan accept/changes or your answers."
-      >
-        <SettingsToggleSwitch
-          pressed={appSettings.pauseQueuedMessagesWhenResponseRequired}
-          onClick={() =>
-            void onUpdateAppSettings({
-              ...appSettings,
-              pauseQueuedMessagesWhenResponseRequired:
-                !appSettings.pauseQueuedMessagesWhenResponseRequired,
-            })
-          }
+          options={[
+            { value: "friendly", label: "Friendly" },
+            { value: "pragmatic", label: "Pragmatic" },
+          ]}
+          ariaLabel="Personality"
         />
       </SettingsToggleRow>
       {stableFeatures.map((feature) => (

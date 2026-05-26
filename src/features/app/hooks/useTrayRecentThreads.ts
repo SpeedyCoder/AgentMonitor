@@ -2,6 +2,7 @@ import { isTauri } from "@tauri-apps/api/core";
 import { useEffect, useMemo, useRef } from "react";
 import { setTrayRecentThreads } from "@services/tauri";
 import type { ThreadSummary, TrayRecentThreadEntry, WorkspaceInfo } from "../../../types";
+import { displayThreadLabel } from "../../threads/utils/emptyThreadSession";
 
 const SYNC_DEBOUNCE_MS = 150;
 
@@ -40,7 +41,7 @@ function buildCandidateThreads(
         workspaceId,
         workspaceLabel,
         threadId,
-        threadLabel: thread.name?.trim() || "Untitled thread",
+        threadLabel: displayThreadLabel(thread.name),
         updatedAt: Number(thread.updatedAt ?? 0),
       });
     });

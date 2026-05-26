@@ -571,31 +571,6 @@ describe("SettingsView Display", () => {
     });
   });
 
-  it("toggles remaining limits display", async () => {
-    const onUpdateAppSettings = vi.fn().mockResolvedValue(undefined);
-    renderDisplaySection({ onUpdateAppSettings });
-
-    const row = screen
-      .getByText("Show remaining Codex limits")
-      .closest(".settings-toggle-row") as HTMLElement | null;
-    if (!row) {
-      throw new Error("Expected remaining limits row");
-    }
-    const toggle = row.querySelector(
-      "button.settings-toggle",
-    ) as HTMLButtonElement | null;
-    if (!toggle) {
-      throw new Error("Expected remaining limits toggle");
-    }
-    fireEvent.click(toggle);
-
-    await waitFor(() => {
-      expect(onUpdateAppSettings).toHaveBeenCalledWith(
-        expect.objectContaining({ usageShowRemaining: true }),
-      );
-    });
-  });
-
   it("renders account limits in the Codex section", () => {
     cleanup();
     const props: ComponentProps<typeof SettingsView> = {
@@ -2605,7 +2580,7 @@ describe("SettingsView Shortcuts", () => {
       />,
     );
 
-    const searchInput = screen.getByLabelText("Search shortcuts");
+    const searchInput = screen.getByPlaceholderText("Search shortcuts");
     expect(screen.getByText("Toggle terminal panel")).toBeTruthy();
     expect(screen.getByText("Cycle model")).toBeTruthy();
 
@@ -2618,7 +2593,7 @@ describe("SettingsView Shortcuts", () => {
     });
 
     await act(async () => {
-      fireEvent.change(searchInput, { target: { value: "sidebars" } });
+      fireEvent.change(searchInput, { target: { value: "sidebar" } });
     });
     await waitFor(() => {
       expect(screen.getByText("Toggle projects sidebar")).toBeTruthy();
@@ -2626,7 +2601,7 @@ describe("SettingsView Shortcuts", () => {
     });
 
     await act(async () => {
-      fireEvent.change(searchInput, { target: { value: "new shortcut while focused" } });
+      fireEvent.change(searchInput, { target: { value: "cmd+shift+m" } });
     });
     await waitFor(() => {
       expect(screen.getByText("Cycle model")).toBeTruthy();

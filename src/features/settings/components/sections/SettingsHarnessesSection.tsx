@@ -1,6 +1,7 @@
 import Plus from "lucide-react/dist/esm/icons/plus";
 import Trash2 from "lucide-react/dist/esm/icons/trash-2";
 import type { AppSettings } from "@/types";
+import { SelectMenu } from "@/features/design-system/components/popover/PopoverPrimitives";
 import {
   SettingsSection,
   SettingsSubsection,
@@ -81,20 +82,16 @@ export function SettingsHarnessesSection({
               <label className="settings-field-label" htmlFor={`harness-icon-${selectedHarness.id}`}>
                 Icon
               </label>
-              <select
+              <SelectMenu<string>
                 id={`harness-icon-${selectedHarness.id}`}
-                className="settings-input"
                 value={selectedHarness.icon || "bot"}
-                onChange={(event) =>
-                  commit(updateHarness(appSettings, selectedHarness.id, { icon: event.target.value }))
+                onChange={(value) =>
+                  commit(updateHarness(appSettings, selectedHarness.id, { icon: value }))
                 }
-              >
-                {ICON_OPTIONS.map((icon) => (
-                  <option key={icon} value={icon}>
-                    {icon}
-                  </option>
-                ))}
-              </select>
+                options={ICON_OPTIONS.map((icon) => ({ value: icon, label: icon }))}
+                ariaLabel="Icon"
+                fullWidth
+              />
             </div>
 
             <div className="settings-field">

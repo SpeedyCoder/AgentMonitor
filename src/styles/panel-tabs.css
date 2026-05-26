@@ -1,34 +1,37 @@
 .panel-tabs {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px;
-  border-radius: 999px;
-  background: var(--surface-control);
-  border: 1px solid var(--border-subtle);
+  gap: 4px;
 }
 
 .panel-tab {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0;
-  padding: 6px 8px;
-  border-radius: 999px;
-  background: transparent;
-  color: var(--text-subtle);
+  padding: 8px;
+  min-width: 32px;
+  min-height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--cm-border-emphasis);
+  background: var(--cm-surface-panel-strong);
+  color: var(--text-muted);
   box-shadow: none;
-  transition: background 160ms ease, color 160ms ease;
+  transition: background 160ms ease, color 160ms ease, border-color 160ms ease;
 }
 
 .panel-tab:hover:not(:disabled) {
   transform: none;
   box-shadow: none;
-  color: var(--text-emphasis);
+  border-color: var(--cm-border-contrast);
+  background: var(--cm-surface-panel-hover);
+  color: var(--text-strong);
 }
 
 .panel-tab.is-active {
-  background: var(--surface-control-hover);
-  color: var(--text-emphasis);
+  background: var(--cm-surface-panel-active);
+  border-color: var(--cm-border-accent);
+  color: var(--text-stronger);
 }
 
 .panel-tab:focus-visible {

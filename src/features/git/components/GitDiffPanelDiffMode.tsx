@@ -13,6 +13,7 @@ import {
   isMissingRepo,
   normalizeRootPath,
 } from "./GitDiffPanel.utils";
+import { SelectMenu } from "../../design-system/components/popover/PopoverPrimitives";
 
 type GitDiffModeContentProps = {
   error: string | null | undefined;
@@ -173,23 +174,21 @@ export function GitDiffModeContent({
             </button>
             <label className="git-root-depth">
               <span>Depth</span>
-              <select
-                className="git-root-select"
-                value={gitRootScanDepth}
-                onChange={(event) => {
-                  const value = Number(event.target.value);
-                  if (!Number.isNaN(value)) {
-                    onGitRootScanDepthChange?.(value);
+              <SelectMenu<string>
+                value={String(gitRootScanDepth)}
+                onChange={(value) => {
+                  const next = Number(value);
+                  if (!Number.isNaN(next)) {
+                    onGitRootScanDepthChange?.(next);
                   }
                 }}
+                options={DEPTH_OPTIONS.map((depth) => ({
+                  value: String(depth),
+                  label: String(depth),
+                }))}
+                ariaLabel="Scan depth"
                 disabled={gitRootScanLoading || initGitRepoLoading}
-              >
-                {DEPTH_OPTIONS.map((depth) => (
-                  <option key={depth} value={depth}>
-                    {depth}
-                  </option>
-                ))}
-              </select>
+              />
             </label>
             {onPickGitRoot && (
               <button

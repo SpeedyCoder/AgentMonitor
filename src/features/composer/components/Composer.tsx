@@ -589,7 +589,11 @@ export const Composer = memo(function Composer({
 
 
   return (
-    <footer className={`composer${disabled ? " is-disabled" : ""}`}>
+    <footer
+      className={`composer${disabled ? " is-disabled" : ""}${
+        selectedCollaborationModeId === "plan" ? " is-plan-mode" : ""
+      }`}
+    >
       <ComposerQueue
         queuedMessages={queuedMessages}
         pausedReason={queuePausedReason}

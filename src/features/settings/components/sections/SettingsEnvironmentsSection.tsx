@@ -1,4 +1,5 @@
 import type { Dispatch, SetStateAction } from "react";
+import { SelectMenu } from "@/features/design-system/components/popover/PopoverPrimitives";
 import { SettingsSection } from "@/features/design-system/components/settings/SettingsPrimitives";
 import type { WorkspaceInfo } from "@/types";
 import { pushErrorToast } from "@services/toasts";
@@ -134,19 +135,18 @@ export function SettingsEnvironmentsSection({
             <label className="settings-field-label" htmlFor="settings-environment-project">
               Project
             </label>
-            <select
+            <SelectMenu<string>
               id="settings-environment-project"
-              className="settings-select"
               value={environmentWorkspace?.id ?? ""}
-              onChange={(event) => onSetEnvironmentWorkspaceId(event.target.value)}
+              onChange={(value) => onSetEnvironmentWorkspaceId(value)}
+              options={mainWorkspaces.map((workspace) => ({
+                value: workspace.id,
+                label: workspace.name,
+              }))}
+              ariaLabel="Project"
               disabled={environmentSaving}
-            >
-              {mainWorkspaces.map((workspace) => (
-                <option key={workspace.id} value={workspace.id}>
-                  {workspace.name}
-                </option>
-              ))}
-            </select>
+              fullWidth
+            />
             {environmentWorkspace ? (
               <div className="settings-help">{environmentWorkspace.path}</div>
             ) : null}

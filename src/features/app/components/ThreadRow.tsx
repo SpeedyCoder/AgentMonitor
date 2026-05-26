@@ -2,6 +2,7 @@ import type { CSSProperties, MouseEvent } from "react";
 
 import { providerModelIdForModelId } from "@/features/models/utils/modelRuntime";
 import type { ThreadSummary } from "../../../types";
+import { displayThreadLabel } from "../../threads/utils/emptyThreadSession";
 import { getThreadStatusClass, type ThreadStatusById } from "../../../utils/threadStatus";
 
 function hashString(value: string) {
@@ -168,7 +169,7 @@ export function ThreadRow({
       <span className={`thread-status ${statusClass}`} aria-hidden />
       <div className="thread-content">
         <div className="thread-headline">
-          <span className="thread-name">{thread.name}</span>
+          <span className="thread-name">{displayThreadLabel(thread.name)}</span>
         </div>
         {hasDetails && (
           <div className="thread-details">

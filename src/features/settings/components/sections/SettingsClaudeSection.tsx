@@ -1,4 +1,7 @@
-import { SettingsSection } from "@/features/design-system/components/settings/SettingsPrimitives";
+import {
+  SettingsSection,
+  SettingsSubsection,
+} from "@/features/design-system/components/settings/SettingsPrimitives";
 import type { ClaudeAuthStatus } from "@/types";
 
 type SettingsClaudeSectionProps = {
@@ -20,6 +23,27 @@ type SettingsClaudeSectionProps = {
   onLogout: () => Promise<void>;
 };
 
+function buildAuthStatusMessage(
+  authLoading: boolean,
+  authStatus: ClaudeAuthStatus | null,
+): string {
+  if (authLoading) {
+    return "Checking authentication status...";
+  }
+  if (!authStatus) {
+    return "Authentication status unavailable.";
+  }
+  if (!authStatus.installed) {
+    return "Claude CLI not found.";
+  }
+  if (!authStatus.loggedIn) {
+    return "Claude CLI is installed but not signed in.";
+  }
+  const account = authStatus.accountEmail ? ` as ${authStatus.accountEmail}` : "";
+  const method = authStatus.authMethod ? ` via ${authStatus.authMethod}` : "";
+  return `Signed in${account}${method}.`;
+}
+
 export function SettingsClaudeSection({
   claudeCliPathDraft,
   claudeAdapterPathDraft,
@@ -38,11 +62,17 @@ export function SettingsClaudeSection({
   onStartLogin,
   onLogout,
 }: SettingsClaudeSectionProps) {
+  const statusMessage = buildAuthStatusMessage(authLoading, authStatus);
+
   return (
     <SettingsSection
       title="Claude"
       subtitle="Configure the Claude CLI and local adapter used for Claude projects."
     >
+      <SettingsSubsection
+        title="CLI & Adapter"
+        subtitle="Point Trantor at the Claude CLI and optional local adapter."
+      />
       <div className="settings-field">
         <label className="settings-field-label" htmlFor="claude-cli-path">
           Claude CLI path
@@ -59,15 +89,13 @@ export function SettingsClaudeSection({
             Browse
           </button>
         </div>
+        <div className="settings-help">Leave empty to use the system PATH resolution.</div>
       </div>
 
       <div className="settings-field">
         <label className="settings-field-label" htmlFor="claude-adapter-path">
           Claude adapter path
         </label>
-        <div className="settings-help">
-          Leave empty to use the bundled adapter or the in-repo development adapter when present.
-        </div>
         <div className="settings-field-row">
           <input
             id="claude-adapter-path"
@@ -84,40 +112,32 @@ export function SettingsClaudeSection({
             Browse
           </button>
         </div>
+        <div className="settings-help">
+          Leave empty to use the bundled adapter or the in-repo development adapter when present.
+        </div>
+        <div className="settings-field-actions">
+          <button
+            type="button"
+            className="primary settings-button-compact"
+            disabled={isSavingSettings || !claudeDirty}
+            onClick={() => void onSaveClaudeSettings()}
+          >
+            {isSavingSettings ? "Saving..." : "Save"}
+          </button>
+        </div>
       </div>
 
-      <div className="settings-field-actions">
-        <button
-          type="button"
-          className="primary settings-button-compact"
-          disabled={isSavingSettings || !claudeDirty}
-          onClick={() => void onSaveClaudeSettings()}
-        >
-          {isSavingSettings ? "Saving..." : "Save"}
-        </button>
-      </div>
-
+      <div className="settings-divider" />
+      <SettingsSubsection
+        title="Authentication"
+        subtitle="Uses Claude Code authentication when the CLI is installed. Start login, complete the browser flow, then refresh status."
+      />
       <div className="settings-field">
-        <div className="settings-field-label">Authentication</div>
-        <div className="settings-help">
-          Uses Claude Code authentication when the CLI is installed. Start login, complete the
-          browser flow, then refresh status.
-        </div>
+        <div className="settings-help">{statusMessage}</div>
+        {authStatus?.details ? (
+          <div className="settings-help">{authStatus.details}</div>
+        ) : null}
         {authError ? <div className="settings-agents-error">{authError}</div> : null}
-        <div className="settings-help">
-          {authLoading
-            ? "Checking authentication status..."
-            : authStatus
-              ? authStatus.installed
-                ? authStatus.loggedIn
-                  ? `Signed in${authStatus.accountEmail ? ` as ${authStatus.accountEmail}` : ""}${
-                      authStatus.authMethod ? ` via ${authStatus.authMethod}` : ""
-                    }.`
-                  : "Claude CLI is installed but not signed in."
-                : "Claude CLI not found."
-              : "Authentication status unavailable."}
-        </div>
-        {authStatus?.details ? <div className="settings-help">{authStatus.details}</div> : null}
         <div className="settings-field-actions">
           <button
             type="button"

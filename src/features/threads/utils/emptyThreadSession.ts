@@ -5,6 +5,14 @@ export function isGenericSessionName(name: string | null | undefined) {
   return normalized === "" || normalized === "Session" || normalized === "New Agent";
 }
 
+export function displayThreadLabel(
+  name: string | null | undefined,
+  fallback = "Untitled",
+) {
+  const normalized = name?.trim() ?? "";
+  return normalized.length === 0 || isGenericSessionName(normalized) ? fallback : normalized;
+}
+
 export function isGenericEmptySession(
   thread: ThreadSummary | null | undefined,
   items: ConversationItem[] | null | undefined,

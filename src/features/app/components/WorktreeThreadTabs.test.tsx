@@ -114,7 +114,7 @@ describe("WorktreeThreadTabs", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Close New Agent" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close Untitled" }));
 
     expect(onCloseThread).toHaveBeenCalledWith("worktree-1", "empty");
   });
@@ -133,6 +133,6 @@ describe("WorktreeThreadTabs", () => {
       />,
     );
 
-    expect(screen.queryByRole("button", { name: "Close New Agent" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Close Untitled" })).toBeNull();
   });
 });

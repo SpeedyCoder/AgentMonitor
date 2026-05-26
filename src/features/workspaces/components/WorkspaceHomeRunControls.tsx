@@ -7,7 +7,11 @@ import ChevronRight from "lucide-react/dist/esm/icons/chevron-right";
 import Cpu from "lucide-react/dist/esm/icons/cpu";
 import Feather from "lucide-react/dist/esm/icons/feather";
 import Bot from "lucide-react/dist/esm/icons/bot";
-import { PopoverMenuItem, SplitActionMenu } from "../../design-system/components/popover/PopoverPrimitives";
+import {
+  PopoverMenuItem,
+  SelectMenu,
+  SplitActionMenu,
+} from "../../design-system/components/popover/PopoverPrimitives";
 import { useMenuController } from "../../app/hooks/useMenuController";
 import {
   buildModelSummary,
@@ -93,21 +97,24 @@ export function WorkspaceHomeRunControls({
           <span className="composer-icon" aria-hidden>
             <HarnessIcon size={14} strokeWidth={1.8} />
           </span>
-          <select
-            className="composer-select composer-select--model composer-select--harness"
-            aria-label="Harness"
+          <SelectMenu<string>
             value={selectedHarness}
-            onChange={(event) => onSelectHarness?.(event.target.value as AgentHarness)}
+            onChange={(value) => onSelectHarness?.(value as AgentHarness)}
+            options={[
+              { value: "codex", label: "Codex" },
+              { value: "claude", label: "Claude" },
+              ...customHarnesses.map((harness) => ({
+                value: harness.id,
+                label: harness.name || harness.id,
+              })),
+            ]}
+            ariaLabel="Harness"
             disabled={isSubmitting}
-          >
-            <option value="codex">Codex</option>
-            <option value="claude">Claude</option>
-            {customHarnesses.map((harness) => (
-              <option key={harness.id} value={harness.id}>
-                {harness.name || harness.id}
-              </option>
-            ))}
-          </select>
+            unstyledTrigger
+            hideCaret
+            anchorClassName="open-app-button"
+            buttonClassName="composer-select composer-select--model composer-select--harness"
+          />
         </div>
       </div>
 
@@ -216,19 +223,20 @@ export function WorkspaceHomeRunControls({
                 />
               </svg>
             </span>
-            <select
-              className="composer-select composer-select--model"
-              aria-label="Collaboration mode"
+            <SelectMenu<string>
               value={selectedCollaborationModeId ?? ""}
-              onChange={(event) => onSelectCollaborationMode(event.target.value || null)}
+              onChange={(value) => onSelectCollaborationMode(value || null)}
+              options={collaborationModes.map((mode) => ({
+                value: mode.id,
+                label: mode.label || mode.id,
+              }))}
+              ariaLabel="Collaboration mode"
               disabled={isSubmitting}
-            >
-              {collaborationModes.map((mode) => (
-                <option key={mode.id} value={mode.id}>
-                  {mode.label || mode.id}
-                </option>
-              ))}
-            </select>
+              unstyledTrigger
+              hideCaret
+              anchorClassName="open-app-button"
+              buttonClassName="composer-select composer-select--model"
+            />
           </div>
         </div>
       )}
@@ -262,20 +270,24 @@ export function WorkspaceHomeRunControls({
               />
             </svg>
           </span>
-          <select
-            className="composer-select composer-select--effort"
-            aria-label="Thinking mode"
+          <SelectMenu<string>
             value={selectedEffort ?? ""}
-            onChange={(event) => onSelectEffort(event.target.value)}
+            onChange={(value) => onSelectEffort(value)}
+            options={
+              reasoningOptions.length === 0
+                ? [{ value: "", label: "Default" }]
+                : reasoningOptions.map((effortOption) => ({
+                    value: effortOption,
+                    label: effortOption,
+                  }))
+            }
+            ariaLabel="Thinking mode"
             disabled={isSubmitting || !reasoningSupported}
-          >
-            {reasoningOptions.length === 0 && <option value="">Default</option>}
-            {reasoningOptions.map((effortOption) => (
-              <option key={effortOption} value={effortOption}>
-                {effortOption}
-              </option>
-            ))}
-          </select>
+            unstyledTrigger
+            hideCaret
+            anchorClassName="open-app-button"
+            buttonClassName="composer-select composer-select--effort"
+          />
         </div>
       </div>
     </div>

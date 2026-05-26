@@ -1,6 +1,7 @@
 import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
 import ChevronUp from "lucide-react/dist/esm/icons/chevron-up";
 import Trash2 from "lucide-react/dist/esm/icons/trash-2";
+import { SelectMenu } from "@/features/design-system/components/popover/PopoverPrimitives";
 import { SettingsSection } from "@/features/design-system/components/settings/SettingsPrimitives";
 import type { OpenAppTarget } from "@/types";
 import {
@@ -95,18 +96,18 @@ export function SettingsOpenAppsSection({
                 </label>
                 <label className="settings-open-app-field settings-open-app-field--type">
                   <span className="settings-visually-hidden">Type</span>
-                  <select
-                    className="settings-select settings-select--compact settings-open-app-kind"
+                  <SelectMenu<OpenAppTarget["kind"]>
+                    className="settings-open-app-kind"
                     value={target.kind}
-                    onChange={(event) =>
-                      onOpenAppKindChange(index, event.target.value as OpenAppTarget["kind"])
-                    }
-                    aria-label={`Open app type ${index + 1}`}
-                  >
-                    <option value="app">App</option>
-                    <option value="command">Command</option>
-                    <option value="finder">{fileManagerName()}</option>
-                  </select>
+                    onChange={(value) => onOpenAppKindChange(index, value)}
+                    options={[
+                      { value: "app", label: "App" },
+                      { value: "command", label: "Command" },
+                      { value: "finder", label: fileManagerName() },
+                    ]}
+                    ariaLabel={`Open app type ${index + 1}`}
+                    size="sm"
+                  />
                 </label>
                 {target.kind === "app" && (
                   <label className="settings-open-app-field settings-open-app-field--appname">

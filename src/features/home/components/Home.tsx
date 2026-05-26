@@ -20,7 +20,14 @@ export function Home({
   return (
     <div className="home">
       <div className="home-hero">
-        <div className="home-title">Trantor</div>
+        <div className="home-hero-title-row">
+          <img
+            className="home-app-icon"
+            src="/app-icon.png"
+            alt="Trantor icon"
+          />
+          <div className="home-title">Trantor</div>
+        </div>
         <div className="home-subtitle">
           Orchestrate agents across your local projects.
         </div>

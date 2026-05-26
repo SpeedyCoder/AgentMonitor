@@ -42,6 +42,10 @@ import {
   resolveRootPath,
 } from "./GitDiffPanel.utils";
 import { useDiffFileSelection } from "../hooks/useDiffFileSelection";
+import {
+  SelectMenu,
+  type SelectMenuOption,
+} from "../../design-system/components/popover/PopoverPrimitives";
 import type { GitPanelMode } from "../types";
 import type { PerFileDiffGroup } from "../utils/perFileThreadDiffs";
 
@@ -247,18 +251,24 @@ export function GitDiffPanel({
     onSelectFile,
   });
 
-  const ModeIcon = useMemo(() => {
-    switch (mode) {
-      case "log":
-        return ScrollText;
-      case "issues":
-        return Search;
-      case "prs":
-        return GitBranch;
-      default:
-        return FileText;
-    }
-  }, [mode]);
+  const modeOptions = useMemo<SelectMenuOption<GitPanelMode>[]>(
+    () => [
+      { value: "diff", label: "Diff", icon: <FileText size={14} aria-hidden /> },
+      {
+        value: "perFile",
+        label: "Agent edits",
+        icon: <FileText size={14} aria-hidden />,
+      },
+      { value: "log", label: "Log", icon: <ScrollText size={14} aria-hidden /> },
+      {
+        value: "issues",
+        label: "Issues",
+        icon: <Search size={14} aria-hidden />,
+      },
+      { value: "prs", label: "PRs", icon: <GitBranch size={14} aria-hidden /> },
+    ],
+    [],
+  );
 
   const pushNeedsSync = useMemo(() => hasPushSyncConflict(pushError), [pushError]);
   const pushErrorMessage = useMemo(() => {
@@ -644,23 +654,13 @@ export function GitDiffPanel({
       headerClassName="git-panel-header"
       headerRight={
         <div className="git-panel-actions" role="group" aria-label="Git panel">
-          <div className="git-panel-select">
-            <span className="git-panel-select-icon" aria-hidden>
-              <ModeIcon />
-            </span>
-            <select
-              className="git-panel-select-input"
-              value={mode}
-              onChange={(event) => onModeChange(event.target.value as GitDiffPanelProps["mode"])}
-              aria-label="Git panel view"
-            >
-              <option value="diff">Diff</option>
-              <option value="perFile">Agent edits</option>
-              <option value="log">Log</option>
-              <option value="issues">Issues</option>
-              <option value="prs">PRs</option>
-            </select>
-          </div>
+          <SelectMenu<GitPanelMode>
+            value={mode}
+            onChange={onModeChange}
+            options={modeOptions}
+            ariaLabel="Git panel view"
+            align="end"
+          />
         </div>
       }
     >

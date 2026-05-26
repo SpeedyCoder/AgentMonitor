@@ -1,6 +1,6 @@
 # Trantor
 
-[![gitcgr](https://gitcgr.com/badge/Dimillian/Trantor.svg)](https://gitcgr.com/Dimillian/Trantor)
+[![gitcgr](https://gitcgr.com/badge/SpeedyCoder/Trantor.svg)](https://gitcgr.com/SpeedyCoder/Trantor)
 
 ![Trantor](screenshot.png)
 

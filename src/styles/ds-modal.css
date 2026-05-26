@@ -15,8 +15,9 @@
 .ds-modal-surface {
   background: var(--ds-modal-card-bg);
   border: 1px solid var(--ds-modal-card-border);
+  border-radius: var(--ds-radius-lg);
   color: var(--ds-text-strong);
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+  box-shadow: var(--ds-shadow-xl);
 }
 
 .ds-modal-card {
@@ -50,7 +51,7 @@
 
 .ds-modal-input,
 .ds-modal-textarea {
-  border-radius: 10px;
+  border-radius: var(--ds-radius-md);
   border: 1px solid var(--ds-border-subtle);
   background: var(--ds-surface-muted);
   color: var(--ds-text-strong);
@@ -83,16 +84,16 @@
 
 .ds-modal-error {
   font-size: 12px;
-  color: #ff8f8f;
-  background: rgba(255, 79, 79, 0.12);
-  border: 1px solid rgba(255, 79, 79, 0.4);
-  padding: 8px 10px;
-  border-radius: 10px;
+  color: var(--status-error);
+  background: color-mix(in srgb, var(--status-error) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--status-error) 35%, transparent);
+  padding: 8px 12px;
+  border-radius: var(--ds-radius-md);
 }
 
 .ds-modal-button {
   padding: 6px 12px;
-  border-radius: 10px;
+  border-radius: var(--ds-radius-md);
 }
 
 @keyframes ds-modal-backdrop-in {
