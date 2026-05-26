@@ -34,7 +34,8 @@ CodexMonitor.zip
 .claude/
 .cursor/
 public/assets/material-icons/
-src-tauri/resources/bin/
+src-tauri/resources/bin/*
+!src-tauri/resources/bin/.gitkeep
 
 # Nix
 result

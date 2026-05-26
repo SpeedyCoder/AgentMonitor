@@ -10,7 +10,14 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        shell: bash
+        run: |
+          git init
+          git config --global --add safe.directory "$(pwd)"
+          git remote add origin "https://github.com/${GITHUB_REPOSITORY}.git"
+          git fetch --no-tags --depth=1 origin "$GITHUB_SHA"
+          git checkout --detach FETCH_HEAD
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
@@ -22,7 +29,14 @@ jobs:
   typecheck:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        shell: bash
+        run: |
+          git init
+          git config --global --add safe.directory "$(pwd)"
+          git remote add origin "https://github.com/${GITHUB_REPOSITORY}.git"
+          git fetch --no-tags --depth=1 origin "$GITHUB_SHA"
+          git checkout --detach FETCH_HEAD
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
@@ -34,7 +48,14 @@ jobs:
   test-js:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        shell: bash
+        run: |
+          git init
+          git config --global --add safe.directory "$(pwd)"
+          git remote add origin "https://github.com/${GITHUB_REPOSITORY}.git"
+          git fetch --no-tags --depth=1 origin "$GITHUB_SHA"
+          git checkout --detach FETCH_HEAD
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
@@ -58,8 +79,19 @@ jobs:
           - name: Windows
             os: windows-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - name: Checkout
+        shell: bash
+        run: |
+          git init
+          git config --global --add safe.directory "$(pwd)"
+          git remote add origin "https://github.com/${GITHUB_REPOSITORY}.git"
+          git fetch --no-tags --depth=1 origin "$GITHUB_SHA"
+          git checkout --detach FETCH_HEAD
+      - name: Setup Rust
+        shell: bash
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
       - name: Cache Rust build
         uses: actions/cache@v4
         with:
@@ -113,18 +145,29 @@ jobs:
             os: macos-latest
             build_command: npm run tauri -- build --debug --no-bundle
           - name: Linux
-            os: ubuntu-latest
+            os: ubuntu-22.04
             build_command: npm run tauri -- build --debug --no-bundle
           - name: Windows
             os: windows-latest
             build_command: npm run tauri -- build --debug --no-bundle --config src-tauri/tauri.windows.conf.json
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        shell: bash
+        run: |
+          git init
+          git config --global --add safe.directory "$(pwd)"
+          git remote add origin "https://github.com/${GITHUB_REPOSITORY}.git"
+          git fetch --no-tags --depth=1 origin "$GITHUB_SHA"
+          git checkout --detach FETCH_HEAD
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "npm"
-      - uses: dtolnay/rust-toolchain@stable
+      - name: Setup Rust
+        shell: bash
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
       - name: Cache Rust build
         uses: actions/cache@v4
         with:

@@ -1,5 +1,5 @@
 export type BuiltInAgentRuntime = "codex" | "claude";
-export type AgentRuntime = BuiltInAgentRuntime | (string & {});
+export type AgentRuntime = BuiltInAgentRuntime | (string & Record<never, never>);
 
 export type AcpHarnessEnvVar = {
   name: string;
