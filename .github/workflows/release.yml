@@ -19,10 +19,13 @@ jobs:
       TAURI_SIGNING_PRIVATE_KEY_B64: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_B64 }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          fetch-tags: true
+        shell: bash
+        run: |
+          git init
+          git config --global --add safe.directory "$(pwd)"
+          git remote add origin "https://github.com/${GITHUB_REPOSITORY}.git"
+          git fetch --tags --prune origin "+refs/heads/*:refs/remotes/origin/*"
+          git checkout --detach "$GITHUB_SHA"
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -31,12 +34,21 @@ jobs:
           cache: npm
 
       - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
+        shell: bash
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
 
       - name: Rust cache
-        uses: swatinem/rust-cache@v2
+        uses: actions/cache@v4
         with:
-          workspaces: './src-tauri -> target'
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+          key: ${{ runner.os }}-cargo-release-${{ hashFiles('src-tauri/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-release-
 
       - name: Install CMake
         run: brew install cmake
@@ -180,12 +192,19 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: ubuntu-24.04
+          - platform: ubuntu-22.04
             arch: x86_64
-          - platform: ubuntu-24.04-arm
+          - platform: ubuntu-22.04-arm
             arch: aarch64
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        shell: bash
+        run: |
+          git init
+          git config --global --add safe.directory "$(pwd)"
+          git remote add origin "https://github.com/${GITHUB_REPOSITORY}.git"
+          git fetch --tags --prune origin "+refs/heads/*:refs/remotes/origin/*"
+          git checkout --detach "$GITHUB_SHA"
 
       - name: install dependencies (linux only)
         run: |
@@ -199,12 +218,22 @@ jobs:
           cache: npm
 
       - name: install Rust stable
-        uses: dtolnay/rust-toolchain@stable
+        shell: bash
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
 
       - name: Rust cache
-        uses: swatinem/rust-cache@v2
+        uses: actions/cache@v4
         with:
-          workspaces: './src-tauri -> target'
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+          key: ${{ runner.os }}-${{ matrix.arch }}-cargo-release-${{ hashFiles('src-tauri/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.arch }}-cargo-release-
+            ${{ runner.os }}-cargo-release-
 
       - name: install frontend dependencies
         run: npm ci
@@ -251,7 +280,14 @@ jobs:
       TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
       TAURI_SIGNING_PRIVATE_KEY_B64: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_B64 }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        shell: bash
+        run: |
+          git init
+          git config --global --add safe.directory "$(pwd)"
+          git remote add origin "https://github.com/${GITHUB_REPOSITORY}.git"
+          git fetch --tags --prune origin "+refs/heads/*:refs/remotes/origin/*"
+          git checkout --detach "$GITHUB_SHA"
 
       - name: setup node
         uses: actions/setup-node@v4
@@ -260,12 +296,21 @@ jobs:
           cache: npm
 
       - name: install Rust stable
-        uses: dtolnay/rust-toolchain@stable
+        shell: bash
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
 
       - name: Rust cache
-        uses: swatinem/rust-cache@v2
+        uses: actions/cache@v4
         with:
-          workspaces: './src-tauri -> target'
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+          key: ${{ runner.os }}-cargo-release-${{ hashFiles('src-tauri/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-release-
 
       - name: Install LLVM (bindgen)
         run: choco install llvm -y --no-progress
@@ -311,7 +356,7 @@ jobs:
             src-tauri/target/release/bundle/msi/*.msi*
 
   release:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     environment: release
     needs:
       - build_macos
@@ -319,9 +364,13 @@ jobs:
       - build_windows
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+        shell: bash
+        run: |
+          git init
+          git config --global --add safe.directory "$(pwd)"
+          git remote add origin "https://github.com/${GITHUB_REPOSITORY}.git"
+          git fetch --tags --prune origin "+refs/heads/*:refs/remotes/origin/*"
+          git checkout --detach "$GITHUB_SHA"
 
       - name: Download macOS artifacts
         uses: actions/download-artifact@v4
