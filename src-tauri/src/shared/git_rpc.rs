@@ -156,10 +156,3 @@ pub(crate) struct WorkspaceNameRequest {
     pub(crate) workspace_id: String,
     pub(crate) name: String,
 }
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct GenerateCommitMessageRequest {
-    pub(crate) workspace_id: String,
-    pub(crate) commit_message_model_id: Option<String>,
-}

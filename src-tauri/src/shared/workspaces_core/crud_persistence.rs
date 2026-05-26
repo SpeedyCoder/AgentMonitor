@@ -9,8 +9,8 @@ use uuid::Uuid;
 use crate::backend::app_server::WorkspaceSession;
 use crate::codex::args::resolve_workspace_codex_args;
 use crate::codex::home::resolve_workspace_codex_home;
+use crate::shared::git_core;
 use crate::shared::process_core::kill_child_process_tree;
-use crate::shared::{git_core, worktree_core};
 use crate::storage::write_workspaces;
 use crate::types::{
     AgentRuntime, AppSettings, WorkspaceEntry, WorkspaceInfo, WorkspaceKind, WorkspaceSettings,
