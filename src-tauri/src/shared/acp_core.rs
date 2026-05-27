@@ -212,21 +212,31 @@ fn get_bundled_bin_path(bin_name: &str) -> Option<PathBuf> {
         return Some(PathBuf::from(resource_dir).join("bin").join(bin_name));
     }
 
+    let exe = std::env::current_exe().ok()?;
+    let exe_dir = exe.parent()?;
+
+    let mut candidates: Vec<PathBuf> = Vec::new();
+
+    // Packaged macOS .app: <exe>/../../Resources/bin/<name>
     #[cfg(target_os = "macos")]
-    {
-        std::env::current_exe()
-            .ok()
-            .and_then(|exe| exe.parent()?.parent().map(Path::to_path_buf))
-            .map(|contents| contents.join("Resources").join("bin").join(bin_name))
+    if let Some(contents) = exe_dir.parent() {
+        candidates.push(contents.join("Resources").join("bin").join(bin_name));
     }
 
+    // Packaged Linux/Windows release: <exe>/../resources/bin/<name>
     #[cfg(not(target_os = "macos"))]
-    {
-        std::env::current_exe()
-            .ok()
-            .and_then(|exe| exe.parent()?.parent().map(Path::to_path_buf))
-            .map(|dir| dir.join("resources").join("bin").join(bin_name))
+    if let Some(parent) = exe_dir.parent() {
+        candidates.push(parent.join("resources").join("bin").join(bin_name));
     }
+
+    // Dev (cargo/tauri dev): Tauri stages resources at <exe>/resources/bin/<name>
+    candidates.push(exe_dir.join("resources").join("bin").join(bin_name));
+
+    candidates
+        .iter()
+        .find(|path| path.exists())
+        .cloned()
+        .or_else(|| candidates.into_iter().next())
 }
 
 fn bundled_node_dir() -> Option<PathBuf> {
