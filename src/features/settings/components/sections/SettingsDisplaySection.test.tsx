@@ -207,8 +207,9 @@ describe("SettingsDisplaySection", () => {
       />,
     );
 
-    const select = screen.getByLabelText("Scrollback preset");
-    fireEvent.change(select, { target: { value: "1000" } });
+    const trigger = screen.getByLabelText("Scrollback preset");
+    fireEvent.click(trigger);
+    fireEvent.click(screen.getByRole("option", { name: "1000" }));
 
     expect(onUpdateAppSettings).toHaveBeenCalledWith(
       expect.objectContaining({ chatHistoryScrollbackItems: 1000 }),

@@ -74,9 +74,9 @@ describe("WorkspaceHomeRunControls", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Toggle models menu" }));
 
-    expect(
-      (screen.getByRole("combobox", { name: "Harness" }) as HTMLSelectElement).value,
-    ).toBe("claude");
+    expect(screen.getByRole("button", { name: "Harness" }).textContent).toContain(
+      "Claude",
+    );
 
     const menu = screen.getByRole("menu").closest(".ds-popover");
     expect(menu).not.toBeNull();

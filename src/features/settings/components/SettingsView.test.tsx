@@ -557,12 +557,13 @@ describe("SettingsView Display", () => {
     const onUpdateAppSettings = vi.fn().mockResolvedValue(undefined);
     renderDisplaySection({ onUpdateAppSettings });
 
-    const select = screen.getByLabelText("Theme");
+    const trigger = screen.getByLabelText("Theme");
+    fireEvent.click(trigger);
     expect(
-      within(select).getAllByRole("option").map((option) => option.textContent),
+      screen.getAllByRole("option").map((option) => option.textContent),
     ).toEqual(["System", "Light", "Dark"]);
 
-    fireEvent.change(select, { target: { value: "dark" } });
+    fireEvent.click(screen.getByRole("option", { name: "Dark" }));
 
     await waitFor(() => {
       expect(onUpdateAppSettings).toHaveBeenCalledWith(
@@ -1228,9 +1229,10 @@ describe("SettingsView Codex section", () => {
       />,
     );
 
-    fireEvent.change(screen.getByLabelText("Review mode"), {
-      target: { value: "detached" },
-    });
+    fireEvent.click(screen.getByLabelText("Review mode"));
+    fireEvent.click(
+      screen.getByRole("option", { name: "Detached (new review thread)" }),
+    );
 
     await waitFor(() => {
       expect(onUpdateAppSettings).toHaveBeenCalledWith(
@@ -1734,19 +1736,23 @@ describe("SettingsView Codex defaults", () => {
       />,
     );
 
-    const modelSelect = screen.getByLabelText("Model") as HTMLSelectElement;
-    const effortSelect = screen.getByLabelText(
-      "Reasoning effort",
-    ) as HTMLSelectElement;
+    const modelTrigger = screen.getByLabelText("Model");
+    const effortTrigger = screen.getByLabelText("Reasoning effort");
 
     await waitFor(() => {
       expect(getModelListMock).toHaveBeenCalledWith("w1");
-      expect(modelSelect.value).toBe("gpt-5.1");
+      expect(modelTrigger.textContent).toContain("GPT-5.1");
     });
 
-    expect(within(modelSelect).queryByRole("option", { name: /default/i })).toBeNull();
-    expect(within(effortSelect).queryByRole("option", { name: /default/i })).toBeNull();
-    expect(effortSelect.value).toBe("medium");
+    fireEvent.click(modelTrigger);
+    expect(screen.queryByRole("option", { name: /default/i })).toBeNull();
+    fireEvent.click(modelTrigger);
+
+    fireEvent.click(effortTrigger);
+    expect(screen.queryByRole("option", { name: /default/i })).toBeNull();
+    fireEvent.click(effortTrigger);
+
+    expect(effortTrigger.textContent).toContain("medium");
 
     await waitFor(() => {
       expect(onUpdateAppSettings).toHaveBeenCalledWith(
@@ -1831,21 +1837,20 @@ describe("SettingsView Codex defaults", () => {
       />,
     );
 
-    const modelSelect = screen.getByLabelText("Model") as HTMLSelectElement;
-    const effortSelect = screen.getByLabelText(
-      "Reasoning effort",
-    ) as HTMLSelectElement;
+    const modelTrigger = screen.getByLabelText("Model");
+    const effortTrigger = screen.getByLabelText("Reasoning effort");
 
     await waitFor(() => {
-      expect(modelSelect.disabled).toBe(false);
-      expect(modelSelect.value).toBe("gpt-5.1");
+      expect((modelTrigger as HTMLButtonElement).disabled).toBe(false);
+      expect(modelTrigger.textContent).toContain("GPT-5.1");
       expect(onUpdateAppSettings).toHaveBeenCalledWith(
         expect.objectContaining({ lastComposerModelId: "gpt-5.1" }),
       );
     });
 
     onUpdateAppSettings.mockClear();
-    fireEvent.change(modelSelect, { target: { value: "gpt-4.1" } });
+    fireEvent.click(modelTrigger);
+    fireEvent.click(screen.getByRole("option", { name: "GPT-4.1" }));
 
     await waitFor(() => {
       expect(onUpdateAppSettings).toHaveBeenCalledWith(
@@ -1854,7 +1859,8 @@ describe("SettingsView Codex defaults", () => {
     });
 
     onUpdateAppSettings.mockClear();
-    fireEvent.change(effortSelect, { target: { value: "high" } });
+    fireEvent.click(effortTrigger);
+    fireEvent.click(screen.getByRole("option", { name: "high" }));
 
     await waitFor(() => {
       expect(onUpdateAppSettings).toHaveBeenCalledWith(
@@ -1878,9 +1884,8 @@ describe("SettingsView Features", () => {
     const onUpdateAppSettings = vi.fn().mockResolvedValue(undefined);
     renderFeaturesSection({ onUpdateAppSettings });
 
-    fireEvent.change(screen.getByLabelText("Personality"), {
-      target: { value: "pragmatic" },
-    });
+    fireEvent.click(screen.getByLabelText("Personality"));
+    fireEvent.click(screen.getByRole("option", { name: "Pragmatic" }));
 
     await waitFor(() => {
       expect(onUpdateAppSettings).toHaveBeenCalledWith(
