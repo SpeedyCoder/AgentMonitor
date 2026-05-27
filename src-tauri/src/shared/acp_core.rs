@@ -387,14 +387,13 @@ fn find_git_root(path: &Path) -> Option<PathBuf> {
 }
 
 async fn create_session_on_connection(
-    connection: Arc<Mutex<ConnectionTo<Agent>>>,
+    connection: ConnectionTo<Agent>,
     cwd: PathBuf,
     mcp_servers: Vec<McpServer>,
 ) -> Result<(SessionId, Vec<Value>), String> {
     let mut new_session_req = NewSessionRequest::new(cwd);
     new_session_req.mcp_servers = mcp_servers;
-    let cx = connection.lock().await;
-    let response: NewSessionResponse = cx
+    let response: NewSessionResponse = connection
         .send_request::<NewSessionRequest>(new_session_req)
         .block_task()
         .await
@@ -427,7 +426,7 @@ pub(crate) struct AcpPromptStreamIds {
 
 #[derive(Default)]
 pub(crate) struct SessionManager {
-    connections: Arc<Mutex<HashMap<String, Arc<Mutex<ConnectionTo<Agent>>>>>>,
+    connections: Arc<Mutex<HashMap<String, ConnectionTo<Agent>>>>,
     session_ids: Arc<Mutex<HashMap<String, SessionId>>>,
     agent_runtimes: Arc<Mutex<HashMap<String, AgentRuntime>>>,
     tasks: Arc<Mutex<HashMap<String, JoinHandle<()>>>>,
@@ -632,7 +631,7 @@ impl SessionManager {
         let mut runtimes = self.agent_runtimes.lock().await;
         let mut tasks = self.tasks.lock().await;
 
-        conns.insert(workspace_id.clone(), Arc::new(Mutex::new(connection)));
+        conns.insert(workspace_id.clone(), connection);
         ids.insert(workspace_id.clone(), session_id.clone());
         self.session_config_options
             .lock()
@@ -833,7 +832,7 @@ impl SessionManager {
         let mut runtimes = self.agent_runtimes.lock().await;
         let mut tasks = self.tasks.lock().await;
 
-        conns.insert(workspace_id.clone(), Arc::new(Mutex::new(connection)));
+        conns.insert(workspace_id.clone(), connection);
         ids.insert(workspace_id.clone(), session_id);
         self.session_config_options
             .lock()
@@ -974,9 +973,8 @@ impl SessionManager {
             .get(workspace_id)
             .cloned()
             .ok_or("No ACP session for workspace")?;
-        let cx = connection.lock().await;
         let request = SetSessionConfigOptionRequest::new(session_id, config_id, value.to_string());
-        let response: Value = cx
+        let response: Value = connection
             .send_request::<UntypedMessage>(
                 UntypedMessage::new("session/set_config_option", request)
                     .map_err(|e| format!("Failed to encode ACP session config request: {e}"))?,
@@ -999,15 +997,20 @@ impl SessionManager {
         thread_id: Option<&str>,
         content: Vec<ContentBlock>,
     ) -> Result<AcpPromptStreamIds, String> {
-        let connections = self.connections.lock().await;
-        let connection = connections
+        let connection = self
+            .connections
+            .lock()
+            .await
             .get(workspace_id)
+            .cloned()
             .ok_or("No ACP connection for workspace")?;
-        let session_ids = self.session_ids.lock().await;
-        let session_id = session_ids
+        let session_id = self
+            .session_ids
+            .lock()
+            .await
             .get(workspace_id)
-            .ok_or("No ACP session for workspace")?
-            .clone();
+            .cloned()
+            .ok_or("No ACP session for workspace")?;
         if let Some(thread_id) = thread_id {
             if session_id.to_string() != thread_id {
                 return Err("ACP session is not active for this workspace".to_string());
@@ -1016,8 +1019,8 @@ impl SessionManager {
         let stream_ids =
             start_prompt_stream(&self.message_streams, workspace_id, &session_id.to_string());
 
-        let cx = connection.lock().await;
-        cx.send_request::<PromptRequest>(PromptRequest::new(session_id, content))
+        connection
+            .send_request::<PromptRequest>(PromptRequest::new(session_id, content))
             .block_task()
             .await
             .map_err(|e| format!("Failed to send ACP prompt: {e}"))?;
@@ -1030,23 +1033,28 @@ impl SessionManager {
         workspace_id: &str,
         thread_id: Option<&str>,
     ) -> Result<(), String> {
-        let connections = self.connections.lock().await;
-        let connection = connections
+        let connection = self
+            .connections
+            .lock()
+            .await
             .get(workspace_id)
+            .cloned()
             .ok_or("No ACP connection for workspace")?;
-        let session_ids = self.session_ids.lock().await;
-        let session_id = session_ids
+        let session_id = self
+            .session_ids
+            .lock()
+            .await
             .get(workspace_id)
-            .ok_or("No ACP session for workspace")?
-            .clone();
+            .cloned()
+            .ok_or("No ACP session for workspace")?;
         if let Some(thread_id) = thread_id {
             if session_id.to_string() != thread_id {
                 return Err("ACP session is not active for this workspace".to_string());
             }
         }
 
-        let cx = connection.lock().await;
-        cx.send_notification(CancelNotification::new(session_id))
+        connection
+            .send_notification(CancelNotification::new(session_id))
             .map_err(|e| format!("Failed to cancel ACP turn: {e}"))?;
 
         Ok(())
@@ -1060,7 +1068,7 @@ impl SessionManager {
         &self,
         workspace_id: &str,
         runtime: &AgentRuntime,
-    ) -> Option<Arc<Mutex<ConnectionTo<Agent>>>> {
+    ) -> Option<ConnectionTo<Agent>> {
         let current_runtime = self.agent_runtimes.lock().await.get(workspace_id).cloned();
         if current_runtime.as_ref() != Some(runtime) {
             return None;

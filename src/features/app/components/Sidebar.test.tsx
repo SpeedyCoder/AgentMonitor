@@ -3,6 +3,16 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createRef } from "react";
 import { Sidebar } from "./Sidebar";
+import type { AppSettings } from "@/types";
+
+const minimalAppSettings = {
+  backendMode: "local",
+  remoteBackends: [],
+  activeRemoteBackendId: null,
+  remoteBackendProvider: "tcp",
+  remoteBackendHost: "127.0.0.1:4732",
+  remoteBackendToken: null,
+} as unknown as AppSettings;
 
 afterEach(() => {
   if (vi.isFakeTimers()) {
@@ -59,6 +69,8 @@ const baseProps = {
   onWorkspaceDragEnter: vi.fn(),
   onWorkspaceDragLeave: vi.fn(),
   onWorkspaceDrop: vi.fn(),
+  appSettings: minimalAppSettings,
+  onUpdateAppSettings: vi.fn(),
 };
 
 describe("Sidebar", () => {

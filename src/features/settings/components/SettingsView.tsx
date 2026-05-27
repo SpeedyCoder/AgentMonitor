@@ -15,6 +15,7 @@ import type {
 import { useSettingsViewCloseShortcuts } from "@settings/hooks/useSettingsViewCloseShortcuts";
 import { useSettingsViewNavigation } from "@settings/hooks/useSettingsViewNavigation";
 import { useSettingsViewOrchestration } from "@settings/hooks/useSettingsViewOrchestration";
+import { getRemoteAppSettings, updateRemoteAppSettings } from "@services/tauri";
 import { ModalShell } from "@/features/design-system/components/modal/ModalShell";
 import { isMacPlatform } from "@utils/platformPaths";
 import { SettingsNav } from "./SettingsNav";
@@ -106,6 +107,34 @@ export function SettingsView({
 }: SettingsViewProps) {
   const isFullscreen = useWindowFullscreenState();
   const isWindowedMac = isMacPlatform() && !isFullscreen;
+  const isRemoteBackend = appSettings.backendMode === "remote";
+  const [remoteScopedSettings, setRemoteScopedSettings] = useState<AppSettings | null>(null);
+
+  useEffect(() => {
+    if (!isRemoteBackend) {
+      setRemoteScopedSettings(null);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const remote = await getRemoteAppSettings();
+        if (!cancelled) {
+          setRemoteScopedSettings(remote);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setRemoteScopedSettings(null);
+          console.warn("Failed to load remote app settings", error);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isRemoteBackend]);
+
+  const remoteCustomHarnesses = remoteScopedSettings?.customAcpHarnesses ?? null;
   const [localCustomHarnesses, setLocalCustomHarnesses] = useState(
     () => appSettings.customAcpHarnesses ?? [],
   );
@@ -122,16 +151,27 @@ export function SettingsView({
     if (customHarnessSaveCountRef.current > 0) {
       return;
     }
+    if (isRemoteBackend && remoteCustomHarnesses !== null) {
+      setLocalCustomHarnesses(remoteCustomHarnesses);
+      return;
+    }
     setLocalCustomHarnesses(appSettings.customAcpHarnesses ?? []);
-  }, [appSettings.customAcpHarnesses]);
+  }, [appSettings.customAcpHarnesses, isRemoteBackend, remoteCustomHarnesses]);
 
-  const visibleAppSettings = useMemo(
-    () => ({
+  const visibleAppSettings = useMemo(() => {
+    const merged: AppSettings = {
       ...appSettings,
       customAcpHarnesses: localCustomHarnesses,
-    }),
-    [appSettings, localCustomHarnesses],
-  );
+    };
+    if (isRemoteBackend && remoteScopedSettings) {
+      merged.codexBin = remoteScopedSettings.codexBin;
+      merged.codexArgs = remoteScopedSettings.codexArgs;
+      merged.claudeCliPath = remoteScopedSettings.claudeCliPath;
+      merged.claudeAdapterPath = remoteScopedSettings.claudeAdapterPath;
+      merged.linearApiToken = remoteScopedSettings.linearApiToken;
+    }
+    return merged;
+  }, [appSettings, isRemoteBackend, localCustomHarnesses, remoteScopedSettings]);
 
   const handleUpdateAppSettings = useCallback(
     async (next: AppSettings) => {
@@ -139,8 +179,41 @@ export function SettingsView({
         customHarnessSaveCountRef.current += 1;
         setLocalCustomHarnesses(next.customAcpHarnesses ?? []);
       }
+      const backendScopedChanged =
+        isRemoteBackend &&
+        remoteScopedSettings != null &&
+        (next.customAcpHarnesses !== visibleAppSettings.customAcpHarnesses ||
+          next.codexBin !== visibleAppSettings.codexBin ||
+          next.codexArgs !== visibleAppSettings.codexArgs ||
+          next.claudeCliPath !== visibleAppSettings.claudeCliPath ||
+          next.claudeAdapterPath !== visibleAppSettings.claudeAdapterPath ||
+          next.linearApiToken !== visibleAppSettings.linearApiToken);
       try {
-        await onUpdateAppSettings(next);
+        if (backendScopedChanged && remoteScopedSettings) {
+          const remoteNext: AppSettings = {
+            ...remoteScopedSettings,
+            customAcpHarnesses: next.customAcpHarnesses,
+            codexBin: next.codexBin,
+            codexArgs: next.codexArgs,
+            claudeCliPath: next.claudeCliPath,
+            claudeAdapterPath: next.claudeAdapterPath,
+            linearApiToken: next.linearApiToken,
+          };
+          const saved = await updateRemoteAppSettings(remoteNext);
+          setRemoteScopedSettings(saved);
+        }
+        const localOnlyNext: AppSettings = isRemoteBackend
+          ? {
+              ...next,
+              customAcpHarnesses: appSettings.customAcpHarnesses,
+              codexBin: appSettings.codexBin,
+              codexArgs: appSettings.codexArgs,
+              claudeCliPath: appSettings.claudeCliPath,
+              claudeAdapterPath: appSettings.claudeAdapterPath,
+              linearApiToken: appSettings.linearApiToken,
+            }
+          : next;
+        await onUpdateAppSettings(localOnlyNext);
       } finally {
         customHarnessSaveCountRef.current = Math.max(
           0,
@@ -148,7 +221,23 @@ export function SettingsView({
         );
       }
     },
-    [onUpdateAppSettings, visibleAppSettings.customAcpHarnesses],
+    [
+      appSettings.customAcpHarnesses,
+      appSettings.codexBin,
+      appSettings.codexArgs,
+      appSettings.claudeCliPath,
+      appSettings.claudeAdapterPath,
+      appSettings.linearApiToken,
+      isRemoteBackend,
+      onUpdateAppSettings,
+      remoteScopedSettings,
+      visibleAppSettings.customAcpHarnesses,
+      visibleAppSettings.codexBin,
+      visibleAppSettings.codexArgs,
+      visibleAppSettings.claudeCliPath,
+      visibleAppSettings.claudeAdapterPath,
+      visibleAppSettings.linearApiToken,
+    ],
   );
 
   const orchestration = useSettingsViewOrchestration({
@@ -257,6 +346,8 @@ export function SettingsView({
               customHarnesses={localCustomHarnesses}
               onAddHarness={handleAddHarness}
               showDisclosure={useMobileMasterDetail}
+              appSettings={visibleAppSettings}
+              onUpdateAppSettings={handleUpdateAppSettings}
             />
           </div>
         )}

@@ -1,5 +1,4 @@
-import { useMemo, useState } from "react";
-import type { Dispatch, SetStateAction } from "react";
+import { useEffect, useMemo, useState } from "react";
 import X from "lucide-react/dist/esm/icons/x";
 import type {
   AppSettings,
@@ -8,7 +7,6 @@ import type {
   TcpDaemonStatus,
 } from "@/types";
 import { ModalShell } from "@/features/design-system/components/modal/ModalShell";
-import { SelectMenu } from "@/features/design-system/components/popover/PopoverPrimitives";
 import {
   SettingsSection,
   SettingsToggleRow,
@@ -32,11 +30,6 @@ type SettingsServerSectionProps = {
   activeRemoteBackendId: string | null;
   remoteStatusText: string | null;
   remoteStatusError: boolean;
-  remoteNameError: string | null;
-  remoteHostError: string | null;
-  remoteNameDraft: string;
-  remoteHostDraft: string;
-  remoteTokenDraft: string;
   nextRemoteNameSuggestion: string;
   tailscaleStatus: TailscaleStatus | null;
   tailscaleStatusBusy: boolean;
@@ -46,16 +39,14 @@ type SettingsServerSectionProps = {
   tailscaleCommandError: string | null;
   tcpDaemonStatus: TcpDaemonStatus | null;
   tcpDaemonBusyAction: "start" | "stop" | "status" | null;
-  onSetRemoteNameDraft: Dispatch<SetStateAction<string>>;
-  onSetRemoteHostDraft: Dispatch<SetStateAction<string>>;
-  onSetRemoteTokenDraft: Dispatch<SetStateAction<string>>;
-  onCommitRemoteName: () => Promise<void>;
-  onCommitRemoteHost: () => Promise<void>;
-  onCommitRemoteToken: () => Promise<void>;
   onSelectRemoteBackend: (id: string) => Promise<void>;
   onAddRemoteBackend: (draft: AddRemoteBackendDraft) => Promise<void>;
   onMoveRemoteBackend: (id: string, direction: "up" | "down") => Promise<void>;
   onDeleteRemoteBackend: (id: string) => Promise<void>;
+  onUpdateRemoteBackend: (
+    id: string,
+    patch: { name?: string; host?: string; token?: string | null },
+  ) => Promise<{ ok: boolean; error?: string }>;
   onRefreshTailscaleStatus: () => void;
   onRefreshTailscaleCommandPreview: () => void;
   onUseSuggestedTailscaleHost: () => Promise<void>;
@@ -64,6 +55,202 @@ type SettingsServerSectionProps = {
   onTcpDaemonStatus: () => Promise<void>;
   onMobileConnectTest: () => void;
 };
+
+type RemoteBackendEntry = SettingsServerSectionProps["remoteBackends"][number];
+
+type SavedRemoteRowProps = {
+  entry: RemoteBackendEntry;
+  index: number;
+  total: number;
+  isActive: boolean;
+  onSelect: (id: string) => Promise<void>;
+  onMove: (id: string, direction: "up" | "down") => Promise<void>;
+  onDelete: (id: string) => void;
+  onUpdate: SettingsServerSectionProps["onUpdateRemoteBackend"];
+};
+
+function SavedRemoteRow({
+  entry,
+  index,
+  total,
+  isActive,
+  onSelect,
+  onMove,
+  onDelete,
+  onUpdate,
+}: SavedRemoteRowProps) {
+  const [nameDraft, setNameDraft] = useState(entry.name);
+  const [hostDraft, setHostDraft] = useState(entry.host);
+  const [tokenDraft, setTokenDraft] = useState(entry.token ?? "");
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setNameDraft(entry.name);
+  }, [entry.name]);
+  useEffect(() => {
+    setHostDraft(entry.host);
+  }, [entry.host]);
+  useEffect(() => {
+    setTokenDraft(entry.token ?? "");
+  }, [entry.token]);
+
+  const commitName = async () => {
+    if (nameDraft.trim() === entry.name) {
+      setError(null);
+      return;
+    }
+    const result = await onUpdate(entry.id, { name: nameDraft });
+    if (!result.ok) {
+      setError(result.error ?? "Unable to update name.");
+      setNameDraft(entry.name);
+    } else {
+      setError(null);
+    }
+  };
+  const commitHost = async () => {
+    if (hostDraft.trim() === entry.host) {
+      setError(null);
+      return;
+    }
+    const result = await onUpdate(entry.id, { host: hostDraft });
+    if (!result.ok) {
+      setError(result.error ?? "Unable to update host.");
+      setHostDraft(entry.host);
+    } else {
+      setError(null);
+    }
+  };
+  const commitToken = async () => {
+    const trimmed = tokenDraft.trim();
+    if (trimmed === (entry.token ?? "")) {
+      setError(null);
+      return;
+    }
+    const result = await onUpdate(entry.id, { token: trimmed });
+    if (!result.ok) {
+      setError(result.error ?? "Unable to update token.");
+      setTokenDraft(entry.token ?? "");
+    } else {
+      setError(null);
+    }
+  };
+
+  return (
+    <div
+      className={`settings-mobile-remote${isActive ? " is-active" : ""}`}
+      role="listitem"
+      key={entry.id}
+    >
+      <div className="settings-mobile-remote-main">
+        <div className="settings-mobile-remote-name-row">
+          <input
+            className="settings-input settings-input--compact"
+            value={nameDraft}
+            onChange={(event) => setNameDraft(event.target.value)}
+            onBlur={() => {
+              void commitName();
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                void commitName();
+              }
+            }}
+            aria-label={`Remote name for ${entry.name}`}
+          />
+          {isActive && <span className="settings-mobile-remote-badge">Active</span>}
+        </div>
+        <div className="settings-field-row">
+          <input
+            className="settings-input settings-input--compact"
+            value={hostDraft}
+            placeholder="127.0.0.1:4732"
+            onChange={(event) => setHostDraft(event.target.value)}
+            onBlur={() => {
+              void commitHost();
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                void commitHost();
+              }
+            }}
+            aria-label={`Host for ${entry.name}`}
+          />
+          <input
+            type="password"
+            className="settings-input settings-input--compact"
+            value={tokenDraft}
+            placeholder="Token"
+            onChange={(event) => setTokenDraft(event.target.value)}
+            onBlur={() => {
+              void commitToken();
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                void commitToken();
+              }
+            }}
+            aria-label={`Token for ${entry.name}`}
+          />
+        </div>
+        <div className="settings-mobile-remote-last">
+          Last connected:{" "}
+          {typeof entry.lastConnectedAtMs === "number"
+            ? new Date(entry.lastConnectedAtMs).toLocaleString()
+            : "Never"}
+        </div>
+        {error && <div className="settings-help settings-help-error">{error}</div>}
+      </div>
+      <div className="settings-mobile-remote-actions">
+        <button
+          type="button"
+          className="ghost settings-mobile-remote-action"
+          onClick={() => {
+            void onSelect(entry.id);
+          }}
+          disabled={isActive}
+          aria-label={`Use ${entry.name} remote`}
+        >
+          {isActive ? "Using" : "Use"}
+        </button>
+        <button
+          type="button"
+          className="ghost settings-mobile-remote-action"
+          onClick={() => {
+            void onMove(entry.id, "up");
+          }}
+          disabled={index === 0}
+          aria-label={`Move ${entry.name} up`}
+        >
+          ↑
+        </button>
+        <button
+          type="button"
+          className="ghost settings-mobile-remote-action"
+          onClick={() => {
+            void onMove(entry.id, "down");
+          }}
+          disabled={index === total - 1}
+          aria-label={`Move ${entry.name} down`}
+        >
+          ↓
+        </button>
+        <button
+          type="button"
+          className="ghost settings-mobile-remote-action settings-mobile-remote-action-danger"
+          onClick={() => {
+            onDelete(entry.id);
+          }}
+          aria-label={`Delete ${entry.name}`}
+        >
+          Delete
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export function SettingsServerSection({
   appSettings,
@@ -76,11 +263,6 @@ export function SettingsServerSection({
   activeRemoteBackendId,
   remoteStatusText,
   remoteStatusError,
-  remoteNameError,
-  remoteHostError,
-  remoteNameDraft,
-  remoteHostDraft,
-  remoteTokenDraft,
   nextRemoteNameSuggestion,
   tailscaleStatus,
   tailscaleStatusBusy,
@@ -90,16 +272,11 @@ export function SettingsServerSection({
   tailscaleCommandError,
   tcpDaemonStatus,
   tcpDaemonBusyAction,
-  onSetRemoteNameDraft,
-  onSetRemoteHostDraft,
-  onSetRemoteTokenDraft,
-  onCommitRemoteName,
-  onCommitRemoteHost,
-  onCommitRemoteToken,
   onSelectRemoteBackend,
   onAddRemoteBackend,
   onMoveRemoteBackend,
   onDeleteRemoteBackend,
+  onUpdateRemoteBackend,
   onRefreshTailscaleStatus,
   onRefreshTailscaleCommandPreview,
   onUseSuggestedTailscaleHost,
@@ -141,9 +318,13 @@ export function SettingsServerSection({
   })();
 
   const openAddRemoteModal = () => {
+    const suggestedHost =
+      remoteBackends.find((entry) => entry.id === activeRemoteBackendId)?.host ??
+      remoteBackends[0]?.host ??
+      "";
     setAddRemoteError(null);
     setAddRemoteNameDraft(nextRemoteNameSuggestion);
-    setAddRemoteHostDraft(remoteHostDraft);
+    setAddRemoteHostDraft(suggestedHost);
     setAddRemoteTokenDraft("");
     setAddRemoteOpen(true);
   };
@@ -184,157 +365,46 @@ export function SettingsServerSection({
       subtitle={
         isMobileSimplified
           ? "Configure TCP host/token from your desktop setup, then run a connection test."
-          : "Configure how Trantor exposes TCP backend access for mobile and remote clients. Desktop usage remains local unless you explicitly connect through remote mode."
+          : "Manage saved remote backends. Pick the active backend from the sidebar Local/Remote selector."
       }
     >
 
-      {!isMobileSimplified && (
+      <>
         <div className="settings-field">
-          <label className="settings-field-label" htmlFor="backend-mode">
-            Backend mode
-          </label>
-          <SelectMenu<AppSettings["backendMode"]>
-            id="backend-mode"
-            value={appSettings.backendMode}
-            onChange={(value) =>
-              void onUpdateAppSettings({
-                ...appSettings,
-                backendMode: value,
-              })
-            }
-            options={[
-              { value: "local", label: "Local (default)" },
-              { value: "remote", label: "Remote (daemon)" },
-            ]}
-            ariaLabel="Backend mode"
-            fullWidth
-          />
+          <div className="settings-field-label">Saved remotes</div>
+          <div className="settings-mobile-remotes" role="list" aria-label="Saved remotes">
+            {remoteBackends.map((entry, index) => (
+              <SavedRemoteRow
+                key={entry.id}
+                entry={entry}
+                index={index}
+                total={remoteBackends.length}
+                isActive={entry.id === activeRemoteBackendId}
+                onSelect={onSelectRemoteBackend}
+                onMove={onMoveRemoteBackend}
+                onDelete={setPendingDeleteRemoteId}
+                onUpdate={onUpdateRemoteBackend}
+              />
+            ))}
+          </div>
+          <div className="settings-field-row">
+            <button
+              type="button"
+              className="button settings-button-compact"
+              onClick={openAddRemoteModal}
+            >
+              Add remote
+            </button>
+          </div>
+          {remoteStatusText && (
+            <div className={`settings-help${remoteStatusError ? " settings-help-error" : ""}`}>
+              {remoteStatusText}
+            </div>
+          )}
           <div className="settings-help">
-            Local keeps desktop requests in-process. Remote routes desktop requests through the same
-            TCP transport path used by mobile clients.
+            Switching the active remote reloads the app.
           </div>
         </div>
-      )}
-
-      <>
-        {isMobileSimplified && (
-          <>
-            <div className="settings-field">
-              <div className="settings-field-label">Saved remotes</div>
-              <div className="settings-mobile-remotes" role="list" aria-label="Saved remotes">
-                {remoteBackends.map((entry, index) => {
-                  const isActive = entry.id === activeRemoteBackendId;
-                  return (
-                    <div
-                      className={`settings-mobile-remote${isActive ? " is-active" : ""}`}
-                      role="listitem"
-                      key={entry.id}
-                    >
-                      <div className="settings-mobile-remote-main">
-                        <div className="settings-mobile-remote-name-row">
-                          <div className="settings-mobile-remote-name">{entry.name}</div>
-                          {isActive && <span className="settings-mobile-remote-badge">Active</span>}
-                        </div>
-                        <div className="settings-mobile-remote-meta">TCP · {entry.host}</div>
-                        <div className="settings-mobile-remote-last">
-                          Last connected:{" "}
-                          {typeof entry.lastConnectedAtMs === "number"
-                            ? new Date(entry.lastConnectedAtMs).toLocaleString()
-                            : "Never"}
-                        </div>
-                      </div>
-                      <div className="settings-mobile-remote-actions">
-                        <button
-                          type="button"
-                          className="ghost settings-mobile-remote-action"
-                          onClick={() => {
-                            void onSelectRemoteBackend(entry.id);
-                          }}
-                          disabled={isActive}
-                          aria-label={`Use ${entry.name} remote`}
-                        >
-                          {isActive ? "Using" : "Use"}
-                        </button>
-                        <button
-                          type="button"
-                          className="ghost settings-mobile-remote-action"
-                          onClick={() => {
-                            void onMoveRemoteBackend(entry.id, "up");
-                          }}
-                          disabled={index === 0}
-                          aria-label={`Move ${entry.name} up`}
-                        >
-                          ↑
-                        </button>
-                        <button
-                          type="button"
-                          className="ghost settings-mobile-remote-action"
-                          onClick={() => {
-                            void onMoveRemoteBackend(entry.id, "down");
-                          }}
-                          disabled={index === remoteBackends.length - 1}
-                          aria-label={`Move ${entry.name} down`}
-                        >
-                          ↓
-                        </button>
-                        <button
-                          type="button"
-                          className="ghost settings-mobile-remote-action settings-mobile-remote-action-danger"
-                          onClick={() => {
-                            setPendingDeleteRemoteId(entry.id);
-                          }}
-                          aria-label={`Delete ${entry.name}`}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="settings-field-row">
-                <button
-                  type="button"
-                  className="button settings-button-compact"
-                  onClick={openAddRemoteModal}
-                >
-                  Add remote
-                </button>
-              </div>
-              {remoteStatusText && (
-                <div className={`settings-help${remoteStatusError ? " settings-help-error" : ""}`}>
-                  {remoteStatusText}
-                </div>
-              )}
-              <div className="settings-help">
-                Switch the active remote here. The fields below edit the active entry.
-              </div>
-            </div>
-
-            <div className="settings-field">
-              <label className="settings-field-label" htmlFor="mobile-remote-name">
-                Remote name
-              </label>
-              <input
-                id="mobile-remote-name"
-                className="settings-input settings-input--compact"
-                value={remoteNameDraft}
-                placeholder="My desktop"
-                onChange={(event) => onSetRemoteNameDraft(event.target.value)}
-                onBlur={() => {
-                  void onCommitRemoteName();
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    event.preventDefault();
-                    void onCommitRemoteName();
-                  }
-                }}
-              />
-              {remoteNameError && <div className="settings-help settings-help-error">{remoteNameError}</div>}
-            </div>
-          </>
-        )}
 
         {!isMobileSimplified && (
           <SettingsToggleRow
@@ -352,51 +422,6 @@ export function SettingsServerSection({
             />
           </SettingsToggleRow>
         )}
-
-        <div className="settings-field">
-          <div className="settings-field-label">Remote backend</div>
-          <div className="settings-field-row">
-            <input
-              className="settings-input settings-input--compact"
-              value={remoteHostDraft}
-              placeholder="127.0.0.1:4732"
-              onChange={(event) => onSetRemoteHostDraft(event.target.value)}
-              onBlur={() => {
-                void onCommitRemoteHost();
-              }}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  event.preventDefault();
-                  void onCommitRemoteHost();
-                }
-              }}
-              aria-label="Remote backend host"
-            />
-            <input
-              type="password"
-              className="settings-input settings-input--compact"
-              value={remoteTokenDraft}
-              placeholder="Token (required)"
-              onChange={(event) => onSetRemoteTokenDraft(event.target.value)}
-              onBlur={() => {
-                void onCommitRemoteToken();
-              }}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  event.preventDefault();
-                  void onCommitRemoteToken();
-                }
-              }}
-              aria-label="Remote backend token"
-            />
-          </div>
-          {remoteHostError && <div className="settings-help settings-help-error">{remoteHostError}</div>}
-          <div className="settings-help">
-            {isMobileSimplified
-              ? "Use the Tailscale host from your desktop Trantor app (Server section), for example `macbook.your-tailnet.ts.net:4732`."
-              : "This host/token is used by mobile clients and desktop remote-mode testing."}
-          </div>
-        </div>
 
         {isMobileSimplified && (
           <div className="settings-field">

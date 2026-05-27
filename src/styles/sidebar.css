@@ -162,6 +162,12 @@
   margin-left: auto;
 }
 
+.sidebar-backend-selector {
+  font-size: 12px;
+  padding: 4px 8px;
+  max-width: 140px;
+}
+
 .sidebar-sort-menu {
   position: relative;
 }

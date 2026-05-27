@@ -1639,6 +1639,8 @@ export default function MainApp() {
         appSettings.gitDiffIgnoreWhitespaceChanges,
       defaultWorktreeBranchFormat: appSettings.defaultWorktreeBranchFormat,
     },
+    fullAppSettings: appSettings,
+    onUpdateAppSettings: queueSaveSettings,
     workspaces,
     groupedWorkspaces,
     deletingWorktreeIds,

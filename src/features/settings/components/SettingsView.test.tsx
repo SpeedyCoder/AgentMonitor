@@ -1344,8 +1344,8 @@ describe("SettingsView Codex section", () => {
       expect(screen.getByRole("button", { name: "Start daemon" })).toBeTruthy();
       expect(screen.getByRole("button", { name: "Stop daemon" })).toBeTruthy();
       expect(screen.getByRole("button", { name: "Refresh status" })).toBeTruthy();
-      expect(screen.getByLabelText("Remote backend host")).toBeTruthy();
-      expect(screen.getByLabelText("Remote backend token")).toBeTruthy();
+      expect(screen.getByLabelText("Host for Primary remote")).toBeTruthy();
+      expect(screen.getByLabelText("Token for Primary remote")).toBeTruthy();
     });
   });
 
@@ -1416,8 +1416,8 @@ describe("SettingsView Codex section", () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByLabelText("Remote backend host")).toBeTruthy();
-        expect(screen.getByLabelText("Remote backend token")).toBeTruthy();
+        expect(screen.getByLabelText("Host for Primary remote")).toBeTruthy();
+        expect(screen.getByLabelText("Token for Primary remote")).toBeTruthy();
         expect(screen.getByRole("button", { name: "Connect & test" })).toBeTruthy();
       });
 
@@ -1538,7 +1538,7 @@ describe("SettingsView Codex section", () => {
 
       await waitFor(() => {
         expect(screen.getByRole("list", { name: "Saved remotes" })).toBeTruthy();
-        expect(screen.getByLabelText("Remote name")).toBeTruthy();
+        expect(screen.getByLabelText("Remote name for Home Mac")).toBeTruthy();
       });
       expect(screen.getAllByText(/Last connected: Never/i).length).toBeGreaterThan(0);
 
@@ -1556,10 +1556,10 @@ describe("SettingsView Codex section", () => {
       });
 
       onUpdateAppSettings.mockClear();
-      fireEvent.change(screen.getByLabelText("Remote name"), {
+      fireEvent.change(screen.getByLabelText("Remote name for Office Mac"), {
         target: { value: "Home Mac" },
       });
-      fireEvent.blur(screen.getByLabelText("Remote name"));
+      fireEvent.blur(screen.getByLabelText("Remote name for Office Mac"));
 
       await waitFor(() => {
         expect(

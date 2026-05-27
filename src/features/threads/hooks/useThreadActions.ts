@@ -104,6 +104,7 @@ export function useThreadActions({
   const resumeInFlightByThreadRef = useRef<Record<string, number>>({});
   const pendingThreadStartByIdRef = useRef<Record<string, Promise<string | null>>>({});
   const resolvedThreadIdByPendingIdRef = useRef<Record<string, string | null>>({});
+  const pendingThreadStartErrorByIdRef = useRef<Record<string, string>>({});
   const threadStatusByIdRef = useRef(threadStatusById);
   const activeTurnIdByThreadRef = useRef(activeTurnIdByThread);
   threadStatusByIdRef.current = threadStatusById;
@@ -211,12 +212,14 @@ export function useThreadActions({
       startPromise
         .catch((error) => {
           resolvedThreadIdByPendingIdRef.current[pendingThreadId] = null;
+          pendingThreadStartErrorByIdRef.current[pendingThreadId] =
+            error instanceof Error ? error.message : String(error);
           onDebug?.({
             id: `${Date.now()}-client-thread-start-error`,
             timestamp: Date.now(),
             source: "error",
             label: "thread/start error",
-            payload: error instanceof Error ? error.message : String(error),
+            payload: pendingThreadStartErrorByIdRef.current[pendingThreadId],
           });
         })
         .finally(() => {
@@ -230,7 +233,11 @@ export function useThreadActions({
   const resolvePendingThreadId = useCallback(
     async (threadId: string) => {
       if (threadId in resolvedThreadIdByPendingIdRef.current) {
-        return resolvedThreadIdByPendingIdRef.current[threadId];
+        const resolved = resolvedThreadIdByPendingIdRef.current[threadId];
+        if (resolved == null && pendingThreadStartErrorByIdRef.current[threadId]) {
+          throw new Error(pendingThreadStartErrorByIdRef.current[threadId]);
+        }
+        return resolved;
       }
       const pendingStart = pendingThreadStartByIdRef.current[threadId];
       if (!pendingStart) {

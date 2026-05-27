@@ -14,9 +14,21 @@ vi.mock("@/features/layout/hooks/useWindowFullscreenState", () => ({
 }));
 
 import { SidebarHeader } from "./SidebarHeader";
+import type { AppSettings } from "@/types";
+
+const minimalAppSettings = {
+  backendMode: "local",
+  remoteBackends: [],
+  activeRemoteBackendId: null,
+  remoteBackendProvider: "tcp",
+  remoteBackendHost: "127.0.0.1:4732",
+  remoteBackendToken: null,
+} as unknown as AppSettings;
 
 const baseProps = {
   onAddWorkspace: vi.fn(),
+  appSettings: minimalAppSettings,
+  onUpdateAppSettings: vi.fn(),
 };
 
 describe("SidebarHeader", () => {
