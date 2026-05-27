@@ -100,6 +100,7 @@ type HarnessDescriptor = {
 
 type CachedHarnessModels = {
   models: ModelOption[];
+  fromDiscovery: boolean;
 };
 
 const acpHarnessModelCache = new Map<string, CachedHarnessModels>();
@@ -275,24 +276,35 @@ async function loadAcpHarnessModels(
   if (pending) {
     return pending;
   }
-  const request = (async () => {
+  const request = (async (): Promise<CachedHarnessModels> => {
     if (!descriptor.canDiscover) {
-      return { models: descriptor.fallbackModels };
+      return { models: descriptor.fallbackModels, fromDiscovery: false };
     }
     try {
       const response = await getAcpSessionConfig(workspaceId, descriptor.id);
       const models = buildHarnessModels(descriptor, response);
-      return {
-        models: models.length > 0 ? models : descriptor.fallbackModels,
-      };
-    } catch {
-      return { models: descriptor.fallbackModels };
+      if (models.length > 0) {
+        return { models, fromDiscovery: true };
+      }
+      console.warn(
+        `[useModels] ACP discover for ${descriptor.id} returned no models`,
+        response,
+      );
+      return { models: descriptor.fallbackModels, fromDiscovery: false };
+    } catch (error) {
+      console.error(
+        `[useModels] ACP discover for ${descriptor.id} failed`,
+        error,
+      );
+      return { models: descriptor.fallbackModels, fromDiscovery: false };
     }
   })();
   acpHarnessModelRequests.set(key, request);
   try {
     const result = await request;
-    acpHarnessModelCache.set(key, result);
+    if (result.fromDiscovery) {
+      acpHarnessModelCache.set(key, result);
+    }
     return result;
   } finally {
     acpHarnessModelRequests.delete(key);
