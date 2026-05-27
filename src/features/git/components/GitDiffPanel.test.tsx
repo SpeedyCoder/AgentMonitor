@@ -320,6 +320,8 @@ describe("GitDiffPanel", () => {
 
   it("shows Agent edits option in mode selector", () => {
     render(<GitDiffPanel {...baseProps} />);
+    const triggers = screen.getAllByRole("button", { name: "Git panel view" });
+    fireEvent.click(triggers[0]);
     const options = screen.getAllByRole("option", { name: "Agent edits" });
     expect(options.length).toBeGreaterThan(0);
   });
