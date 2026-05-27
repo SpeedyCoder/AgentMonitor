@@ -15,9 +15,13 @@ type UseWorkspaceFromUrlPromptOptions = {
     destinationPath: string,
     targetFolderName?: string | null,
   ) => Promise<void>;
+  backendMode?: string;
 };
 
-export function useWorkspaceFromUrlPrompt({ onSubmit }: UseWorkspaceFromUrlPromptOptions) {
+export function useWorkspaceFromUrlPrompt({
+  onSubmit,
+  backendMode,
+}: UseWorkspaceFromUrlPromptOptions) {
   const [prompt, setPrompt] = useState<WorkspaceFromUrlPromptState>(null);
 
   const openPrompt = useCallback(() => {
@@ -41,13 +45,18 @@ export function useWorkspaceFromUrlPrompt({ onSubmit }: UseWorkspaceFromUrlPromp
     return prompt.url.trim().length > 0 && prompt.destinationPath.trim().length > 0;
   }, [prompt]);
 
+  const isRemote = backendMode === "remote";
+
   const chooseDestinationPath = useCallback(async () => {
+    if (isRemote) {
+      return;
+    }
     const selected = await pickWorkspacePath();
     if (!selected) {
       return;
     }
     setPrompt((prev) => (prev ? { ...prev, destinationPath: selected, error: null } : prev));
-  }, []);
+  }, [isRemote]);
 
   const submitPrompt = useCallback(async () => {
     if (!prompt || prompt.isSubmitting) {
@@ -86,8 +95,11 @@ export function useWorkspaceFromUrlPrompt({ onSubmit }: UseWorkspaceFromUrlPromp
       setPrompt((prev) => (prev ? { ...prev, url, error: null } : prev)),
     updateWorkspaceFromUrlTargetFolderName: (targetFolderName: string) =>
       setPrompt((prev) => (prev ? { ...prev, targetFolderName, error: null } : prev)),
+    updateWorkspaceFromUrlDestinationPath: (destinationPath: string) =>
+      setPrompt((prev) => (prev ? { ...prev, destinationPath, error: null } : prev)),
     clearWorkspaceFromUrlDestinationPath: () =>
       setPrompt((prev) => (prev ? { ...prev, destinationPath: "", error: null } : prev)),
     canSubmitWorkspaceFromUrlPrompt: canSubmit,
+    workspaceFromUrlShowFolderPicker: !isRemote,
   };
 }

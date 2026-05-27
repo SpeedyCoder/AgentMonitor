@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ask, message } from "@tauri-apps/plugin-dialog";
 import type { WorkspaceInfo } from "../../../types";
-import { isMobilePlatform } from "../../../utils/platformPaths";
 import { pickWorkspacePaths } from "../../../services/tauri";
 import type { AddWorkspacesFromPathsResult } from "../../workspaces/hooks/useWorkspaceCrud";
 
@@ -201,7 +200,7 @@ export function useWorkspaceDialogs() {
   }, [resolveMobileRemoteWorkspacePathRequest]);
 
   const requestWorkspacePaths = useCallback(async (backendMode?: string) => {
-    if (isMobilePlatform() && backendMode === "remote") {
+    if (backendMode === "remote") {
       return requestMobileRemoteWorkspacePaths();
     }
     return pickWorkspacePaths();

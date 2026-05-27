@@ -972,12 +972,15 @@ export default function MainApp() {
     submitWorkspaceFromUrlPrompt,
     updateWorkspaceFromUrlUrl,
     updateWorkspaceFromUrlTargetFolderName,
+    updateWorkspaceFromUrlDestinationPath,
     clearWorkspaceFromUrlDestinationPath,
     canSubmitWorkspaceFromUrlPrompt,
+    workspaceFromUrlShowFolderPicker,
   } = useWorkspaceFromUrlPrompt({
     onSubmit: async (url, destinationPath, targetFolderName) => {
       await handleAddWorkspaceFromGitUrl(url, destinationPath, targetFolderName);
     },
+    backendMode: appSettings.backendMode,
   });
 
   const showHome = !activeWorkspace;
@@ -1057,9 +1060,12 @@ export default function MainApp() {
       workspaceFromUrl: {
         workspaceFromUrlPrompt,
         workspaceFromUrlCanSubmit: canSubmitWorkspaceFromUrlPrompt,
+        workspaceFromUrlShowFolderPicker,
         onWorkspaceFromUrlPromptUrlChange: updateWorkspaceFromUrlUrl,
         onWorkspaceFromUrlPromptTargetFolderNameChange:
           updateWorkspaceFromUrlTargetFolderName,
+        onWorkspaceFromUrlPromptDestinationPathChange:
+          updateWorkspaceFromUrlDestinationPath,
         onWorkspaceFromUrlPromptChooseDestinationPath:
           chooseWorkspaceFromUrlDestinationPath,
         onWorkspaceFromUrlPromptClearDestinationPath:
