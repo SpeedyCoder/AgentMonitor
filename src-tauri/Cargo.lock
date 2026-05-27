@@ -5660,7 +5660,7 @@ dependencies = [
 
 [[package]]
 name = "trantor"
-version = "0.7.68"
+version = "0.8.0"
 dependencies = [
  "agent-client-protocol",
  "agent-client-protocol-schema",
