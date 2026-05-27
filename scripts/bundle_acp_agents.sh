@@ -32,6 +32,28 @@ require_executable() {
     fi
 }
 
+bundle_node_runtime() {
+    local node_path
+    node_path="$(command -v node || true)"
+    if [ -z "$node_path" ]; then
+        echo "Error: node is required to bundle ACP adapters" >&2
+        exit 1
+    fi
+
+    local node_bin="$BIN_DIR/node"
+    if [ "$OS" = "windows" ] || [ "$OS" = "mingw" ] || [ "$OS" = "msys" ] || [ "$OS" = "cygwin" ]; then
+        node_bin="$BIN_DIR/node.exe"
+    fi
+
+    cp "$node_path" "$node_bin"
+    chmod +x "$node_bin"
+    require_executable "$node_bin" "Node.js runtime"
+
+    local node_version
+    node_version="$("$node_bin" --version)"
+    echo "✓ Node.js runtime bundled at $node_bin ($node_version)"
+}
+
 echo "Bundling ACP adapters..."
 
 # Detect platform
@@ -55,6 +77,8 @@ if ! command -v npm &> /dev/null; then
     echo "Error: npm is required to bundle ACP adapters"
     exit 1
 fi
+
+bundle_node_runtime
 
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT

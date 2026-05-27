@@ -182,6 +182,9 @@ jobs:
       - name: install frontend dependencies
         run: npm ci
 
+      - name: Bundle ACP adapters
+        run: ./scripts/bundle_acp_agents.sh
+
       - name: Write Tauri signing key
         run: |
           set -euo pipefail

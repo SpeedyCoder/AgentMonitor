@@ -45,3 +45,42 @@ fn macos_private_api_feature_matches_config() {
         );
     }
 }
+
+#[test]
+fn tauri_bundle_includes_acp_resource_directory() {
+    let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let config_path = manifest_dir.join("tauri.conf.json");
+    let config_contents = fs::read_to_string(&config_path)
+        .unwrap_or_else(|error| panic!("Failed to read {config_path:?}: {error}"));
+    let config: Value = serde_json::from_str(&config_contents)
+        .unwrap_or_else(|error| panic!("Failed to parse tauri.conf.json: {error}"));
+    let resources = config
+        .get("bundle")
+        .and_then(|bundle| bundle.get("resources"))
+        .and_then(Value::as_array)
+        .unwrap_or_else(|| panic!("tauri.conf.json must declare bundle.resources"));
+
+    assert!(
+        resources
+            .iter()
+            .any(|resource| resource.as_str() == Some("resources/bin")),
+        "Packaged builds must include src-tauri/resources/bin for ACP adapters and Node.js"
+    );
+}
+
+#[test]
+fn release_workflow_bundles_acp_agents_for_packaged_builds() {
+    let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let workflow_path = manifest_dir
+        .parent()
+        .unwrap_or_else(|| panic!("src-tauri must have a repository parent"))
+        .join(".github/workflows/release.yml");
+    let workflow = fs::read_to_string(&workflow_path)
+        .unwrap_or_else(|error| panic!("Failed to read {workflow_path:?}: {error}"));
+    let bundle_step_count = workflow.matches("./scripts/bundle_acp_agents.sh").count();
+
+    assert!(
+        bundle_step_count >= 2,
+        "macOS and Linux release jobs must bundle ACP adapters before building"
+    );
+}
