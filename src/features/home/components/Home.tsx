@@ -29,7 +29,7 @@ export function Home({
           <div className="home-title">Trantor</div>
         </div>
         <div className="home-subtitle">
-          Orchestrate agents across your local projects.
+          Orchestrate agents across your projects.
         </div>
       </div>
       <HomeLatestAgentsSection
