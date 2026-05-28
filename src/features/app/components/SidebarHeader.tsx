@@ -9,7 +9,7 @@ type BackendSelectorValue = `local` | `remote:${string}`;
 type SidebarHeaderProps = {
   onAddWorkspace: () => void;
   appSettings: AppSettings;
-  onUpdateAppSettings: (next: AppSettings) => Promise<void> | void;
+  onUpdateAppSettings: (next: AppSettings) => Promise<AppSettings | void> | void;
 };
 
 export function SidebarHeader({

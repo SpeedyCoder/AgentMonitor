@@ -70,7 +70,7 @@ type SidebarProps = {
   onWorkspaceDragLeave: (event: React.DragEvent<HTMLElement>) => void;
   onWorkspaceDrop: (event: React.DragEvent<HTMLElement>) => void;
   appSettings: AppSettings;
-  onUpdateAppSettings: (next: AppSettings) => Promise<void> | void;
+  onUpdateAppSettings: (next: AppSettings) => Promise<AppSettings | void> | void;
 };
 
 export const Sidebar = memo(function Sidebar({

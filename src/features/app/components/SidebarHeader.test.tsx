@@ -7,6 +7,7 @@ const useWindowFullscreenStateMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@utils/platformPaths", () => ({
   isMacPlatform: isMacPlatformMock,
+  isMobilePlatform: () => false,
 }));
 
 vi.mock("@/features/layout/hooks/useWindowFullscreenState", () => ({
