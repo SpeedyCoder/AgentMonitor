@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import type { AcpHarnessConfig } from "@/types";
+import type { AcpHarnessConfig, AppSettings } from "@/types";
 import LayoutGrid from "lucide-react/dist/esm/icons/layout-grid";
 import SlidersHorizontal from "lucide-react/dist/esm/icons/sliders-horizontal";
 import Mic from "lucide-react/dist/esm/icons/mic";
@@ -15,6 +15,7 @@ import Cpu from "lucide-react/dist/esm/icons/cpu";
 import Plus from "lucide-react/dist/esm/icons/plus";
 import Wrench from "lucide-react/dist/esm/icons/wrench";
 import { PanelNavItem, PanelNavList } from "@/features/design-system/components/panel/PanelPrimitives";
+import { SelectMenu } from "@/features/design-system/components/popover/PopoverPrimitives";
 import type { CodexSection } from "./settingsTypes";
 
 type SettingsNavProps = {
@@ -23,7 +24,11 @@ type SettingsNavProps = {
   customHarnesses?: AcpHarnessConfig[];
   onAddHarness?: () => void;
   showDisclosure?: boolean;
+  appSettings: AppSettings;
+  onUpdateAppSettings: (next: AppSettings) => Promise<void>;
 };
+
+type BackendSelectorValue = "local" | `remote:${string}`;
 
 const SETTINGS_NAV_GROUPS: Array<{
   label: string;
@@ -93,11 +98,85 @@ export function SettingsNav({
   customHarnesses = [],
   onAddHarness,
   showDisclosure = false,
+  appSettings,
+  onUpdateAppSettings,
 }: SettingsNavProps) {
+  const configuredRemotes = appSettings.remoteBackends.filter(
+    (entry) => entry.token != null && entry.token.length > 0,
+  );
+  const activeRemoteId =
+    appSettings.activeRemoteBackendId &&
+    configuredRemotes.some((entry) => entry.id === appSettings.activeRemoteBackendId)
+      ? appSettings.activeRemoteBackendId
+      : configuredRemotes[0]?.id ?? null;
+  const selectorValue: BackendSelectorValue =
+    appSettings.backendMode === "remote" && activeRemoteId
+      ? `remote:${activeRemoteId}`
+      : "local";
+
+  const handleBackendChange = (value: BackendSelectorValue) => {
+    const reload = () => {
+      try {
+        window.location.reload();
+      } catch {
+        // jsdom or restricted environments may not support reload.
+      }
+    };
+    if (value === "local") {
+      if (appSettings.backendMode === "local") return;
+      void Promise.resolve(
+        onUpdateAppSettings({ ...appSettings, backendMode: "local" }),
+      ).then(reload);
+      return;
+    }
+    const remoteId = value.slice("remote:".length);
+    const next = configuredRemotes.find((entry) => entry.id === remoteId);
+    if (!next) return;
+    if (
+      appSettings.backendMode === "remote" &&
+      appSettings.activeRemoteBackendId === remoteId
+    ) {
+      return;
+    }
+    void Promise.resolve(
+      onUpdateAppSettings({
+        ...appSettings,
+        backendMode: "remote",
+        activeRemoteBackendId: remoteId,
+        remoteBackendProvider: next.provider,
+        remoteBackendHost: next.host,
+        remoteBackendToken: next.token,
+      }),
+    ).then(reload);
+  };
+
+  const selectorOptions: { value: BackendSelectorValue; label: string }[] = [
+    { value: "local", label: "Local" },
+    ...configuredRemotes.map((entry) => ({
+      value: `remote:${entry.id}` as BackendSelectorValue,
+      label: entry.name,
+    })),
+  ];
+  const showBackendSelector = configuredRemotes.length > 0;
+
+  const visibleGroups = SETTINGS_NAV_GROUPS;
+
   return (
     <aside className="settings-sidebar">
+      {showBackendSelector && (
+        <div className="settings-nav-backend">
+          <div className="settings-nav-backend-label">Backend</div>
+          <SelectMenu<BackendSelectorValue>
+            value={selectorValue}
+            onChange={handleBackendChange}
+            options={selectorOptions}
+            ariaLabel="Settings backend"
+            fullWidth
+          />
+        </div>
+      )}
       <div className="settings-sidebar-groups">
-        {SETTINGS_NAV_GROUPS.map((group) => (
+        {visibleGroups.map((group) => (
           <div className="settings-nav-group" key={group.label}>
             <div className="settings-nav-group-heading">
               <div className="settings-nav-group-label">{group.label}</div>

@@ -3,7 +3,6 @@ import { useWorkspaces } from "../../workspaces/hooks/useWorkspaces";
 import type { AppSettings, WorkspaceInfo } from "../../../types";
 import type { DebugEntry } from "../../../types";
 import { useWorkspaceDialogs } from "./useWorkspaceDialogs";
-import { isMobilePlatform } from "../../../utils/platformPaths";
 
 type WorkspaceControllerOptions = {
   appSettings: AppSettings;
@@ -77,7 +76,7 @@ export function useWorkspaceController({
       return null;
     }
     const result = await runAddWorkspacesFromPaths(paths, {
-      rememberMobileRemoteRecents: isMobilePlatform() && appSettings.backendMode === "remote",
+      rememberMobileRemoteRecents: appSettings.backendMode === "remote",
     });
     return result.firstAdded;
   }, [appSettings.backendMode, requestWorkspacePaths, runAddWorkspacesFromPaths]);

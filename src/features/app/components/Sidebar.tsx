@@ -1,4 +1,5 @@
 import type {
+  AppSettings,
   RequestUserInputRequest,
   ThreadListOrganizeMode,
   ThreadListSortKey,
@@ -68,6 +69,8 @@ type SidebarProps = {
   onWorkspaceDragEnter: (event: React.DragEvent<HTMLElement>) => void;
   onWorkspaceDragLeave: (event: React.DragEvent<HTMLElement>) => void;
   onWorkspaceDrop: (event: React.DragEvent<HTMLElement>) => void;
+  appSettings: AppSettings;
+  onUpdateAppSettings: (next: AppSettings) => Promise<AppSettings | void> | void;
 };
 
 export const Sidebar = memo(function Sidebar({
@@ -105,6 +108,8 @@ export const Sidebar = memo(function Sidebar({
   onWorkspaceDragEnter,
   onWorkspaceDragLeave,
   onWorkspaceDrop,
+  appSettings,
+  onUpdateAppSettings,
 }: SidebarProps) {
   const { showWorkspaceMenu, showWorktreeMenu } = useSidebarMenus({
     onDeleteThread,
@@ -199,6 +204,8 @@ export const Sidebar = memo(function Sidebar({
       <div className="sidebar-drag-strip" />
       <SidebarHeader
         onAddWorkspace={onAddWorkspace}
+        appSettings={appSettings}
+        onUpdateAppSettings={onUpdateAppSettings}
       />
       <div
         className={`workspace-drop-overlay${isWorkspaceDropActive ? " is-active" : ""}`}

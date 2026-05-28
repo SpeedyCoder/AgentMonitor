@@ -128,7 +128,9 @@ export function SettingsGitSection({
           Linear API token
         </label>
         <div className="settings-help">
-          Enables Linear issue search when creating worktree agents.
+          {appSettings.backendMode === "remote"
+            ? "Stored on the active remote backend. Used for Linear issue search when creating worktree agents."
+            : "Enables Linear issue search when creating worktree agents."}
         </div>
         <div className="settings-input-with-action">
           <input

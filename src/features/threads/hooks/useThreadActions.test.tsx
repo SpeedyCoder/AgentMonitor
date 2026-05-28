@@ -250,6 +250,23 @@ describe("useThreadActions", () => {
     );
   });
 
+  it("rethrows the original error from resolvePendingThreadId when start fails", async () => {
+    vi.mocked(startThread).mockRejectedValue(new Error("remote backend disconnected"));
+
+    const { result } = renderActions();
+
+    let threadId: string | null = null;
+    await act(async () => {
+      threadId = await result.current.startThreadForWorkspace("ws-1");
+    });
+
+    await act(async () => {
+      await expect(
+        result.current.resolvePendingThreadId(threadId ?? ""),
+      ).rejects.toThrow("remote backend disconnected");
+    });
+  });
+
   it("starts a thread without activating when requested", async () => {
     vi.mocked(startThread).mockResolvedValue({
       result: { thread: { id: "thread-2" } },

@@ -41,6 +41,8 @@ type UseMainAppLayoutSurfacesArgs = {
     | "gitDiffIgnoreWhitespaceChanges"
     | "defaultWorktreeBranchFormat"
   >;
+  fullAppSettings: AppSettings;
+  onUpdateAppSettings: (next: AppSettings) => Promise<AppSettings | void> | void;
   workspaces: WorkspaceInfo[];
   groupedWorkspaces: Array<{ id: string | null; name: string; workspaces: WorkspaceInfo[] }>;
   deletingWorktreeIds: Set<string>;
@@ -224,6 +226,8 @@ type MainAppLayoutSurfacesContext = UseMainAppLayoutSurfacesArgs;
 
 function buildPrimarySurface({
   appSettings,
+  fullAppSettings,
+  onUpdateAppSettings,
   workspaces,
   groupedWorkspaces,
   deletingWorktreeIds,
@@ -396,6 +400,8 @@ function buildPrimarySurface({
       onWorkspaceDragEnter: workspaceDrop.onWorkspaceDragEnter,
       onWorkspaceDragLeave: workspaceDrop.onWorkspaceDragLeave,
       onWorkspaceDrop: workspaceDrop.onWorkspaceDrop,
+      appSettings: fullAppSettings,
+      onUpdateAppSettings,
     },
     messagesProps: {
       items: activeItems,
@@ -919,6 +925,8 @@ function buildSecondarySurface({
 
 export function useMainAppLayoutSurfaces({
   appSettings,
+  fullAppSettings,
+  onUpdateAppSettings,
   workspaces,
   groupedWorkspaces,
   deletingWorktreeIds,
@@ -1062,6 +1070,8 @@ export function useMainAppLayoutSurfaces({
 }: UseMainAppLayoutSurfacesArgs): LayoutNodesOptions {
   const context: MainAppLayoutSurfacesContext = {
     appSettings,
+    fullAppSettings,
+    onUpdateAppSettings,
     workspaces,
     groupedWorkspaces,
     deletingWorktreeIds,

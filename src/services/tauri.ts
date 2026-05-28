@@ -965,6 +965,16 @@ export async function updateAppSettings(settings: AppSettings): Promise<AppSetti
   return invoke<AppSettings>("update_app_settings", { settings });
 }
 
+export async function getRemoteAppSettings(): Promise<AppSettings> {
+  return invoke<AppSettings>("get_remote_app_settings");
+}
+
+export async function updateRemoteAppSettings(
+  settings: AppSettings,
+): Promise<AppSettings> {
+  return invoke<AppSettings>("update_remote_app_settings", { settings });
+}
+
 export async function tailscaleStatus(): Promise<TailscaleStatus> {
   return invoke<TailscaleStatus>("tailscale_status");
 }
